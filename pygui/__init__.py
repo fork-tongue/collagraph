@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import enum
+import time
 from typing import Callable, Dict, List, Optional, Union
 
 import pygfx as gfx
@@ -43,14 +44,25 @@ def create_element(type, props=None, *children) -> VNode:
     return VNode(type, props or {}, children or tuple(), key)
 
 
-def request_work():
+def request_idle_work(deadline: int = None):
+    """
+    Schedules work to be done when all other Qt events have been handled.
+
+    Args:
+        deadline: targetted deadline for until when work can be done. If
+            no deadline is given, then it will be set to 16ms from now.
+    """
     global qt_timer
     if not qt_timer:
         qt_timer = QtCore.QTimer()
         qt_timer.setSingleShot(True)
-        qt_timer.timeout.connect(work_loop)
         qt_timer.setInterval(0)
 
+    # current in ms
+    if not deadline:
+        deadline = time.perf_counter_ns() * 1000000 + 16
+
+    qt_timer.timeout.connect(lambda: work_loop(deadline=deadline))
     qt_timer.start()
 
 
@@ -69,17 +81,22 @@ def render(element, container):
     deletions = []
     next_unit_of_work = wip_root
 
-    request_work()
+    request_idle_work()
 
 
-def work_loop(deadline=0):
+def work_loop(deadline: int = None):
     global next_unit_of_work
-    while next_unit_of_work:
+    should_yield = False
+    while next_unit_of_work and not should_yield:
         next_unit_of_work = perform_unit_of_work(next_unit_of_work)
-        # TODO: yield if time is up
+        # yield if time is up
+        should_yield = (deadline - time.perf_counter_ns() * 1000000) < 1
 
-    if wip_root:
+    if not next_unit_of_work and wip_root:
         commit_root()
+
+    if next_unit_of_work:
+        request_idle_work()
 
 
 def create_dom(fiber) -> gfx.WorldObject:
@@ -148,7 +165,7 @@ def use_state(initial):
         }
         next_unit_of_work = wip_root
         deletions = []
-        request_work()
+        request_idle_work()
 
     wip_fiber["hooks"].append(hook)
     hook_index += 1
