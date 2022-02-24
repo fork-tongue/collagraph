@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "pygui"
+version = "0.1.0"
+description = "Reactive state management for Python"
+authors = ["Korijn van Golen <korijn@gmail.com>", "Berend Klein Haneveld <berendkleinhaneveld@gmail.com>"]
+license = "MIT"
+homepage = "https://github.com/fork-tongue/pygui"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.7,<3.11"
+observ = "~0.9.0"
+pygfx = { git = "https://github.com/pygfx/pygfx.git", rev = "main" }
+PySide6 = "~6.2"
+
+[tool.poetry.dev-dependencies]
+black = "*"
+flake8 = "*"
+flake8-black = "*"
+flake8-import-order = "*"
+flake8-print = "*"
+pre-commit = "*"
+pytest = "*"
+pytest-cov = "*"
+twine = "*"
+
+[build-system]
+requires = ["poetry>=1.0.0"]
+build-backend = "poetry.masonry.api"
