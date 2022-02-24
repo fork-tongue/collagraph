@@ -64,6 +64,10 @@ materials = {
 
 def PointCloud(props):
     random.seed(0)
+    state = pygui.use_state({"selected": -1})
+
+    def set_selected(index):
+        state["selected"] = index
 
     def random_point(index, selected):
         return pygui.create_element(
@@ -77,12 +81,10 @@ def PointCloud(props):
                     random.randint(-10, 10),
                 ],
                 "key": index,
-                # "color": [1, 0, 0] if index == selected else [1, 1, 1],
-                "onClick": lambda event: set_state(lambda state: {"selected": index}),
+                "onClick": lambda event: set_selected(index),
             },
         )
 
-    state, set_state = pygui.use_state({"selected": -1})
     selected = state["selected"]
     number_of_points = props.get("count", 50)
 
@@ -94,7 +96,11 @@ def PointCloud(props):
 
 
 def Landmark(props):
-    state, set_state = pygui.use_state({"selected": False})
+    state = pygui.use_state({"selected": False})
+
+    def toggle():
+        state["selected"] = not state["selected"]
+
     return pygui.create_element(
         "Group",
         props,
@@ -110,9 +116,7 @@ def Landmark(props):
             {
                 "scale": [0.5, 0.5, 0.5],
                 "color": [1, 1, 1, 1],
-                "onClick": lambda event: set_state(
-                    lambda state: {"selected": not state["selected"]}
-                ),
+                "onClick": lambda event: toggle(),
             },
         ),
     )

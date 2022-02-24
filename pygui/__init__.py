@@ -4,6 +4,7 @@ from importlib.metadata import version
 import time
 from typing import Callable, Dict, List, Optional, Union
 
+from observ import reactive, scheduler, watch
 import pygfx as gfx
 from PySide6 import QtCore
 
@@ -25,6 +26,8 @@ __all__ = [
     "use_state",
 ]
 __version__ = version("pygui")
+
+scheduler.register_qt()
 
 
 class EffectTag(enum.Enum):
@@ -156,6 +159,8 @@ def update_function_component(fiber):
 
 
 def use_state(initial):
+    initial = reactive(initial)
+
     global hook_index
     old_hook = (
         wip_fiber.get("alternate")
@@ -171,11 +176,10 @@ def use_state(initial):
     for action in actions:
         hook["state"] = action(hook["state"])
 
-    def set_state(action):
+    def state_updated():
         global wip_root
         global next_unit_of_work
         global deletions
-        hook["queue"].append(action)
         # TODO: maybe check that the wip_root is None?
         # assert wip_root is None
         wip_root = {
@@ -188,9 +192,15 @@ def use_state(initial):
         deletions = []
         request_idle_work()
 
+    hook["watcher"] = watch(
+        lambda: hook["state"],
+        state_updated,
+        deep=True,
+    )
+
     wip_fiber["hooks"].append(hook)
     hook_index += 1
-    return hook["state"], set_state
+    return hook["state"]
 
 
 def update_host_component(fiber):
