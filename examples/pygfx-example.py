@@ -27,8 +27,9 @@ VNodes are essentially a description of the to-be-displayed item.
 import random
 
 import pygfx as gfx
-import pygui
 from wgpu.gui.auto import run, WgpuCanvas
+
+import pygui
 
 
 class MyCanvas(WgpuCanvas):
