@@ -57,10 +57,12 @@ def request_idle_work(deadline: int = None):
         qt_timer = QtCore.QTimer()
         qt_timer.setSingleShot(True)
         qt_timer.setInterval(0)
+    else:
+        qt_timer.timeout.disconnect()
 
-    # current in ms
+    # current in ns
     if not deadline:
-        deadline = time.perf_counter_ns() * 1000000 + 16
+        deadline = time.perf_counter_ns() + 1000000 * 16
 
     qt_timer.timeout.connect(lambda: work_loop(deadline=deadline))
     qt_timer.start()
@@ -84,13 +86,14 @@ def render(element, container):
     request_idle_work()
 
 
-def work_loop(deadline: int = None):
+def work_loop(deadline: int):
     global next_unit_of_work
     should_yield = False
     while next_unit_of_work and not should_yield:
         next_unit_of_work = perform_unit_of_work(next_unit_of_work)
         # yield if time is up
-        should_yield = (deadline - time.perf_counter_ns() * 1000000) < 1
+        now = time.perf_counter_ns()
+        should_yield = (deadline - now) < 1 * 1000000
 
     if not next_unit_of_work and wip_root:
         commit_root()

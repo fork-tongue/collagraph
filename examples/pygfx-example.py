@@ -126,7 +126,7 @@ if __name__ == "__main__":
         },
         pygui.create_element(
             PointCloud,
-            {"count": 100},
+            {"count": 50},
         ),
         pygui.create_element(
             Landmark,
