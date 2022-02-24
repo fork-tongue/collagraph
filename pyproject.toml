@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pygui"
 version = "0.1.0"
-description = "Reactive state management for Python"
+description = "Reactive rendering for Python"
 authors = ["Korijn van Golen <korijn@gmail.com>", "Berend Klein Haneveld <berendkleinhaneveld@gmail.com>"]
 license = "MIT"
 homepage = "https://github.com/fork-tongue/pygui"
