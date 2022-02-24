@@ -8,10 +8,11 @@ homepage = "https://github.com/fork-tongue/pygui"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.11"
-observ = "~0.9.0"
+python = ">=3.8"
+# NOTE: When observ is updated, the python marker can be removed
+observ = { version = "~0.9.0", python = "<3.11" }
 pygfx = { git = "https://github.com/pygfx/pygfx.git", rev = "main" }
-PySide6 = "~6.2"
+PySide6 = { version = "*", python = "<3.11" }
 
 [tool.poetry.dev-dependencies]
 black = "*"
