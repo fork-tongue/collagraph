@@ -28,6 +28,7 @@ deletions = None
 wip_fiber = None
 hook_index = None
 qt_timer = None
+render_callback = None
 
 
 @dataclass
@@ -68,11 +69,12 @@ def request_idle_work(deadline: int = None):
     qt_timer.start()
 
 
-def render(element, container):
+def render(element, container, callback=None):
     global current_root
     global wip_root
     global next_unit_of_work
     global deletions
+    global render_callback
 
     wip_root = {
         "dom": container,
@@ -82,6 +84,7 @@ def render(element, container):
     }
     deletions = []
     next_unit_of_work = wip_root
+    render_callback = callback
 
     request_idle_work()
 
@@ -100,6 +103,9 @@ def work_loop(deadline: int):
 
     if next_unit_of_work:
         request_idle_work()
+    else:
+        if render_callback:
+            render_callback()
 
 
 def create_dom(fiber) -> gfx.WorldObject:

@@ -54,20 +54,29 @@ class MyCanvas(WgpuCanvas):
         super().handle_event(event)
 
 
+sphere_geom = gfx.sphere_geometry(radius=0.5)
+materials = {
+    False: gfx.MeshPhongMaterial(color=[1, 1, 1]),
+    True: gfx.MeshPhongMaterial(color=[1, 0, 0]),
+}
+
+
 def PointCloud(props):
     random.seed(0)
 
     def random_point(index, selected):
         return pygui.create_element(
-            "Point",
+            "Mesh",
             {
+                "geometry": sphere_geom,
+                "material": materials[index == selected],
                 "position": [
                     random.randint(-10, 10),
                     random.randint(-10, 10),
                     random.randint(-10, 10),
                 ],
                 "key": index,
-                "color": [1, 0, 0] if index == selected else [1, 1, 1],
+                # "color": [1, 0, 0] if index == selected else [1, 1, 1],
                 "onClick": lambda event: set_state(lambda state: {"selected": index}),
             },
         )
@@ -160,11 +169,10 @@ if __name__ == "__main__":
 
     container = gfx.Scene()
 
-    pygui.render(element, container)
-
     def animate():
         controls.update_camera(camera)
         renderer.render(container, camera)
 
+    pygui.render(element, container, callback=lambda: canvas.request_draw(animate))
     canvas.request_draw(animate)
     run()

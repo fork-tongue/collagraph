@@ -12,6 +12,8 @@ def create_element(type) -> gfx.WorldObject:
         obj = gfx.Mesh(gfx.sphere_geometry(), gfx.MeshPhongMaterial())
     if type == "Group":
         obj = gfx.Group()
+    if type == "Mesh":
+        obj = gfx.Mesh()
 
     def add_event_handler(type, callback):
         """Register an event handler."""
