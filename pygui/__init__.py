@@ -1,10 +1,21 @@
 from dataclasses import dataclass
 import enum
+from importlib.metadata import version
 import time
 from typing import Callable, Dict, List, Optional, Union
 
 import pygfx as gfx
 from PySide6 import QtCore
+
+try:
+    from rich.traceback import install
+    import shutil
+
+    terminal_width = shutil.get_terminal_size((100, 20)).columns - 2
+
+    install(width=terminal_width)
+except ModuleNotFoundError:
+    pass
 
 from . import pygfx_renderer
 
@@ -13,6 +24,7 @@ __all__ = [
     "render",
     "use_state",
 ]
+__version__ = version("pygui")
 
 
 class EffectTag(enum.Enum):
