@@ -135,6 +135,12 @@ if __name__ == "__main__":
         },
         pygui.create_element(
             PointCloud,
+            # Can't set it to higher than 1000 because
+            # then sys.getrecursionlimit() kicks in...
+            # Also, when increasing this number, it will take
+            # longer and longer for pygfx to create the render
+            # pipeline (compiling shaders and such), so be
+            # careful...
             {"count": 50},
         ),
         pygui.create_element(
