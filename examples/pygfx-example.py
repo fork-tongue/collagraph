@@ -24,6 +24,8 @@ VNodes are essentially a description of the to-be-displayed item.
       objects.
 
 """
+import random
+
 import pygfx as gfx
 import pygui
 from wgpu.gui.auto import run, WgpuCanvas
@@ -50,6 +52,35 @@ class MyCanvas(WgpuCanvas):
             self.last_event = None
 
         super().handle_event(event)
+
+
+def PointCloud(props):
+    random.seed(0)
+
+    def random_point(index, selected):
+        return pygui.create_element(
+            "Point",
+            {
+                "position": [
+                    random.randint(-10, 10),
+                    random.randint(-10, 10),
+                    random.randint(-10, 10),
+                ],
+                "key": index,
+                "color": [1, 0, 0] if index == selected else [1, 1, 1],
+                "onClick": lambda event: set_state(lambda state: {"selected": index}),
+            },
+        )
+
+    state, set_state = pygui.use_state({"selected": -1})
+    selected = state["selected"]
+    number_of_points = props.get("count", 50)
+
+    return pygui.create_element(
+        "Group",
+        props,
+        *[random_point(i, selected) for i in range(number_of_points)],
+    )
 
 
 def Landmark(props):
@@ -94,6 +125,10 @@ if __name__ == "__main__":
             "name": "Landmarks",
         },
         pygui.create_element(
+            PointCloud,
+            {"count": 50},
+        ),
+        pygui.create_element(
             Landmark,
             {
                 "name": "funk",
@@ -128,8 +163,6 @@ if __name__ == "__main__":
     pygui.render(element, container)
 
     def animate():
-        # With qt, use `call_later`
-        pygui.work_loop()
         controls.update_camera(camera)
         renderer.render(container, camera)
 

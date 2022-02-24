@@ -3,6 +3,7 @@ import enum
 from typing import Callable, Dict, List, Optional, Union
 
 import pygfx as gfx
+from PySide6 import QtCore
 
 from . import pygfx_renderer
 
@@ -25,6 +26,7 @@ wip_root = None
 deletions = None
 wip_fiber = None
 hook_index = None
+qt_timer = None
 
 
 @dataclass
@@ -39,6 +41,17 @@ def create_element(type, props=None, *children) -> VNode:
     """Create an element description, based on type, props and (optionally) children"""
     key = props.pop("key") if props and "key" in props else None
     return VNode(type, props or {}, children or tuple(), key)
+
+
+def request_work():
+    global qt_timer
+    if not qt_timer:
+        qt_timer = QtCore.QTimer()
+        qt_timer.setSingleShot(True)
+        qt_timer.timeout.connect(work_loop)
+        qt_timer.setInterval(0)
+
+    qt_timer.start()
 
 
 def render(element, container):
@@ -56,6 +69,8 @@ def render(element, container):
     deletions = []
     next_unit_of_work = wip_root
 
+    request_work()
+
 
 def work_loop(deadline=0):
     global next_unit_of_work
@@ -65,9 +80,6 @@ def work_loop(deadline=0):
 
     if wip_root:
         commit_root()
-
-    # NOTE: next work_loop is called from `animate`
-    # canvas.request_draw(work_loop)
 
 
 def create_dom(fiber) -> gfx.WorldObject:
@@ -136,6 +148,7 @@ def use_state(initial):
         }
         next_unit_of_work = wip_root
         deletions = []
+        request_work()
 
     wip_fiber["hooks"].append(hook)
     hook_index += 1

@@ -9,7 +9,7 @@ def create_element(type) -> gfx.WorldObject:
         # NOTE: geometry and material should preferably be passed through
         # state instead of generated here, because they are resources that
         # can be shared
-        obj = gfx.Mesh(gfx.sphere_geometry(), gfx.MeshBasicMaterial())
+        obj = gfx.Mesh(gfx.sphere_geometry(), gfx.MeshPhongMaterial())
     if type == "Group":
         obj = gfx.Group()
 
