@@ -298,7 +298,7 @@ def update_dom(dom, prev_props, next_props):
         if name not in next_props or not is_new(val, next_props, name):
             continue
 
-        event_type = name.lower()[2:]  # noqa: F841
+        event_type = name.lower()[2:]
         dom.remove_event_handler(event_type, val)
 
     # Remove old properties
@@ -331,5 +331,5 @@ def update_dom(dom, prev_props, next_props):
         if not is_new(prev_props.get(name), next_props, name):
             continue
 
-        event_type = name.lower()[2:]  # noqa: F841
+        event_type = name.lower()[2:]
         dom.add_event_handler(event_type, val)
