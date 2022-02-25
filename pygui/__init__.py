@@ -18,6 +18,7 @@ try:
 except ModuleNotFoundError:
     pass
 
+
 from . import pygfx_renderer
 
 
@@ -49,15 +50,18 @@ def create_element(type, props=None, *children) -> VNode:
 
 
 class PyGui:
-    def __init__(self, *args, **kwargs):
-        self.next_unit_of_work = None
-        self.current_root = None
-        self.wip_root = None
-        self.deletions = None
-        self.wip_fiber = None
-        self.hook_index = None
-        self.qt_timer = None
-        self.render_callback = None
+    def __init__(self, renderer=None, *args, **kwargs):
+        if renderer is None:
+            renderer = pygfx_renderer.PygfxRenderer()
+        self.renderer = renderer
+        self._next_unit_of_work = None
+        self._current_root = None
+        self._wip_root = None
+        self._deletions = None
+        self._wip_fiber = None
+        self._hook_index = None
+        self._timer = None
+        self._render_callback = None
 
     def request_idle_work(self, deadline: int = None):
         """
@@ -67,59 +71,59 @@ class PyGui:
             deadline: targetted deadline for until when work can be done. If
                 no deadline is given, then it will be set to 16ms from now.
         """
-        if not self.qt_timer:
-            self.qt_timer = QtCore.QTimer()
-            self.qt_timer.setSingleShot(True)
-            self.qt_timer.setInterval(0)
+        if not self._timer:
+            self._timer = QtCore.QTimer()
+            self._timer.setSingleShot(True)
+            self._timer.setInterval(0)
         else:
-            self.qt_timer.timeout.disconnect()
+            self._timer.timeout.disconnect()
 
         # current in ns
         if not deadline:
             deadline = time.perf_counter_ns() + 1000000 * 16
 
-        self.qt_timer.timeout.connect(lambda: self.work_loop(deadline=deadline))
-        self.qt_timer.start()
+        self._timer.timeout.connect(lambda: self.work_loop(deadline=deadline))
+        self._timer.start()
 
     def render(self, element, container, callback=None):
-        self.wip_root = {
+        self._wip_root = {
             "dom": container,
             "props": {},
             "children": [element],
-            "alternate": self.current_root,
+            "alternate": self._current_root,
         }
-        self.deletions = []
-        self.next_unit_of_work = self.wip_root
-        self.render_callback = callback
+        self._deletions = []
+        self._next_unit_of_work = self._wip_root
+        self._render_callback = callback
 
         self.request_idle_work()
 
     def work_loop(self, deadline: int):
         should_yield = False
-        while self.next_unit_of_work and not should_yield:
-            self.next_unit_of_work = self.perform_unit_of_work(self.next_unit_of_work)
+        while self._next_unit_of_work and not should_yield:
+            self._next_unit_of_work = self.perform_unit_of_work(self._next_unit_of_work)
             # yield if time is up
             now = time.perf_counter_ns()
             should_yield = (deadline - now) < 1 * 1000000
 
-        if not self.next_unit_of_work and self.wip_root:
+        if not self._next_unit_of_work and self._wip_root:
             self.commit_root()
 
-        if self.next_unit_of_work:
+        if self._next_unit_of_work:
             self.request_idle_work()
         else:
-            if self.render_callback:
-                self.render_callback()
+            if self._render_callback:
+                self._render_callback()
 
     def create_dom(self, fiber) -> gfx.WorldObject:
-        dom = pygfx_renderer.create_element(fiber["type"])
-        update_dom(dom, {}, fiber["props"])
+        dom = self.renderer.create_element(fiber["type"])
+        self.update_dom(dom, {}, fiber["props"])
         return dom
 
     def update_function_component(self, fiber):
-        self.wip_fiber = fiber
-        self.hook_index = 0
-        self.wip_fiber["hooks"] = []
+        self._wip_fiber = fiber
+        self._hook_index = 0
+        self._wip_fiber["hooks"] = []
 
         children = [fiber["type"](fiber["props"])]
         self.reconcile_children(fiber, children)
@@ -145,9 +149,9 @@ class PyGui:
         initial = reactive(initial)
 
         old_hook = (
-            self.wip_fiber.get("alternate")
-            and self.wip_fiber["alternate"].get("hooks")
-            and self.wip_fiber["alternate"]["hooks"][self.hook_index]
+            self._wip_fiber.get("alternate")
+            and self._wip_fiber["alternate"].get("hooks")
+            and self._wip_fiber["alternate"]["hooks"][self._hook_index]
         )
         hook = {
             "state": old_hook["state"] if old_hook else initial,
@@ -162,14 +166,14 @@ class PyGui:
             # TODO: maybe check that the wip_root is None?
             # TODO: just queue the work instead?
             # assert wip_root is None
-            self.wip_root = {
-                "dom": self.current_root.get("dom"),
-                "props": self.current_root.get("props"),
-                "children": self.current_root["children"],
-                "alternate": self.current_root,
+            self._wip_root = {
+                "dom": self._current_root.get("dom"),
+                "props": self._current_root.get("props"),
+                "children": self._current_root["children"],
+                "alternate": self._current_root,
             }
-            self.next_unit_of_work = self.wip_root
-            self.deletions = []
+            self._next_unit_of_work = self._wip_root
+            self._deletions = []
             self.request_idle_work()
 
         hook["watcher"] = watch(
@@ -178,8 +182,8 @@ class PyGui:
             deep=True,
         )
 
-        self.wip_fiber["hooks"].append(hook)
-        self.hook_index += 1
+        self._wip_fiber["hooks"].append(hook)
+        self._hook_index += 1
         return hook["state"]
 
     def update_host_component(self, fiber):
@@ -228,7 +232,7 @@ class PyGui:
             if old_fiber and not same_type:
                 # delete the old_fiber's node
                 old_fiber["effect_tag"] = EffectTag.DELETION
-                self.deletions.append(old_fiber)
+                self._deletions.append(old_fiber)
             # TODO: we could use 'key's here for better reconciliation
 
             if old_fiber:
@@ -243,12 +247,12 @@ class PyGui:
             index += 1
 
     def commit_root(self):
-        for deletion in self.deletions:
+        for deletion in self._deletions:
             # TODO: should the deletions list be cleared at some point?
             self.commit_work(deletion)
-        self.commit_work(self.wip_root.get("child"))
-        self.current_root = self.wip_root
-        self.wip_root = None
+        self.commit_work(self._wip_root.get("child"))
+        self._current_root = self._wip_root
+        self._wip_root = None
 
     def commit_deletion(self, fiber, dom_parent):
         if dom := fiber.get("dom"):
@@ -270,63 +274,62 @@ class PyGui:
             # Add a 'renderer' and call the renderer with insert(element, parent)
             dom_parent.add(fiber["dom"])
         elif fiber.get("effect_tag") == EffectTag.UPDATE and fiber.get("dom"):
-            update_dom(fiber["dom"], fiber["alternate"]["props"], fiber["props"])
+            self.update_dom(fiber["dom"], fiber["alternate"]["props"], fiber["props"])
         elif fiber.get("effect_tag") == EffectTag.DELETION:
             self.commit_deletion(fiber, dom_parent)
 
         self.commit_work(fiber.get("child"))
         self.commit_work(fiber.get("sibling"))
 
+    def update_dom(self, dom, prev_props, next_props):
+        def is_event(key):
+            return key.startswith("on")
 
-def update_dom(dom, prev_props, next_props):
-    def is_event(key):
-        return key.startswith("on")
+        def is_property(key):
+            return not is_event(key)
 
-    def is_property(key):
-        return not is_event(key)
+        def is_new(val, other, key):
+            return val != other.get(key)
 
-    def is_new(val, other, key):
-        return val != other.get(key)
+        # Remove old event listeners
+        for name, val in prev_props.items():
+            if not is_event(name):
+                continue
+            if name not in next_props or not is_new(val, next_props, name):
+                continue
 
-    # Remove old event listeners
-    for name, val in prev_props.items():
-        if not is_event(name):
-            continue
-        if name not in next_props or not is_new(val, next_props, name):
-            continue
+            event_type = name.lower()[2:]
+            dom.remove_event_handler(event_type, val)
 
-        event_type = name.lower()[2:]
-        dom.remove_event_handler(event_type, val)
+        # Remove old properties
+        for key, val in prev_props.items():
+            # is key an actual property?
+            if not is_property(key):
+                continue
+            # is key gone?
+            if key in next_props:
+                continue
 
-    # Remove old properties
-    for key, val in prev_props.items():
-        # is key an actual property?
-        if not is_property(key):
-            continue
-        # is key gone?
-        if key in next_props:
-            continue
+            # Supports resetting Vector3...
+            self.renderer.clear_attribute(dom, key, val)
 
-        # Supports resetting Vector3...
-        pygfx_renderer.clear_attribute(dom, key, val)
+        # Set new or changed properties
+        for key, val in next_props.items():
+            if not is_property(key):
+                continue
+            # is key new or changed?
+            if not is_new(val, prev_props, key):
+                continue
 
-    # Set new or changed properties
-    for key, val in next_props.items():
-        if not is_property(key):
-            continue
-        # is key new or changed?
-        if not is_new(val, prev_props, key):
-            continue
+            # Only supports Vector3...
+            self.renderer.set_attribute(dom, key, val)
 
-        # Only supports Vector3...
-        pygfx_renderer.set_attribute(dom, key, val)
+        # Add new event listeners
+        for name, val in next_props.items():
+            if not is_event(name):
+                continue
+            if not is_new(prev_props.get(name), next_props, name):
+                continue
 
-    # Add new event listeners
-    for name, val in next_props.items():
-        if not is_event(name):
-            continue
-        if not is_new(prev_props.get(name), next_props, name):
-            continue
-
-        event_type = name.lower()[2:]
-        dom.add_event_handler(event_type, val)
+            event_type = name.lower()[2:]
+            dom.add_event_handler(event_type, val)
