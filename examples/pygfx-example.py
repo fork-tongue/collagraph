@@ -60,22 +60,14 @@ gui = pygui.PyGui()
 class MyCanvas(WgpuCanvas):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.last_event = None
 
     def handle_event(self, event):
         if event["event_type"] == "pointer_down":
-            self.last_event = event
-        elif event["event_type"] == "pointer_up" and self.last_event:
-            has_moved = (
-                self.last_event["x"] != event["x"] or self.last_event["y"] != event["y"]
-            )
-            if not has_moved:
-                info = renderer.get_pick_info((event["x"], event["y"]))
-                wobject = info["world_object"]
-                if wobject:
-                    if handle_event := getattr(wobject, "handle_event", None):
-                        handle_event({"event_type": "click"})
-            self.last_event = None
+            info = renderer.get_pick_info((event["x"], event["y"]))
+            wobject = info["world_object"]
+            if wobject:
+                if handle_event := getattr(wobject, "handle_event", None):
+                    handle_event({"event_type": "click"})
 
         super().handle_event(event)
 
@@ -193,7 +185,7 @@ if __name__ == "__main__":
             {
                 "name": "Hip",
                 "position": [2, 2, 2],
-                "color": [1, 0, 0],
+                "color": [1, 0.4, 0],
             },
         ),
         pygui.create_element(
