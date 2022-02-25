@@ -1,5 +1,3 @@
-import pytest
-
 import pygui
 
 
@@ -16,7 +14,6 @@ def test_basic_dict_renderer():
     assert container["children"][0] == {"type": "app"}
 
 
-@pytest.mark.xfail
 def test_lots_of_elements():
     """Render a node with a 1000 children.
 
@@ -30,3 +27,5 @@ def test_lots_of_elements():
 
     element = pygui.create_element("app", {}, *[pygui.create_element("node")] * 1000)
     gui.render(element, container)
+
+    assert len(container["children"][0]["children"]) == 1000

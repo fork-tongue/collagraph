@@ -52,6 +52,8 @@ except ModuleNotFoundError:
     pass
 
 
+logger = logging.getLogger(__name__)
+
 gui = pygui.PyGui()
 
 
@@ -87,10 +89,14 @@ materials = {
 
 def PointCloud(props):
     random.seed(0)
-    state = gui.use_state({"selected": -1})
+
+    # Set some default values for props
+    props.setdefault("selected", -1)
+    props.setdefault("count", 50)
 
     def set_selected(index):
-        state["selected"] = index
+        logger.debug(f"select: {index}")
+        props["selected"] = index
 
     def random_point(index, selected):
         return pygui.create_element(
@@ -108,8 +114,8 @@ def PointCloud(props):
             },
         )
 
-    selected = state["selected"]
-    number_of_points = props.get("count", 50)
+    selected = props["selected"]
+    number_of_points = props["count"]
 
     return pygui.create_element(
         "Group",
@@ -119,10 +125,12 @@ def PointCloud(props):
 
 
 def Landmark(props):
-    state = gui.use_state({"selected": False})
+    if "selected" not in props:
+        props["selected"] = False
 
     def toggle():
-        state["selected"] = not state["selected"]
+        logger.debug("toggle")
+        props["selected"] = not props["selected"]
 
     return pygui.create_element(
         "Group",
@@ -130,7 +138,7 @@ def Landmark(props):
         pygui.create_element(
             "Point",
             {
-                "scale": [2 if state["selected"] else 1] * 3,
+                "scale": [2 if props["selected"] else 1] * 3,
                 "color": [1, 0.5, 0, 0.1],
             },
         ),
@@ -169,7 +177,7 @@ if __name__ == "__main__":
             # longer and longer for pygfx to create the render
             # pipeline (compiling shaders and such), so be
             # careful...
-            {"count": 50},
+            # {"count": 2},
         ),
         pygui.create_element(
             Landmark,

@@ -52,7 +52,7 @@ class PygfxRenderer(Renderer):
             obj.material.color = value
             return
 
-        if isinstance(value, list) and len(value) == 3:
+        if hasattr(value, "__len__") and len(value) == 3:
             value = gfx.linalg.Vector3(*value)
         setattr(obj, attr, value)
 
@@ -62,7 +62,7 @@ class PygfxRenderer(Renderer):
             obj.material.color = (1, 1, 1, 1)
             return
 
-        if isinstance(value, list) and len(value) == 3:
+        if hasattr(value, "__len__") and len(value) == 3:
             value = gfx.linalg.Vector3()
         else:
             value = None
