@@ -32,6 +32,9 @@ from wgpu.gui.auto import run, WgpuCanvas
 import pygui
 
 
+gui = pygui.PyGui()
+
+
 class MyCanvas(WgpuCanvas):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -64,7 +67,7 @@ materials = {
 
 def PointCloud(props):
     random.seed(0)
-    state = pygui.use_state({"selected": -1})
+    state = gui.use_state({"selected": -1})
 
     def set_selected(index):
         state["selected"] = index
@@ -96,7 +99,7 @@ def PointCloud(props):
 
 
 def Landmark(props):
-    state = pygui.use_state({"selected": False})
+    state = gui.use_state({"selected": False})
 
     def toggle():
         state["selected"] = not state["selected"]
@@ -184,6 +187,6 @@ if __name__ == "__main__":
         controls.update_camera(camera)
         renderer.render(container, camera)
 
-    pygui.render(element, container, callback=lambda: canvas.request_draw(animate))
+    gui.render(element, container, callback=lambda: canvas.request_draw(animate))
     canvas.request_draw(animate)
     run()
