@@ -24,12 +24,32 @@ VNodes are essentially a description of the to-be-displayed item.
       objects.
 
 """
+import logging
 import random
 
 import pygfx as gfx
 from wgpu.gui.auto import run, WgpuCanvas
 
 import pygui
+
+try:
+    # If rich is available, use it to improve traceback logs
+    from rich.logging import RichHandler
+    from rich.traceback import install
+    import shutil
+
+    terminal_width = shutil.get_terminal_size((100, 20)).columns - 2
+    install(width=terminal_width)
+
+    FORMAT = "%(message)s"
+    logging.basicConfig(
+        level="NOTSET",
+        format=FORMAT,
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True)],
+    )
+except ModuleNotFoundError:
+    pass
 
 
 gui = pygui.PyGui()
