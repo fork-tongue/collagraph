@@ -1,3 +1,5 @@
+from observ import reactive
+
 import pygui
 
 
@@ -29,3 +31,24 @@ def test_lots_of_elements():
     gui.render(element, container)
 
     assert len(container["children"][0]["children"]) == 1000
+
+
+def test_reactive_element():
+    renderer = pygui.renderers.DictRenderer()
+    gui = pygui.PyGui(renderer=renderer, sync=True)
+    container = {"type": "root"}
+    state = reactive({"counter": 0})
+    element = pygui.create_element("counter", state)
+
+    gui.render(element, container)
+
+    counter = container["children"][0]
+    assert counter["type"] == "counter"
+    assert counter["counter"] == 0
+
+    # Update state, which should trigger a re-render
+    state["counter"] += 1
+
+    counter = container["children"][0]
+    assert counter["type"] == "counter"
+    assert counter["counter"] == 1, counter

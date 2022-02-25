@@ -6,7 +6,7 @@ import queue
 import time
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from observ import reactive, scheduler, watch
+from observ import reactive, scheduler, to_raw, watch
 from PySide6 import QtCore
 
 
@@ -46,6 +46,7 @@ class Fiber:
     parent: Optional["Fiber"] = None
     effect_tag: Optional[EffectTag] = None
     watcher: Optional[Any] = None
+    raw_props: Optional[Dict] = None
 
 
 def create_element(type, props=None, *children) -> VNode:
@@ -163,7 +164,7 @@ class PyGui:
         self.reconcile_children(fiber, children)
 
     def state_updated(self, fiber: Fiber):
-        logger.info(f"state update: {fiber.dom}")
+        logger.info("state update")
         # Clear the watcher that triggered the update
         fiber.watcher = None
         # TODO: maybe check that the wip_root is None?
@@ -212,6 +213,18 @@ class PyGui:
                 new_fiber = Fiber(
                     type=old_fiber.type,
                     props=element.props,
+                    # Have to create a snapshot of the state somewhere to
+                    # be able to reconcile properly... If the state has been
+                    # changed directly, there is no way of knowing what the
+                    # previous state looked like...
+                    # Another option is to let the renderer handle if there
+                    # should be any changes made to the dom object in the
+                    # `set_attribute` method :/ and thus leave out the comparison
+                    # between old and new props. That would also require to
+                    # combine the `set_attribute` and `clear_attribute`...
+                    # Vue's render API only has `patchProp`, but it still takes
+                    # a `prevValue` and a `nextValue`...
+                    raw_props=to_raw(element.props),
                     children=element.children,
                     dom=old_fiber.dom,
                     parent=wip_fiber,
@@ -223,6 +236,7 @@ class PyGui:
                 new_fiber = Fiber(
                     type=element.type,
                     props=element.props,
+                    raw_props=to_raw(element.props),
                     children=element.children,
                     dom=None,
                     parent=wip_fiber,
@@ -278,7 +292,9 @@ class PyGui:
             self.renderer.insert(fiber.dom, dom_parent)
         elif fiber.effect_tag == EffectTag.UPDATE and fiber.dom:
             self.update_dom(
-                fiber.dom, prev_props=fiber.alternate.props, next_props=fiber.props
+                fiber.dom,
+                prev_props=fiber.alternate.raw_props,
+                next_props=fiber.raw_props,
             )
         elif fiber.effect_tag == EffectTag.DELETION:
             self.commit_deletion(fiber, dom_parent)
