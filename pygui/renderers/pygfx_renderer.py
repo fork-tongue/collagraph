@@ -2,6 +2,8 @@ from collections import defaultdict
 
 import pygfx as gfx
 
+from . import Renderer
+
 
 class MeshEvents(gfx.Mesh):
     """Custom subclass of gfx.Mesh to enable handling of events."""
@@ -25,7 +27,13 @@ class MeshEvents(gfx.Mesh):
         self._event_handlers[type].remove(callback)
 
 
-class PygfxRenderer:
+class PygfxRenderer(Renderer):
+    def insert(self, el, parent):
+        parent.add(el)
+
+    def remove(self, el, parent):
+        parent.remove(el)
+
     def create_element(self, type: str) -> gfx.WorldObject:
         """Create pygfx element for the given type"""
         if type == "Point":

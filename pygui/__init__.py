@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import enum
 from importlib.metadata import version
+import logging
 import time
 from typing import Callable, Dict, List, Optional, Union
 
@@ -10,22 +11,32 @@ from PySide6 import QtCore
 
 try:
     # If rich is available, use it to improve traceback logs
+    from rich.logging import RichHandler
     from rich.traceback import install
     import shutil
 
     terminal_width = shutil.get_terminal_size((100, 20)).columns - 2
     install(width=terminal_width)
+
+    FORMAT = "%(message)s"
+    logging.basicConfig(
+        level="NOTSET",
+        format=FORMAT,
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True)],
+    )
 except ModuleNotFoundError:
     pass
 
 
-from . import pygfx_renderer
+from .renderers import PygfxRenderer, Renderer
 
 
 __all__ = ["create_element", "PyGui"]
 __version__ = version("pygui")
 
 
+logger = logging.getLogger(__name__)
 scheduler.register_qt()
 
 
@@ -50,10 +61,13 @@ def create_element(type, props=None, *children) -> VNode:
 
 
 class PyGui:
-    def __init__(self, renderer=None, *args, **kwargs):
+    def __init__(self, renderer: Renderer = None, *args, sync=False, **kwargs):
         if renderer is None:
-            renderer = pygfx_renderer.PygfxRenderer()
+            renderer = PygfxRenderer()
+        assert isinstance(renderer, Renderer)
         self.renderer = renderer
+        self.sync = sync
+
         self._next_unit_of_work = None
         self._current_root = None
         self._wip_root = None
@@ -71,16 +85,22 @@ class PyGui:
             deadline: targetted deadline for until when work can be done. If
                 no deadline is given, then it will be set to 16ms from now.
         """
+        logger.info("Request work")
+
+        # current in ns
+        if not deadline:
+            deadline = time.perf_counter_ns() + 1000000 * 16
+
+        if self.sync:
+            self.work_loop(deadline=deadline)
+            return
+
         if not self._timer:
             self._timer = QtCore.QTimer()
             self._timer.setSingleShot(True)
             self._timer.setInterval(0)
         else:
             self._timer.timeout.disconnect()
-
-        # current in ns
-        if not deadline:
-            deadline = time.perf_counter_ns() + 1000000 * 16
 
         self._timer.timeout.connect(lambda: self.work_loop(deadline=deadline))
         self._timer.start()
@@ -112,21 +132,9 @@ class PyGui:
         if self._next_unit_of_work:
             self.request_idle_work()
         else:
+            logger.info("Work done")
             if self._render_callback:
                 self._render_callback()
-
-    def create_dom(self, fiber) -> gfx.WorldObject:
-        dom = self.renderer.create_element(fiber["type"])
-        self.update_dom(dom, {}, fiber["props"])
-        return dom
-
-    def update_function_component(self, fiber):
-        self._wip_fiber = fiber
-        self._hook_index = 0
-        self._wip_fiber["hooks"] = []
-
-        children = [fiber["type"](fiber["props"])]
-        self.reconcile_children(fiber, children)
 
     def perform_unit_of_work(self, fiber):
         is_function_component = "type" in fiber and callable(fiber["type"])
@@ -135,7 +143,7 @@ class PyGui:
         else:
             self.update_host_component(fiber)
 
-        # return next unit of work
+        # Return next unit of work
         if child := fiber.get("child"):
             return child
 
@@ -144,6 +152,14 @@ class PyGui:
             if sibling := next_fiber.get("sibling"):
                 return sibling
             next_fiber = next_fiber.get("parent")
+
+    def update_function_component(self, fiber):
+        self._wip_fiber = fiber
+        self._hook_index = 0
+        self._wip_fiber["hooks"] = []
+
+        children = [fiber["type"](fiber["props"])]
+        self.reconcile_children(fiber, children)
 
     def use_state(self, initial):
         initial = reactive(initial)
@@ -193,6 +209,11 @@ class PyGui:
 
         # create new fibers
         self.reconcile_children(fiber, fiber["children"])
+
+    def create_dom(self, fiber) -> gfx.WorldObject:
+        dom = self.renderer.create_element(fiber["type"])
+        self.update_dom(dom, {}, fiber["props"])
+        return dom
 
     def reconcile_children(self, wip_fiber, elements):
         index = 0
@@ -256,7 +277,7 @@ class PyGui:
 
     def commit_deletion(self, fiber, dom_parent):
         if dom := fiber.get("dom"):
-            dom_parent.remove(dom)
+            self.renderer.remove(dom, dom_parent)
         else:
             self.commit_deletion(fiber["child"], dom_parent)
 
@@ -272,7 +293,7 @@ class PyGui:
 
         if fiber.get("effect_tag") == EffectTag.PLACEMENT and fiber.get("dom"):
             # Add a 'renderer' and call the renderer with insert(element, parent)
-            dom_parent.add(fiber["dom"])
+            self.renderer.insert(fiber["dom"], dom_parent)
         elif fiber.get("effect_tag") == EffectTag.UPDATE and fiber.get("dom"):
             self.update_dom(fiber["dom"], fiber["alternate"]["props"], fiber["props"])
         elif fiber.get("effect_tag") == EffectTag.DELETION:
