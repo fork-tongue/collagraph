@@ -6,7 +6,7 @@ import queue
 import time
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from observ import reactive, scheduler, to_raw, watch
+from observ import reactive, scheduler, watch
 from PySide6 import QtCore
 
 
@@ -38,6 +38,7 @@ class VNode:
 class Fiber:
     dom: Optional[Any] = None
     props: Dict = None
+    props_snapshot: Optional[Dict] = None
     children: List["VNode"] = None
     # This property is a link to the old fiber, the fiber that
     # we committed to the DOM in the previous commit phase.
@@ -48,7 +49,6 @@ class Fiber:
     parent: Optional["Fiber"] = None
     effect_tag: Optional[EffectTag] = None
     watcher: Optional[Any] = None
-    raw_props: Optional[Dict] = None
 
 
 def create_element(type, props=None, *children) -> VNode:
@@ -89,7 +89,7 @@ class PyGui:
 
         # current in ns
         if not deadline:
-            deadline = time.perf_counter_ns() + 1000000 * 16
+            deadline = time.perf_counter_ns() + 16 * 1000000
 
         if self.sync:
             self.work_loop(deadline=deadline)
@@ -218,7 +218,7 @@ class PyGui:
                 new_fiber = old_fiber.alternate or Fiber()
                 new_fiber.type = element.type
                 new_fiber.props = element.props
-                # Have to create a snapshot of the state somewhere to
+                # We need a snapshot of the state somewhere to
                 # be able to reconcile properly... If the state has been
                 # changed directly, there is no way of knowing what the
                 # previous state looked like...
@@ -229,7 +229,7 @@ class PyGui:
                 # combine the `set_attribute` and `clear_attribute`...
                 # Vue's render API only has `patchProp`, but it still takes
                 # a `prevValue` and a `nextValue`...
-                new_fiber.raw_props = to_raw(element.props)
+                new_fiber.props_snapshot = element.props.copy()
                 new_fiber.children = element.children
                 new_fiber.dom = old_fiber.dom
                 new_fiber.parent = wip_fiber
@@ -239,16 +239,11 @@ class PyGui:
                 new_fiber.effect_tag = EffectTag.UPDATE
                 new_fiber.watcher = None
             if element and not same_type:
-                if not old_fiber:
-                    logger.info("new element")
-                else:
-                    logger.info("different element")
-
                 # add this node
                 new_fiber = (old_fiber and old_fiber.alternate) or Fiber()
                 new_fiber.type = element.type
                 new_fiber.props = element.props
-                new_fiber.raw_props = to_raw(element.props)
+                new_fiber.props_snapshot = element.props.copy()
                 new_fiber.children = element.children
                 new_fiber.dom = None
                 new_fiber.parent = wip_fiber
@@ -260,12 +255,8 @@ class PyGui:
                 # If there is an old_fiber, then it will be marked for deletion
                 # in the next if statement
             if old_fiber and not same_type:
-                logger.info("deletion")
-                # delete the old_fiber's node
                 old_fiber.effect_tag = EffectTag.DELETION
                 self._deletions.append(old_fiber)
-                # TODO: I guess that the fiber itself needs to be destroyed as well?
-                # As well as its `alternate`?
             # TODO: we could use 'key's here for better reconciliation
 
             # FIXME: this code is here because it is in the example, but it is never
@@ -318,8 +309,8 @@ class PyGui:
         elif fiber.effect_tag == EffectTag.UPDATE and fiber.dom:
             self.update_dom(
                 fiber.dom,
-                prev_props=fiber.alternate.raw_props,
-                next_props=fiber.raw_props,
+                prev_props=fiber.alternate.props_snapshot,
+                next_props=fiber.props_snapshot,
             )
         elif fiber.effect_tag == EffectTag.DELETION:
             self.commit_deletion(fiber, dom_parent)
