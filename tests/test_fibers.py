@@ -78,7 +78,7 @@ def walk_tree(fiber, callback):
         fiber = fiber.parent
 
 
-def test_element_deletion():
+def test_fiber_element_deletion():
     def List(props):
         return pygui.create_element(
             "list",
@@ -89,7 +89,6 @@ def test_element_deletion():
             ]
         )
 
-    # check number of fibers decreases
     renderer = pygui.renderers.DictRenderer()
     gui = pygui.PyGui(renderer=renderer, sync=True)
     container = {"type": "root"}
@@ -115,7 +114,6 @@ def test_element_deletion():
     assert first_root_fiber is not alt_root_fiber
     assert first_list_fiber is not alt_list_fiber
 
-    # breakpoint()
     # First child of alt_list_fiber is the fiber that actually represents
     # the 'list' DOM element
     fiber_to_be_deleted = alt_list_fiber.child.child.sibling
@@ -147,6 +145,38 @@ def test_element_deletion():
     walk_tree(gui._current_root.alternate, assert_is_not_deleted_fiber)
 
 
-def test_element_type_change():
+def test_fiber_element_type_change():
     # check number of fibers stays the same
-    pass
+    def List(props):
+        return pygui.create_element(
+            "foo" if props["foo"] else "bar",
+            props,
+        )
+
+    renderer = pygui.renderers.DictRenderer()
+    gui = pygui.PyGui(renderer=renderer, sync=True)
+    container = {"type": "root"}
+    state = reactive({"foo": True})
+    element = pygui.create_element(List, state)
+    gui.render(element, container)
+
+    assert container["children"][0]["type"] == "foo"
+    fiber_to_be_deleted = gui._current_root.child.child
+
+    def assert_is_not_deleted_fiber(fiber):
+        assert fiber is not fiber_to_be_deleted  # noqa: F821
+        assert fiber.alternate is not fiber_to_be_deleted  # noqa: F821
+        assert fiber.child is not fiber_to_be_deleted  # noqa: F821
+        assert fiber.sibling is not fiber_to_be_deleted  # noqa: F821
+        assert fiber.parent is not fiber_to_be_deleted  # noqa: F821
+
+    state["foo"] = False
+    assert container["children"][0]["type"] == "bar"
+    walk_tree(gui._current_root, assert_is_not_deleted_fiber)
+    with pytest.raises(AssertionError):
+        walk_tree(gui._current_root.alternate, assert_is_not_deleted_fiber)
+
+    state["foo"] = True
+    assert container["children"][0]["type"] == "foo"
+    walk_tree(gui._current_root, assert_is_not_deleted_fiber)
+    walk_tree(gui._current_root.alternate, assert_is_not_deleted_fiber)
