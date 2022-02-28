@@ -36,10 +36,12 @@ class VNode:
 
 @dataclass
 class Fiber:
-    dom: Optional[Any]
-    props: Dict
-    children: List["VNode"]
-    alternate: Optional["Fiber"]
+    dom: Optional[Any] = None
+    props: Dict = None
+    children: List["VNode"] = None
+    # This property is a link to the old fiber, the fiber that
+    # we committed to the DOM in the previous commit phase.
+    alternate: Optional["Fiber"] = None
     type: Optional[Union[str, Callable]] = None
     child: Optional["Fiber"] = None
     sibling: Optional["Fiber"] = None
@@ -65,11 +67,12 @@ class PyGui:
         if not sync:
             scheduler.register_qt()
 
-        self._next_unit_of_work: Fiber = None
+        # The current fiber tree that is committed to the DOM
         self._current_root: Fiber = None
+        # The WIP root that holds the WIP fiber tree
         self._wip_root: Fiber = None
+        self._next_unit_of_work: Fiber = None
         self._deletions: List[Fiber] = None
-        self._wip_fiber: Fiber = None
         self._render_callback: Callable = None
         self._timer = None
         self._work = queue.SimpleQueue()
@@ -170,12 +173,13 @@ class PyGui:
         # TODO: maybe check that the wip_root is None?
         # TODO: just queue the work instead?
         # assert wip_root is None
-        self._wip_root = Fiber(
-            dom=self._current_root.dom,
-            props=self._current_root.props,
-            children=self._current_root.children,
-            alternate=self._current_root,
-        )
+        self._wip_root = (
+            self._current_root and self._current_root.alternate
+        ) or Fiber()
+        self._wip_root.dom = self._current_root.dom
+        self._wip_root.props = self._current_root.props
+        self._wip_root.children = self._current_root.children
+        self._wip_root.alternate = self._current_root
         self._next_unit_of_work = self._wip_root
         self._deletions = []
         self.request_idle_work()
@@ -187,6 +191,7 @@ class PyGui:
 
     def reconcile_children(self, wip_fiber: Fiber, elements: List[VNode]):
         index = 0
+        # The old fiber, which holds the state as it was rendered to DOM
         old_fiber = wip_fiber.alternate and wip_fiber.alternate.child
         prev_sibling = None
 
@@ -209,49 +214,67 @@ class PyGui:
             same_type = old_fiber and element and element.type == old_fiber.type
 
             if same_type:
-                # update the node
-                new_fiber = Fiber(
-                    type=old_fiber.type,
-                    props=element.props,
-                    # Have to create a snapshot of the state somewhere to
-                    # be able to reconcile properly... If the state has been
-                    # changed directly, there is no way of knowing what the
-                    # previous state looked like...
-                    # Another option is to let the renderer handle if there
-                    # should be any changes made to the dom object in the
-                    # `set_attribute` method :/ and thus leave out the comparison
-                    # between old and new props. That would also require to
-                    # combine the `set_attribute` and `clear_attribute`...
-                    # Vue's render API only has `patchProp`, but it still takes
-                    # a `prevValue` and a `nextValue`...
-                    raw_props=to_raw(element.props),
-                    children=element.children,
-                    dom=old_fiber.dom,
-                    parent=wip_fiber,
-                    alternate=old_fiber,
-                    effect_tag=EffectTag.UPDATE,
-                )
+                # Try and see if alternate of old_fiber is available for re-use
+                new_fiber = old_fiber.alternate or Fiber()
+                new_fiber.type = element.type
+                new_fiber.props = element.props
+                # Have to create a snapshot of the state somewhere to
+                # be able to reconcile properly... If the state has been
+                # changed directly, there is no way of knowing what the
+                # previous state looked like...
+                # Another option is to let the renderer handle if there
+                # should be any changes made to the dom object in the
+                # `set_attribute` method :/ and thus leave out the comparison
+                # between old and new props. That would also require to
+                # combine the `set_attribute` and `clear_attribute`...
+                # Vue's render API only has `patchProp`, but it still takes
+                # a `prevValue` and a `nextValue`...
+                new_fiber.raw_props = to_raw(element.props)
+                new_fiber.children = element.children
+                new_fiber.dom = old_fiber.dom
+                new_fiber.parent = wip_fiber
+                new_fiber.alternate = old_fiber
+                new_fiber.child = None
+                new_fiber.sibling = None
+                new_fiber.effect_tag = EffectTag.UPDATE
+                new_fiber.watcher = None
             if element and not same_type:
+                if not old_fiber:
+                    logger.info("new element")
+                else:
+                    logger.info("different element")
+
                 # add this node
-                new_fiber = Fiber(
-                    type=element.type,
-                    props=element.props,
-                    raw_props=to_raw(element.props),
-                    children=element.children,
-                    dom=None,
-                    parent=wip_fiber,
-                    alternate=None,
-                    effect_tag=EffectTag.PLACEMENT,
-                )
+                new_fiber = (old_fiber and old_fiber.alternate) or Fiber()
+                new_fiber.type = element.type
+                new_fiber.props = element.props
+                new_fiber.raw_props = to_raw(element.props)
+                new_fiber.children = element.children
+                new_fiber.dom = None
+                new_fiber.parent = wip_fiber
+                new_fiber.alternate = None
+                new_fiber.child = None
+                new_fiber.sibling = None
+                new_fiber.effect_tag = EffectTag.PLACEMENT
+                new_fiber.watcher = None
+                # If there is an old_fiber, then it will be marked for deletion
+                # in the next if statement
             if old_fiber and not same_type:
+                logger.info("deletion")
                 # delete the old_fiber's node
                 old_fiber.effect_tag = EffectTag.DELETION
                 self._deletions.append(old_fiber)
+                # TODO: I guess that the fiber itself needs to be destroyed as well?
+                # As well as its `alternate`?
             # TODO: we could use 'key's here for better reconciliation
 
+            # FIXME: this code is here because it is in the example, but it is never
+            # explained/highlighted in the example...
             if old_fiber:
                 old_fiber = old_fiber.sibling
 
+            # And we add it to the fiber tree setting it either as a child or as a
+            # sibling, depending on whether it’s the first child or not.
             if index == 0:
                 wip_fiber.child = new_fiber
             elif element:
@@ -276,8 +299,10 @@ class PyGui:
     def commit_deletion(self, fiber: Fiber, dom_parent: Any):
         if dom := fiber.dom:
             self.renderer.remove(dom, dom_parent)
+            fiber.dom = None
         else:
             self.commit_deletion(fiber.child, dom_parent)
+        fiber.child = None
 
     def commit_work(self, fiber: Fiber):
         if not fiber:
