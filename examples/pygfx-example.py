@@ -43,7 +43,7 @@ try:
 
     FORMAT = "%(message)s"
     logging.basicConfig(
-        level="NOTSET",
+        level="WARN",
         format=FORMAT,
         datefmt="[%X]",
         handlers=[RichHandler(rich_tracebacks=True)],
@@ -58,9 +58,6 @@ gui = pygui.PyGui()
 
 
 class MyCanvas(WgpuCanvas):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     def handle_event(self, event):
         if event["event_type"] == "pointer_down":
             info = renderer.get_pick_info((event["x"], event["y"]))
@@ -88,7 +85,10 @@ def PointCloud(props):
 
     def set_selected(index):
         logger.debug(f"select: {index}")
-        props["selected"] = index
+        if props["selected"] == index:
+            props["selected"] = -1
+        else:
+            props["selected"] = index
 
     def random_point(index, selected):
         return pygui.create_element(
@@ -117,8 +117,7 @@ def PointCloud(props):
 
 
 def Landmark(props):
-    if "selected" not in props:
-        props["selected"] = False
+    props.setdefault("selected", False)
 
     def toggle():
         logger.debug("toggle")
