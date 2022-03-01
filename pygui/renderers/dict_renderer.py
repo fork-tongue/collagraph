@@ -22,3 +22,9 @@ class DictRenderer(Renderer):
     def clear_attribute(self, obj, attr: str, value):
         if attr in obj:
             del obj[attr]
+
+    def add_event_listener(self, el, event_type, value):
+        return NotImplemented
+
+    def remove_event_listener(self, el, event_type, value):
+        return NotImplemented

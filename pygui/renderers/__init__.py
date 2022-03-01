@@ -22,6 +22,14 @@ class Renderer(metaclass=ABCMeta):
     def clear_attribute(self, el, attr: str, value):
         pass
 
+    @abstractmethod
+    def add_event_listener(self, el, event_type, value):
+        pass
+
+    @abstractmethod
+    def remove_event_listener(self, el, event_type, value):
+        pass
+
 
 from .dict_renderer import DictRenderer
 from .pygfx_renderer import PygfxRenderer

@@ -67,3 +67,9 @@ class PygfxRenderer(Renderer):
         else:
             value = None
         setattr(obj, attr, value)
+
+    def add_event_listener(self, el, event_type, value):
+        el.add_event_handler(event_type, value)
+
+    def remove_event_listener(self, el, event_type, value):
+        el.remove_event_handler(event_type, value)

@@ -336,7 +336,7 @@ class PyGui:
                 continue
 
             event_type = name.lower()[2:]
-            dom.remove_event_handler(event_type, val)
+            self.renderer.remove_event_listener(dom, event_type, val)
 
         # Remove old properties
         for key, val in prev_props.items():
@@ -367,4 +367,4 @@ class PyGui:
                 continue
 
             event_type = name.lower()[2:]
-            dom.add_event_handler(event_type, val)
+            self.renderer.add_event_listener(dom, event_type, val)
