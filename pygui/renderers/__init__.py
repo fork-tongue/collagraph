@@ -2,6 +2,8 @@ from abc import ABCMeta, abstractmethod
 
 
 class Renderer(metaclass=ABCMeta):
+    """Abstract base class for renderers"""
+
     @abstractmethod
     def create_element(self, type: str) -> object:
         pass
@@ -32,4 +34,8 @@ class Renderer(metaclass=ABCMeta):
 
 
 from .dict_renderer import DictRenderer
-from .pygfx_renderer import PygfxRenderer
+
+try:
+    from .pygfx_renderer import PygfxRenderer
+except ImportError:
+    pass

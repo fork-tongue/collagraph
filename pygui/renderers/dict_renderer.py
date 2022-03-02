@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from . import Renderer
 
 
@@ -24,7 +26,10 @@ class DictRenderer(Renderer):
             del obj[attr]
 
     def add_event_listener(self, el, event_type, value):
-        return NotImplemented
+        event_listeners = el.setdefault("event_listeners", defaultdict(set))
+        event_listeners[event_type].add(value)
 
     def remove_event_listener(self, el, event_type, value):
-        return NotImplemented
+        event_listeners = el.get("event_listeners", None)
+        if event_listeners:
+            event_listeners[event_type].remove(value)

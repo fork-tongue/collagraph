@@ -1,22 +1,24 @@
 from observ import reactive
 import pytest
 
-import pygui
+from pygui import create_element as h, EventLoopType, PyGui
+from pygui.renderers import DictRenderer
 
 
 def test_fiber_reuse_update():
-    renderer = pygui.renderers.DictRenderer()
-    gui = pygui.PyGui(renderer=renderer, sync=True)
+    renderer = DictRenderer()
+    gui = PyGui(renderer=renderer, event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive({"counter": 0})
-    element = pygui.create_element("counter", state)
+    element = h("counter", state)
 
     gui.render(element, container)
+
     assert container["children"][0]["counter"] == 0
 
     assert gui._wip_root is None
-    assert gui._current_root is not None
-    assert gui._current_root.child is not None
+    assert gui._current_root
+    assert gui._current_root.child
     assert gui._current_root.child.type == "counter"
     assert gui._current_root.child.child is None
     assert gui._current_root.child.sibling is None
@@ -29,11 +31,12 @@ def test_fiber_reuse_update():
 
     # Update state, which triggers a re-render
     state["counter"] += 1
+
     assert container["children"][0]["counter"] == 1
 
     assert gui._wip_root is None
-    assert gui._current_root is not None
-    assert gui._current_root.child is not None
+    assert gui._current_root
+    assert gui._current_root.child
     assert gui._current_root.child.type == "counter"
     assert gui._current_root.child.child is None
     assert gui._current_root.child.sibling is None
@@ -48,6 +51,7 @@ def test_fiber_reuse_update():
 
     # Trigger another re-render, now the first root should be re-used
     state["counter"] += 1
+
     assert container["children"][0]["counter"] == 2
 
     assert gui._wip_root is None
@@ -80,22 +84,23 @@ def walk_tree(fiber, callback):
 
 def test_fiber_element_deletion():
     def List(props):
-        return pygui.create_element(
+        return h(
             "list",
             props,
             *[
-                pygui.create_element("item", {"index": index + props["start_index"]})
+                h("item", {"index": index + props["start_index"]})
                 for index in range(props["count"])
             ]
         )
 
-    renderer = pygui.renderers.DictRenderer()
-    gui = pygui.PyGui(renderer=renderer, sync=True)
+    renderer = DictRenderer()
+    gui = PyGui(renderer=renderer, event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive({"count": 2, "start_index": 0})
-    element = pygui.create_element(List, state)
+    element = h(List, state)
 
     gui.render(element, container)
+
     list_element = container["children"][0]
     assert len(list_element["children"]) == 2
     assert list_element["children"][0]["index"] == 0
@@ -105,6 +110,7 @@ def test_fiber_element_deletion():
 
     # Trigger another update to build up the alternate tree as well
     state["start_index"] = 3
+
     assert len(list_element["children"]) == 2
     assert list_element["children"][0]["index"] == 3
     assert list_element["children"][1]["index"] == 4
@@ -121,6 +127,7 @@ def test_fiber_element_deletion():
 
     # Trigger a deletion
     state["count"] = 1
+
     assert len(list_element["children"]) == 1
 
     def assert_is_not_deleted_fiber(fiber):
@@ -148,16 +155,16 @@ def test_fiber_element_deletion():
 def test_fiber_element_type_change():
     # check number of fibers stays the same
     def List(props):
-        return pygui.create_element(
+        return h(
             "foo" if props["foo"] else "bar",
             props,
         )
 
-    renderer = pygui.renderers.DictRenderer()
-    gui = pygui.PyGui(renderer=renderer, sync=True)
+    renderer = DictRenderer()
+    gui = PyGui(renderer=renderer, event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive({"foo": True})
-    element = pygui.create_element(List, state)
+    element = h(List, state)
     gui.render(element, container)
 
     assert container["children"][0]["type"] == "foo"
@@ -171,12 +178,14 @@ def test_fiber_element_type_change():
         assert fiber.parent is not fiber_to_be_deleted  # noqa: F821
 
     state["foo"] = False
+
     assert container["children"][0]["type"] == "bar"
     walk_tree(gui._current_root, assert_is_not_deleted_fiber)
     with pytest.raises(AssertionError):
         walk_tree(gui._current_root.alternate, assert_is_not_deleted_fiber)
 
     state["foo"] = True
+
     assert container["children"][0]["type"] == "foo"
     walk_tree(gui._current_root, assert_is_not_deleted_fiber)
     walk_tree(gui._current_root.alternate, assert_is_not_deleted_fiber)

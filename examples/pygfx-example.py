@@ -30,7 +30,7 @@ import random
 import pygfx as gfx
 from wgpu.gui.auto import run, WgpuCanvas
 
-import pygui
+from pygui import create_element as h, EventLoopType, PyGui
 
 try:
     # If rich is available, use it to improve traceback logs
@@ -54,7 +54,7 @@ except ModuleNotFoundError:
 
 logger = logging.getLogger(__name__)
 
-gui = pygui.PyGui()
+gui = PyGui(event_loop_type=EventLoopType.QT)
 
 
 class MyCanvas(WgpuCanvas):
@@ -91,7 +91,7 @@ def PointCloud(props):
             props["selected"] = index
 
     def random_point(index, selected):
-        return pygui.create_element(
+        return h(
             "Mesh",
             {
                 "geometry": sphere_geom,
@@ -109,7 +109,7 @@ def PointCloud(props):
     selected = props["selected"]
     number_of_points = props["count"]
 
-    return pygui.create_element(
+    return h(
         "Group",
         props,
         *[random_point(i, selected) for i in range(number_of_points)],
@@ -123,17 +123,17 @@ def Landmark(props):
         logger.debug("toggle")
         props["selected"] = not props["selected"]
 
-    return pygui.create_element(
+    return h(
         "Group",
         props,
-        pygui.create_element(
+        h(
             "Point",
             {
                 "scale": [2 if props["selected"] else 1] * 3,
                 "color": [1, 0.5, 0, 0.1],
             },
         ),
-        pygui.create_element(
+        h(
             "Point",
             {
                 "scale": [0.5, 0.5, 0.5],
@@ -155,31 +155,31 @@ if __name__ == "__main__":
 
     # Should be possible to create this element
     # by rendering JSX to dict...
-    element = pygui.create_element(
+    element = h(
         "Group",
         {
             "name": "Landmarks",
         },
-        pygui.create_element(
+        h(
             PointCloud,
             # When increasing this number, it will take longer
             # and longer for pygfx to create the render pipeline
             # (compiling shaders and such), so be careful...
             # {"count": 200},
         ),
-        pygui.create_element(
+        h(
             Landmark,
             {
                 "name": "funk",
             },
         ),
-        pygui.create_element(
+        h(
             Landmark,
             {
                 "position": [4, 4, -4],
             },
         ),
-        pygui.create_element(
+        h(
             "Point",
             {
                 "name": "Hip",
@@ -187,7 +187,7 @@ if __name__ == "__main__":
                 "color": [1, 0.4, 0],
             },
         ),
-        pygui.create_element(
+        h(
             "Point",
             {
                 "name": "Hap",
