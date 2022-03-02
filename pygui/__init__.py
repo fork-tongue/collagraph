@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from observ import reactive, scheduler, watch
 
-from .renderers import PygfxRenderer, Renderer
+from .renderers import DictRenderer, Renderer
 from .types import EffectTag, EventLoopType, Fiber, VNode
 
 
@@ -31,7 +31,7 @@ class PyGui:
         event_loop_type: EventLoopType = EventLoopType.DEFAULT,
     ):
         if renderer is None:
-            renderer = PygfxRenderer()
+            renderer = DictRenderer()
         assert isinstance(renderer, Renderer)
         self.renderer = renderer
         self.event_loop_type = event_loop_type

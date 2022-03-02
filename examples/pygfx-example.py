@@ -31,6 +31,7 @@ import pygfx as gfx
 from wgpu.gui.auto import run, WgpuCanvas
 
 from pygui import create_element as h, EventLoopType, PyGui
+from pygui.renderers import PygfxRenderer
 
 try:
     # If rich is available, use it to improve traceback logs
@@ -54,7 +55,7 @@ except ModuleNotFoundError:
 
 logger = logging.getLogger(__name__)
 
-gui = PyGui(event_loop_type=EventLoopType.QT)
+gui = PyGui(renderer=PygfxRenderer(), event_loop_type=EventLoopType.QT)
 
 
 class MyCanvas(WgpuCanvas):
