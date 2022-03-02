@@ -71,7 +71,7 @@ def test_reconcile_by_key():
         return h(
             "items",
             props,
-            *[h("item", {"content": item}) for item in props["items"]],
+            *[h("item", {"key": item, "content": item}) for item in props["items"]],
         )
 
     renderer = CustomElementRenderer()
