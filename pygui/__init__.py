@@ -42,7 +42,7 @@ class PyGui:
 
             def request_flush():
                 loop = asyncio.get_event_loop()
-                loop.call_later(0, scheduler.flush)
+                loop.call_soon(scheduler.flush)
 
             scheduler.register_request_flush(request_flush)
         else:
@@ -97,7 +97,7 @@ class PyGui:
 
                 def start(deadline):
                     loop = asyncio.get_event_loop_policy().get_event_loop()
-                    loop.call_later(0, self.work_loop, deadline)
+                    loop.call_soon(self.work_loop, deadline)
 
                 self._request = start
             if self.event_loop_type is EventLoopType.QT:
