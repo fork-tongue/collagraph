@@ -34,7 +34,7 @@ from pygui import create_element as h, EventLoopType, PyGui
 from pygui.renderers import PygfxRenderer
 
 try:
-    # If rich is available, use it to improve traceback logs
+    # If rich is available, use it to improve (traceback) logs
     from rich.logging import RichHandler
     from rich.traceback import install
     import shutil
@@ -55,10 +55,8 @@ except ModuleNotFoundError:
 
 logger = logging.getLogger(__name__)
 
-gui = PyGui(renderer=PygfxRenderer(), event_loop_type=EventLoopType.QT)
 
-
-class MyCanvas(WgpuCanvas):
+class SelectableObjectsCanvas(WgpuCanvas):
     def handle_event(self, event):
         if event["event_type"] == "pointer_down":
             info = renderer.get_pick_info((event["x"], event["y"]))
@@ -146,13 +144,15 @@ def Landmark(props):
 
 
 if __name__ == "__main__":
-    canvas = MyCanvas(size=(600, 400))
+    canvas = SelectableObjectsCanvas(size=(600, 400))
     renderer = gfx.renderers.WgpuRenderer(canvas)
     camera = gfx.PerspectiveCamera(70, 16 / 9)
     camera.position.z = 15
 
     controls = gfx.OrbitControls(camera.position.clone())
     controls.add_default_event_handlers(canvas, camera)
+
+    gui = PyGui(renderer=PygfxRenderer(), event_loop_type=EventLoopType.QT)
 
     # Should be possible to create this element
     # by rendering JSX to dict...
