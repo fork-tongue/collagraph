@@ -45,14 +45,14 @@ def test_reactive_element():
 
     counter = container["children"][0]
     assert counter["type"] == "counter"
-    assert counter["counter"] == 0
+    assert counter["attrs"]["counter"] == 0
 
     # Update state, which should trigger a re-render
     state["counter"] += 1
 
     counter = container["children"][0]
     assert counter["type"] == "counter"
-    assert counter["counter"] == 1, counter
+    assert counter["attrs"]["counter"] == 1, counter
 
 
 def test_reactive_element_with_events(process_events):
@@ -77,16 +77,16 @@ def test_reactive_element_with_events(process_events):
 
     counter = container["children"][0]
     assert counter["type"] == "counter"
-    assert counter["children"][0]["count"] == 0
-    assert len(counter["children"][0]["event_listeners"]["bump"]) == 1
+    assert counter["children"][0]["attrs"]["count"] == 0
+    assert len(counter["children"][0]["handlers"]["bump"]) == 1
 
     # Update state by triggering all listeners, which should trigger a re-render
-    for listener in counter["children"][0]["event_listeners"]["bump"]:
+    for listener in counter["children"][0]["handlers"]["bump"]:
         listener()
 
     process_events()
     counter = container["children"][0]
-    assert counter["children"][0]["count"] == 1
+    assert counter["children"][0]["attrs"]["count"] == 1
 
 
 def test_delete_item_with_children_and_siblings(process_events):
@@ -128,7 +128,7 @@ def test_delete_item_with_children_and_siblings(process_events):
     assert len(collection["children"]) == 3
     assert len(collection["children"][1]["children"]) == 2
     assert collection["children"][1]["children"][1]["type"] == "part"
-    assert collection["children"][1]["children"][1]["title"] == "c"
+    assert collection["children"][1]["children"][1]["attrs"]["title"] == "c"
 
     # Trigger a deletion *and* a change to the sibling for instance
     state["items"].pop(1)
@@ -141,14 +141,14 @@ def test_delete_item_with_children_and_siblings(process_events):
 
     assert len(collection["children"]) == 2
     assert collection["children"][1]["children"][0]["type"] == "part"
-    assert collection["children"][1]["children"][0]["title"] == "e"
+    assert collection["children"][1]["children"][0]["attrs"]["title"] == "e"
 
 
 def test_deep_reactive_element():
     def Counter(props):
         return h(
             "counter",
-            props,
+            None,
             h("count", props),
         )
 
@@ -162,11 +162,11 @@ def test_deep_reactive_element():
 
     counter = container["children"][0]
     assert counter["type"] == "counter"
-    assert counter["children"][0]["counter"]["count"] == 0
+    assert counter["children"][0]["attrs"]["counter"]["count"] == 0
 
     # Update state, which should trigger a re-render
     state["counter"]["count"] += 1
 
     counter = container["children"][0]
     assert counter["type"] == "counter"
-    assert counter["children"][0]["counter"]["count"] == 1, counter
+    assert counter["children"][0]["attrs"]["counter"]["count"] == 1

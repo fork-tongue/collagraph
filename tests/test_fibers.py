@@ -14,7 +14,7 @@ def test_fiber_reuse_update():
 
     gui.render(element, container)
 
-    assert container["children"][0]["counter"] == 0
+    assert container["children"][0]["attrs"]["counter"] == 0
 
     assert gui._wip_root is None
     assert gui._current_root
@@ -32,7 +32,7 @@ def test_fiber_reuse_update():
     # Update state, which triggers a re-render
     state["counter"] += 1
 
-    assert container["children"][0]["counter"] == 1
+    assert container["children"][0]["attrs"]["counter"] == 1
 
     assert gui._wip_root is None
     assert gui._current_root
@@ -52,7 +52,7 @@ def test_fiber_reuse_update():
     # Trigger another re-render, now the first root should be re-used
     state["counter"] += 1
 
-    assert container["children"][0]["counter"] == 2
+    assert container["children"][0]["attrs"]["counter"] == 2
 
     assert gui._wip_root is None
     assert gui._current_root is first_root_fiber
@@ -103,7 +103,7 @@ def test_fiber_element_deletion():
 
     list_element = container["children"][0]
     assert len(list_element["children"]) == 2
-    assert list_element["children"][0]["index"] == 0
+    assert list_element["children"][0]["attrs"]["index"] == 0
 
     first_root_fiber = gui._current_root
     first_list_fiber = gui._current_root.child
@@ -112,8 +112,8 @@ def test_fiber_element_deletion():
     state["start_index"] = 3
 
     assert len(list_element["children"]) == 2
-    assert list_element["children"][0]["index"] == 3
-    assert list_element["children"][1]["index"] == 4
+    assert list_element["children"][0]["attrs"]["index"] == 3
+    assert list_element["children"][1]["attrs"]["index"] == 4
 
     alt_root_fiber = gui._current_root
     alt_list_fiber = gui._current_root.child

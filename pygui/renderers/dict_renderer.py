@@ -4,6 +4,14 @@ from . import Renderer
 
 
 class DictRenderer(Renderer):
+    """Renderer that renders to a simple dict object
+    which (may) contain the following keys:
+    * type: str
+    * children: list
+    * attributes: dict
+    * event_listeners: defaultdict(set)
+    """
+
     def create_element(self, type: str) -> dict:
         return {"type": type}
 
@@ -12,24 +20,23 @@ class DictRenderer(Renderer):
         children.append(el)
 
     def remove(self, el, parent):
-        children = parent.get("children", [])
-        try:
-            children.remove(el)
-        except ValueError:
-            pass
+        children = parent["children"]
+        children.remove(el)
 
     def set_attribute(self, obj, attr: str, value):
-        obj[attr] = value
+        attributes = obj.setdefault("attrs", {})
+        attributes[attr] = value
 
     def clear_attribute(self, obj, attr: str, value):
-        if attr in obj:
-            del obj[attr]
+        attributes = obj["attrs"]
+        if attr in attributes:
+            del attributes[attr]
 
     def add_event_listener(self, el, event_type, value):
-        event_listeners = el.setdefault("event_listeners", defaultdict(set))
+        event_listeners = el.setdefault("handlers", defaultdict(set))
         event_listeners[event_type].add(value)
 
     def remove_event_listener(self, el, event_type, value):
-        event_listeners = el.get("event_listeners", None)
+        event_listeners = el.get("handlers", None)
         if event_listeners:
             event_listeners[event_type].remove(value)
