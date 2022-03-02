@@ -57,7 +57,7 @@ class CustomElementRenderer(Renderer):
 
 
 @pytest.mark.xfail
-def test_reconcile_by_key():
+def test_reconcile_by_key(process_events):
     states = [
         ([1, 2, 3], [3, 1, 2]),  # shift right
         ([1, 2, 3], [2, 3, 1]),  # shift left
@@ -75,7 +75,7 @@ def test_reconcile_by_key():
         )
 
     renderer = CustomElementRenderer()
-    gui = PyGui(renderer=renderer, sync=True)
+    gui = PyGui(renderer=renderer)
     container = CustomElement()
     container.type = "root"
     container.children = []
@@ -85,6 +85,7 @@ def test_reconcile_by_key():
         element = h(Items, state)
 
         gui.render(element, container)
+        process_events()
 
         items = container.children[0]
 
@@ -95,6 +96,7 @@ def test_reconcile_by_key():
         children_refs = [ref(x) for x in items.children]
 
         state["items"] = after
+        process_events()
 
         for idx, val in enumerate(after):
             item = items.children[idx]
