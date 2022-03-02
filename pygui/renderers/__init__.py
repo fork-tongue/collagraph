@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 
-class Renderer(metaclass=ABCMeta):
+class Renderer(metaclass=ABCMeta):  # pragma: no cover
     """Abstract base class for renderers"""
 
     @abstractmethod
@@ -35,7 +35,7 @@ class Renderer(metaclass=ABCMeta):
 
 from .dict_renderer import DictRenderer
 
-try:
+try:  # pragma: no cover
     from .pygfx_renderer import PygfxRenderer
-except ImportError:
+except ImportError:  # pragma: no cover
     pass

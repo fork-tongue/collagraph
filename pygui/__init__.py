@@ -36,7 +36,7 @@ class PyGui:
         self.renderer = renderer
         self.event_loop_type = event_loop_type
         if self.event_loop_type is EventLoopType.QT:
-            scheduler.register_qt()
+            scheduler.register_qt()  # pragma: no cover
         elif self.event_loop_type is EventLoopType.DEFAULT:
             import asyncio
 
@@ -100,7 +100,7 @@ class PyGui:
                     loop.call_soon(self.work_loop, deadline)
 
                 self._request = start
-            if self.event_loop_type is EventLoopType.QT:
+            if self.event_loop_type is EventLoopType.QT:  # pragma: no cover
                 from PySide6 import QtCore
 
                 self._qt_timer = QtCore.QTimer()
@@ -134,7 +134,10 @@ class PyGui:
             self._next_unit_of_work = self.perform_unit_of_work(self._next_unit_of_work)
             # yield if time is up
             now = time.perf_counter_ns()
-            should_yield = not self.event_loop_type and (deadline - now) < 1 * 1000000
+            should_yield = (
+                self.event_loop_type is not EventLoopType.SYNC
+                and (deadline - now) < 1 * 1000000
+            )
 
         if not self._next_unit_of_work and self._wip_root:
             # All the preparations to build the new WIP root have been performed,

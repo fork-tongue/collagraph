@@ -5,8 +5,7 @@ from pygui.renderers import DictRenderer
 
 
 def test_basic_dict_renderer():
-    renderer = DictRenderer()
-    gui = PyGui(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+    gui = PyGui(event_loop_type=EventLoopType.SYNC)
 
     element = h("app")
 
@@ -193,3 +192,72 @@ def test_remove_attribute():
     del state["foo"]
 
     assert len(foo["attrs"]) == 0
+
+
+def test_render_callback(process_events):
+    callback_counter = 0
+
+    def bump():
+        nonlocal callback_counter
+        callback_counter += 1
+
+    gui = PyGui()
+    element = h("app")
+    container = {"type": "root"}
+    gui.render(element, container, callback=bump)
+
+    process_events()
+
+    assert callback_counter == 1
+
+
+def test_update_element_with_event(process_events):
+    def Counter(props):
+        def bump():
+            props["count"] += 1
+
+        props.setdefault("count", 0)
+        props.setdefault("onBump", bump)
+
+        return h("counter", props)
+
+    gui = PyGui()
+    container = {"type": "root"}
+    state = reactive({"count": 0})
+    gui.render(h(Counter, state), container)
+    process_events()
+
+    assert container["children"][0]["attrs"]["count"] == 0
+    # There should be one event listener installed
+    assert len(container["children"][0]["handlers"]) == 1
+    assert len(container["children"][0]["handlers"]["bump"]) == 1
+    handler = container["children"][0]["handlers"]["bump"]
+
+    state["count"] = 3
+    process_events()
+
+    assert container["children"][0]["attrs"]["count"] == 3
+    # There should still be one event listener installed
+    assert len(container["children"][0]["handlers"]) == 1
+    assert len(container["children"][0]["handlers"]["bump"]) == 1
+    # And it should be the same handler as before
+    # TODO: maybe start using a MockRenderer to check whether certain
+    # methods have been called?
+    assert handler is container["children"][0]["handlers"]["bump"]
+
+
+def test_yield_if_time_is_up_for_lots_of_work(process_events):
+    """
+    Render a node with a 1000 children in non-sync mode.
+    This is probably too much work to process within the deadline
+    so we can test whether the _next_unit_of_work is scheduled.
+    """
+    gui = PyGui()
+    container = {"type": "root"}
+
+    element = h("app", {}, *[h("node")] * 1000)
+    gui.render(element, container)
+
+    process_events()
+
+    assert len(container["children"][0]["children"]) == 1000
