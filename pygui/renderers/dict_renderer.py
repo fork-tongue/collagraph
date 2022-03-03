@@ -27,7 +27,7 @@ class DictRenderer(Renderer):
         attributes = obj.setdefault("attrs", {})
         attributes[attr] = value
 
-    def clear_attribute(self, obj, attr: str, value):
+    def remove_attribute(self, obj, attr: str, value):
         attributes = obj["attrs"]
         if attr in attributes:
             del attributes[attr]

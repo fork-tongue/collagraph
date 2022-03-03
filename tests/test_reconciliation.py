@@ -46,7 +46,7 @@ class CustomElementRenderer(Renderer):
     def set_attribute(self, el, attr: str, value):
         setattr(el, attr, value)
 
-    def clear_attribute(self, el, attr: str, value):
+    def remove_attribute(self, el, attr: str, value):
         delattr(el, attr)
 
     def add_event_listener(self, el, event_type, value):

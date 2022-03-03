@@ -368,7 +368,7 @@ class PyGui:
             if key in next_props:
                 continue
 
-            self.renderer.clear_attribute(dom, key, prev_props[key])
+            self.renderer.remove_attribute(dom, key, prev_props[key])
 
         # Set new or changed properties
         for key, val in next_props.items():

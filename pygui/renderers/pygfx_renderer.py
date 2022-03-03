@@ -56,7 +56,7 @@ class PygfxRenderer(Renderer):
             value = gfx.linalg.Vector3(*value)
         setattr(obj, attr, value)
 
-    def clear_attribute(self, obj, attr, value):
+    def remove_attribute(self, obj, attr, value):
         # TODO: define some kind of defaults for pygfx objects?
         if attr == "color":
             obj.material.color = (1, 1, 1, 1)

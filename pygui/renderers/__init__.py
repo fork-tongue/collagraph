@@ -21,7 +21,7 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
         pass
 
     @abstractmethod
-    def clear_attribute(self, el, attr: str, value):
+    def remove_attribute(self, el, attr: str, value):
         pass
 
     @abstractmethod
