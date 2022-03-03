@@ -34,14 +34,12 @@ class CustomElementRenderer(Renderer):
         obj = CustomElement(type=type)
         return obj
 
-    def insert(self, el, parent):
-        parent.children.append(el)
+    def insert(self, el, parent, anchor=None):
+        idx = parent.children.index(anchor) if anchor else len(parent.children)
+        parent.children.insert(idx, el)
 
     def remove(self, el, parent):
-        try:
-            parent.children.remove(el)
-        except ValueError:
-            pass
+        parent.children.remove(el)
 
     def set_attribute(self, el, attr: str, value):
         setattr(el, attr, value)
