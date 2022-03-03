@@ -28,8 +28,13 @@ class MeshEvents(gfx.Mesh):
 
 
 class PygfxRenderer(Renderer):
-    def insert(self, el: gfx.WorldObject, parent: gfx.WorldObject):
-        parent.add(el)
+    def insert(
+        self,
+        el: gfx.WorldObject,
+        parent: gfx.WorldObject,
+        anchor: gfx.WorldObject = None,
+    ):
+        parent.add(el, before=anchor)
 
     def remove(self, el: gfx.WorldObject, parent: gfx.WorldObject):
         parent.remove(el)

@@ -8,7 +8,7 @@ homepage = "https://github.com/fork-tongue/pygui"
 readme = "README.md"
 
 [tool.poetry.extras]
-gfx = ["pygfx"]
+pygfx = ["pygfx"]
 pyside = ["PySide6"]
 
 [tool.poetry.dependencies]
