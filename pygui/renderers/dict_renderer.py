@@ -15,9 +15,10 @@ class DictRenderer(Renderer):
     def create_element(self, type: str) -> dict:
         return {"type": type}
 
-    def insert(self, el, parent):
+    def insert(self, el, parent, anchor=None):
         children = parent.setdefault("children", [])
-        children.append(el)
+        anchor_idx = children.index(anchor) if anchor else len(children)
+        children.insert(anchor_idx, el)
 
     def remove(self, el, parent):
         children = parent["children"]
