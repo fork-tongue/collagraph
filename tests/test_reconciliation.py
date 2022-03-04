@@ -3,7 +3,7 @@ from weakref import ref
 from observ import reactive
 import pytest
 
-from pygui import create_element as h, PyGui
+from pygui import create_element as h, EventLoopType, PyGui
 from pygui.renderers import Renderer
 
 
@@ -27,6 +27,16 @@ class CustomElement:
         if name.startswith("_"):
             super().__setattr__(name, value)
         self._data[name] = value
+
+    def __repr__(self):
+        attributes = ", ".join(
+            [
+                f"{attr}='{self._data[attr]}'"
+                for attr in self._data
+                if attr not in ["type", "children"]
+            ]
+        )
+        return f"<{self.type} {attributes}>"
 
 
 class CustomElementRenderer(Renderer):
@@ -55,14 +65,19 @@ class CustomElementRenderer(Renderer):
 
 
 @pytest.mark.xfail
-def test_reconcile_by_key(process_events):
+def test_reconcile_by_key():
     states = [
-        ([1, 2, 3], [3, 1, 2]),  # shift right
-        ([1, 2, 3], [2, 3, 1]),  # shift left
-        ([1, 2, 3], [1, 3]),  # remove from middle
-        ([1, 2, 3], [2, 3]),  # remove first
-        ([1, 2, 3], [1, 2]),  # remove last
-        ([1, 2, 3], [3, 2, 1]),  # reverse order
+        (["a", "b", "c"], ["c", "a", "b"], "shift right"),  # shift right
+        (["a", "b", "c"], ["b", "c", "a"], "shift left"),  # shift left
+        (["a", "b", "c"], ["c", "b", "a"], "reverse order"),  # reverse order
+        (["a", "b", "c"], ["a", "b"], "remove last"),  # remove last
+        (["a", "b", "c"], ["a", "b", "c", "d"], "add last"),  # add last
+        (["a", "b", "c"], ["a", "b", "d", "c"], "add in middle"),  # add in middle
+        (["a", "b", "c"], ["d", "a", "b", "c"], "add begin"),  # add begin
+        (["a", "b", "c", "d"], ["e", "f"], "replace completely"),  # replace completely
+        # FIXME: the following two cases still fail
+        (["a", "b", "c"], ["a", "c"], "remove from middle"),  # remove from middle
+        (["a", "b", "c"], ["b", "c"], "remove first"),  # remove first
     ]
 
     def Items(props):
@@ -73,17 +88,17 @@ def test_reconcile_by_key(process_events):
         )
 
     renderer = CustomElementRenderer()
-    gui = PyGui(renderer=renderer)
-    container = CustomElement()
-    container.type = "root"
-    container.children = []
 
-    for before, after in states:
+    for before, after, name in states:
+        gui = PyGui(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+        container = CustomElement()
+        container.type = "root"
+        container.children = []
+        # print(f"-- {name} --")
         state = reactive({"items": before})
         element = h(Items, state)
 
         gui.render(element, container)
-        process_events()
 
         items = container.children[0]
 
@@ -94,11 +109,16 @@ def test_reconcile_by_key(process_events):
         children_refs = [ref(x) for x in items.children]
 
         state["items"] = after
-        process_events()
 
         for idx, val in enumerate(after):
             item = items.children[idx]
             assert item.content == val
 
-            prev_idx = before.index(val)
-            assert item is children_refs[prev_idx]()
+            try:
+                prev_idx = before.index(val)
+                assert item is children_refs[prev_idx]()
+            except ValueError:
+                pass
+
+        # FIXME: This is where it still fails...
+        assert len(after) == len(items.children)

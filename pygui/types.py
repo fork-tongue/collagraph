@@ -17,6 +17,12 @@ class EffectTag(Enum):
     DELETION = "DELETION"
 
 
+class OpType(Enum):
+    MOVE = "MOVE"
+    DEL = "DEL"
+    ADD = "ADD"
+
+
 @dataclass
 class VNode:
     """Virtual Node that serves as a basic description of the node to be rendered."""
@@ -36,6 +42,9 @@ class Fiber:
     children: List["VNode"] = None
     dom: Any = None
     effect_tag: EffectTag = None
+    key: str = None
+    anchor: Any = None  # Dom element
+    move: bool = False
     parent: "Fiber" = None
     props: Dict = None
     sibling: "Fiber" = None
