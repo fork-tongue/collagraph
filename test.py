@@ -10,35 +10,80 @@ terminal_width = shutil.get_terminal_size((80, 20)).columns - 2
 install(width=terminal_width)
 
 
-class Type(Enum):
+class OpType(Enum):
     MOVE = "MOVE"
     DEL = "DEL"
     ADD = "ADD"
 
 
-def create_ops(type, value: Any = None, idx: int = None, anchor: Any = None):
-    result = {"op": type.value}
-    if value is not None:
-        result["value"] = value
-    if idx is not None:
-        result["idx"] = idx
-    if anchor is not None:
-        result["anchor"] = anchor
-    return result
-
-
 def apply_op(op: Dict, it: Iterable):
-    if op["op"] == Type.MOVE.value:
+    if op["op"] is OpType.MOVE:
         idx = it.index(op["value"])
         val = it.pop(idx)
         new_idx = it.index(op["anchor"])
         it.insert(new_idx, val)
-    elif op["op"] == Type.DEL.value:
+    elif op["op"] is OpType.DEL:
         it.remove(op["value"])
-        # it.pop(op["idx"])
-    elif op["op"] == Type.ADD.value:
+    elif op["op"] is OpType.ADD:
         idx = it.index(op["anchor"]) if "anchor" in op else len(it)
         it.insert(idx, op["value"])
+
+
+def create_operation(type, value: Any = None, anchor: Any = None):
+    """
+    Returns:
+        Operation as a simple dict with the following keys:
+        - op: type of operation: ["DEL", "ADD", "MOVE"]
+        - value: value of the item
+        - anchor (optional): the element before which this element is
+          to be inserted
+    """
+    result = {"op": type, "value": value}
+    if anchor is not None:
+        result["anchor"] = anchor
+    assert type is not OpType.MOVE or "anchor" in result
+    return result
+
+
+def create_ops(current, future):
+    """
+    Args:
+        current: list of keys as they are currently rendered in the dom
+        future: list of keys as they should be rendered in the dom
+
+    Returns:
+        list of operations to apply (in order) to convert `current` to
+        `future`. See `create_operation` for more details.
+    """
+    ops = []
+    wip = current.copy()
+
+    # First figure out all the deletions that need to take place
+    for idx, old in enumerate(current):
+        if old not in future:
+            ops.append(create_operation(OpType.DEL, value=old))
+            apply_op(ops[-1], wip)
+
+    # Then figure out all the movements and deletions
+    for idx, (old, new) in enumerate(zip_longest(current, future)):
+        if new is not None and new not in current:
+            anchor = wip[idx] if idx < len(wip) else None
+            ops.append(create_operation(OpType.ADD, value=new, anchor=anchor))
+            apply_op(ops[-1], wip)
+
+        if old is not None and new is None:
+            # The deletion ops have already been recorded
+            continue
+
+        idx_before = wip.index(new)
+
+        if idx_before != idx:
+            # If an item is moved back, then the offset will be increased
+            anchor = wip[idx] if idx < len(wip) else None
+            ops.append(create_operation(OpType.MOVE, value=new, anchor=anchor))
+            apply_op(ops[-1], wip)
+
+    return ops
 
 
 if __name__ == "__main__":
@@ -57,54 +102,20 @@ if __name__ == "__main__":
     ]
 
     for before, after, operation in states:
-        # - [ ] First process all the deletions
         console(f"--- {operation.capitalize()} ---")
         console(f"{before}")
 
-        ops = []
-        offsets = {}
-        wip = before.copy()
-
-        # First figure out all the deletions that need to take place
-        for idx, old in enumerate(before):
-            if old not in after:
-                ops.append(create_ops(Type.DEL, value=old))
-                apply_op(ops[-1], wip)
-
-        # Then figure out all the movements and deletions
-        for idx, (old, new) in enumerate(zip_longest(before, after)):
-            if new is not None and new not in before:
-                anchor = wip[idx] if idx < len(wip) else None
-                ops.append(create_ops(Type.ADD, value=new, anchor=anchor))
-                apply_op(ops[-1], wip)
-
-            if old is not None and new is None:
-                # The deletion ops have already been recorded
-                continue
-
-            idx_before = wip.index(new)
-
-            if idx_before != idx:
-                # If an item is moved back, then the offset will be increased
-                anchor = wip[idx] if idx < len(wip) else None
-                ops.append(create_ops(Type.MOVE, value=new, anchor=anchor))
-                apply_op(ops[-1], wip)
-
+        # Create operations by comparing before and after lists
+        ops = create_ops(before, after)
         console(ops)
 
         # Check that applying the operations works properly
-        start = before.copy()
-
+        target = before.copy()
         for op in ops:
-            if op["op"] == "DEL":
-                apply_op(op, start)
+            apply_op(op, target)
 
-        for op in ops:
-            if op["op"] != "DEL":
-                apply_op(op, start)
-
-        console(f"Success: {start == after} \n{start}")
-        if start != after:
+        console(f"Success: {target == after} \n{target}")
+        if target != after:
             console(f"{after}")
 
         console("")
