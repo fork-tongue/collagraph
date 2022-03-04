@@ -34,7 +34,8 @@ def apply_op(op: Dict, it: Iterable):
         new_idx = it.index(op["anchor"])
         it.insert(new_idx, val)
     elif op["op"] == Type.DEL.value:
-        it.pop(op["idx"])
+        it.remove(op["value"])
+        # it.pop(op["idx"])
     elif op["op"] == Type.ADD.value:
         idx = it.index(op["anchor"]) if "anchor" in op else len(it)
         it.insert(idx, op["value"])
@@ -56,23 +57,29 @@ if __name__ == "__main__":
     ]
 
     for before, after, operation in states:
+        # - [ ] First process all the deletions
         console(f"--- {operation.capitalize()} ---")
         console(f"{before}")
 
         ops = []
         offsets = {}
         wip = before.copy()
+
+        # First figure out all the deletions that need to take place
+        for idx, old in enumerate(before):
+            if old not in after:
+                ops.append(create_ops(Type.DEL, value=old))
+                apply_op(ops[-1], wip)
+
+        # Then figure out all the movements and deletions
         for idx, (old, new) in enumerate(zip_longest(before, after)):
             if new is not None and new not in before:
                 anchor = wip[idx] if idx < len(wip) else None
                 ops.append(create_ops(Type.ADD, value=new, anchor=anchor))
                 apply_op(ops[-1], wip)
 
-            if old is not None and old not in after:
-                ops.append(create_ops(Type.DEL, value=old, idx=wip.index(old)))
-                apply_op(ops[-1], wip)
-
             if old is not None and new is None:
+                # The deletion ops have already been recorded
                 continue
 
             idx_before = wip.index(new)
@@ -87,8 +94,14 @@ if __name__ == "__main__":
 
         # Check that applying the operations works properly
         start = before.copy()
+
         for op in ops:
-            apply_op(op, start)
+            if op["op"] == "DEL":
+                apply_op(op, start)
+
+        for op in ops:
+            if op["op"] != "DEL":
+                apply_op(op, start)
 
         console(f"Success: {start == after} \n{start}")
         if start != after:
