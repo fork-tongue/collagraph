@@ -390,11 +390,20 @@ class PyGui:
         def is_new(val, other, key):
             return val != other.get(key)
 
+        def is_new_function(val, other, key):
+            alt = other.get(key)
+            if hasattr(alt, "__code__") and hasattr(val, "__code__"):
+                if hasattr(alt.__code__, "co_code") and hasattr(
+                    val.__code__, "co_code"
+                ):
+                    return alt.__code__.co_code != val.__code__.co_code
+            return alt != other
+
         # Remove old event listeners
         for name, val in prev_props.items():
             if not is_event(name):
                 continue
-            if name not in next_props or not is_new(val, next_props, name):
+            if name not in next_props or not is_new_function(val, next_props, name):
                 continue
 
             event_type = name.lower()[2:]
@@ -425,7 +434,7 @@ class PyGui:
         for name in next_props:
             if not is_event(name):
                 continue
-            if not is_new(prev_props.get(name), next_props, name):
+            if not is_new_function(prev_props.get(name), next_props, name):
                 continue
 
             event_type = name.lower()[2:]
