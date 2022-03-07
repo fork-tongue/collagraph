@@ -1,7 +1,6 @@
 from weakref import ref
 
 from observ import reactive
-import pytest
 
 from pygui import create_element as h, EventLoopType, PyGui
 from pygui.renderers import Renderer
@@ -64,20 +63,18 @@ class CustomElementRenderer(Renderer):
         return NotImplemented
 
 
-@pytest.mark.xfail
 def test_reconcile_by_key():
     states = [
         (["a", "b", "c"], ["c", "a", "b"], "shift right"),  # shift right
         (["a", "b", "c"], ["b", "c", "a"], "shift left"),  # shift left
         (["a", "b", "c"], ["c", "b", "a"], "reverse order"),  # reverse order
         (["a", "b", "c"], ["a", "b"], "remove last"),  # remove last
+        (["a", "b", "c"], ["a", "c"], "remove from middle"),  # remove from middle
+        (["a", "b", "c"], ["b", "c"], "remove first"),  # remove first
         (["a", "b", "c"], ["a", "b", "c", "d"], "add last"),  # add last
         (["a", "b", "c"], ["a", "b", "d", "c"], "add in middle"),  # add in middle
         (["a", "b", "c"], ["d", "a", "b", "c"], "add begin"),  # add begin
         (["a", "b", "c", "d"], ["e", "f"], "replace completely"),  # replace completely
-        # FIXME: the following two cases still fail
-        (["a", "b", "c"], ["a", "c"], "remove from middle"),  # remove from middle
-        (["a", "b", "c"], ["b", "c"], "remove first"),  # remove first
     ]
 
     def Items(props):
@@ -120,5 +117,4 @@ def test_reconcile_by_key():
             except ValueError:
                 pass
 
-        # FIXME: This is where it still fails...
         assert len(after) == len(items.children)

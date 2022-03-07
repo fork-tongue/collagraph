@@ -1,7 +1,7 @@
 from importlib.metadata import version
 from itertools import zip_longest
 import logging
-import queue
+from queue import SimpleQueue
 import time
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
@@ -42,7 +42,7 @@ class PyGui:
             import asyncio
 
             def request_flush():
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_event_loop_policy().get_event_loop()
                 loop.call_soon(scheduler.flush)
 
             scheduler.register_request_flush(request_flush)
@@ -58,7 +58,7 @@ class PyGui:
         self._render_callback: Callable = None
         self._request = None
         self._qt_timer = None
-        self._work = queue.SimpleQueue()
+        self._work = SimpleQueue()
 
     def render(self, element: VNode, container, callback=None):
         self._wip_root = Fiber(
@@ -190,9 +190,8 @@ class PyGui:
         logger.info(f"state update: {fiber.type}")
         # Clear the watcher that triggered the update
         fiber.watcher = None
-        # TODO: maybe check that the wip_root is None?
-        # TODO: just queue the work instead?
-        # assert wip_root is None
+
+        # Request an update to start building/update the wip fiber tree
         self._wip_root = (
             self._current_root and self._current_root.alternate
         ) or Fiber()
@@ -299,8 +298,6 @@ class PyGui:
                 new_fiber.effect_tag = EffectTag.PLACEMENT
                 new_fiber.watcher = None
                 new_fiber.move = False
-                # new_fiber.move = False
-                # new_fiber.move = new_fiber.key in operations
                 new_fiber.anchor = operations.get(new_fiber.key)
                 # NOTE: If there is an old_fiber, then it will be
                 # marked for deletion in the next if statement
@@ -309,8 +306,6 @@ class PyGui:
                 old_fiber.effect_tag = EffectTag.DELETION
                 self._deletions.append(old_fiber)
 
-            if new_fiber:
-                new_fiber.index = idx
             # And we add it to the fiber tree setting it either as a child or as a
             # sibling, depending on whether it’s the first child or not.
             if not wip_fiber.child:
@@ -319,7 +314,6 @@ class PyGui:
                 # NOTE: `new_fiber` can still be None here!
                 prev_sibling.sibling = new_fiber
 
-            # if new_fiber:
             prev_sibling = new_fiber
 
     def commit_root(self):
@@ -348,11 +342,6 @@ class PyGui:
         a fiber with a dom element that can be removed.
         Clears the child and dom attributes of the fiber.
         """
-        # TODO: there might be a problem somewhere else for this check
-        #       to be necessary...
-        if not fiber:
-            return
-
         if dom := fiber.dom:
             self.renderer.remove(dom, dom_parent)
             fiber.dom = None
