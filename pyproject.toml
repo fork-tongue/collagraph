@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "pygui"
+version = "0.1.0"
+description = "Reactive user interfaces"
+authors = ["Berend Klein Haneveld <berendkleinhaneveld@gmail.com>", "Korijn van Golen <korijn@gmail.com>"]
+license = "MIT"
+homepage = "https://github.com/fork-tongue/pygui"
+readme = "README.md"
+
+[tool.poetry.extras]
+pygfx = ["pygfx"]
+pyside = ["PySide6"]
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+observ = "~0.9.1"
+pygfx = { version = "~0.1.7", optional = true }
+PySide6 = { version = "*", python = "<3.11", optional = true }
+
+[tool.poetry.dev-dependencies]
+black = "*"
+flake8 = "*"
+flake8-black = "*"
+flake8-import-order = "*"
+flake8-print = "*"
+pre-commit = "*"
+pytest = "*"
+pytest-cov = "*"
+twine = "*"
+
+[build-system]
+requires = ["poetry>=1.0.0"]
+build-backend = "poetry.masonry.api"
