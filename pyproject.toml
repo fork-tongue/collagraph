@@ -13,9 +13,8 @@ pyside = ["PySide6"]
 
 [tool.poetry.dependencies]
 python = ">=3.8"
-# NOTE: When observ is updated, the python marker can be removed
-observ = { version = "~0.9.0", python = "<3.11" }
-pygfx = { git = "https://github.com/pygfx/pygfx.git", rev = "main", optional = true }
+observ = "~0.9.1"
+pygfx = { version = "~0.1.7", optional = true }
 PySide6 = { version = "*", python = "<3.11", optional = true }
 
 [tool.poetry.dev-dependencies]

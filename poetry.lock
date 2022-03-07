@@ -352,11 +352,11 @@ python-versions = ">=3.8"
 
 [[package]]
 name = "observ"
-version = "0.9.0"
+version = "0.9.1"
 description = "Reactive state management for Python"
 category = "main"
 optional = false
-python-versions = ">=3.7,<3.11"
+python-versions = ">=3.7"
 
 [package.dependencies]
 patchdiff = ">=0.3.3,<0.4.0"
@@ -473,23 +473,16 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "pygfx"
-version = "0.1.6"
+version = "0.1.7"
 description = "A threejs-like render engine based on wgpu"
 category = "main"
 optional = true
 python-versions = ">=3.7.0"
-develop = false
 
 [package.dependencies]
 Jinja2 = "*"
 numpy = "*"
 wgpu = ">=0.7.4,<0.8.0"
-
-[package.source]
-type = "git"
-url = "https://github.com/pygfx/pygfx.git"
-reference = "main"
-resolved_reference = "8b4e490933fc8e6d9a99d9b5c606c5c6d16fafd6"
 
 [[package]]
 name = "pygments"
@@ -797,7 +790,7 @@ pyside = ["PySide6"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8"
-content-hash = "3df523ab2b30820e2c0b8b646187392bc384855b0f846a06bbc6f590bb23cc6f"
+content-hash = "f9307c532ff9a1753d42e955702ca548e09502b939f284d178a15d20b8462950"
 
 [metadata.files]
 atomicwrites = [
@@ -1106,8 +1099,8 @@ numpy = [
     {file = "numpy-1.22.2.zip", hash = "sha256:076aee5a3763d41da6bef9565fdf3cb987606f567cd8b104aded2b38b7b47abf"},
 ]
 observ = [
-    {file = "observ-0.9.0-py3-none-any.whl", hash = "sha256:ba4978b20dfc548726dccaef44aa90cd6740f6f8e5fffb139e91ab63157c2fc8"},
-    {file = "observ-0.9.0.tar.gz", hash = "sha256:7d44d07d36320bc7c2858b22900e8d85eb867b8a1412beca23b73090fef296cc"},
+    {file = "observ-0.9.1-py3-none-any.whl", hash = "sha256:123818484845f3576200d6ff1383d921bd610f1c9c873ab97817a0928c9da9b9"},
+    {file = "observ-0.9.1.tar.gz", hash = "sha256:f4ab0f1abd8acd79ec154d12785757cfb1b06114d255c1b4d5fd6e5f288799d5"},
 ]
 packaging = [
     {file = "packaging-21.3-py3-none-any.whl", hash = "sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522"},
@@ -1153,7 +1146,10 @@ pyflakes = [
     {file = "pyflakes-2.4.0-py2.py3-none-any.whl", hash = "sha256:3bb3a3f256f4b7968c9c788781e4ff07dce46bdf12339dcda61053375426ee2e"},
     {file = "pyflakes-2.4.0.tar.gz", hash = "sha256:05a85c2872edf37a4ed30b0cce2f6093e1d0581f8c19d7393122da7e25b2b24c"},
 ]
-pygfx = []
+pygfx = [
+    {file = "pygfx-0.1.7-py3-none-any.whl", hash = "sha256:33103b77c02f15d59cec53c1b371cceb1a457f0fce50cda864b08d24f8e23ed8"},
+    {file = "pygfx-0.1.7.tar.gz", hash = "sha256:7c444daf2ec3252a9663ae77017fb1627c8a4d36d50735da1c7426e82a6d1673"},
+]
 pygments = [
     {file = "Pygments-2.11.2-py3-none-any.whl", hash = "sha256:44238f1b60a76d78fc8ca0528ee429702aae011c265fe6a8dd8b63049ae41c65"},
     {file = "Pygments-2.11.2.tar.gz", hash = "sha256:4e426f72023d88d03b2fa258de560726ce890ff3b630f88c21cbb8b2503b8c6a"},
