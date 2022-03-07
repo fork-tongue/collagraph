@@ -27,7 +27,6 @@ flake8-print = "*"
 pre-commit = "*"
 pytest = "*"
 pytest-cov = "*"
-rich = { version = "*", optional = true, python = "<4.0" }
 twine = "*"
 
 [build-system]
