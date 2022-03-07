@@ -2,7 +2,7 @@
 name = "pygui"
 version = "0.1.0"
 description = "Reactive user interfaces"
-authors = ["Korijn van Golen <korijn@gmail.com>", "Berend Klein Haneveld <berendkleinhaneveld@gmail.com>"]
+authors = ["Berend Klein Haneveld <berendkleinhaneveld@gmail.com>", "Korijn van Golen <korijn@gmail.com>"]
 license = "MIT"
 homepage = "https://github.com/fork-tongue/pygui"
 readme = "README.md"
