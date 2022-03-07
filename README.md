@@ -3,12 +3,6 @@
 
 # Pygui 🚀
 
-## To do
+Reactive user interfaces.
 
-- [ ] Render functions
-- [ ] Reconciler
-  - [ ] pygfx backend
-  - [ ] PySide6 (or Qt in general?) backend
-- [ ] Component abstraction
-  - [ ] Lifecycle
-- [ ] Complete this to do list
+Currently in alpha.
