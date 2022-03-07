@@ -155,7 +155,9 @@ if __name__ == "__main__":
     gui = PyGui(renderer=PygfxRenderer(), event_loop_type=EventLoopType.QT)
 
     # Should be possible to create this element
-    # by rendering JSX to dict...
+    # by rendering JSX to dict.
+    # Jinja supports rendering templates to Python objects
+    # so could be an interesting starting place.
     element = h(
         "Group",
         {
