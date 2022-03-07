@@ -47,7 +47,9 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
 
 from .dict_renderer import DictRenderer
 
-try:  # pragma: no cover
-    from .pygfx_renderer import PygfxRenderer
+try:
+    import pygfx
 except ImportError:  # pragma: no cover
     pass
+else:
+    from .pygfx_renderer import PygfxRenderer  # pragma: no cover
