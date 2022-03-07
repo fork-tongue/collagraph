@@ -359,6 +359,7 @@ class PyGui:
         else:
             self.commit_deletion(fiber.child, dom_parent)
         fiber.child = None
+        fiber.sibling = None
 
     def commit_work(self, fiber: Fiber):
         if not fiber:
