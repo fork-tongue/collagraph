@@ -551,7 +551,7 @@ def equivalent_functions(a: Callable, b: Callable):
 
         return a == b
 
-    return equivalent_code(a.__code__, b.__code__)
+    return equivalent_code(a.__code__, b.__code__) and equivalent_closure_values(a, b)
 
 
 def equivalent_code(a, b):
@@ -585,5 +585,19 @@ def equivalent_code(a, b):
         attr_b = getattr(b, attr, None)
         if attr_a != attr_b:
             return False
+
+    return True
+
+
+def equivalent_closure_values(a, b):
+    """Compare the cell contents of the __closure__ attribute for the given
+    functions. This method assumes that the code for a and be is already
+    equivalent."""
+    if (closure_a := getattr(a, "__closure__", None)) and (
+        closure_b := getattr(b, "__closure__", None)
+    ):
+        values_a = [cell.cell_contents for cell in closure_a]
+        values_b = [cell.cell_contents for cell in closure_b]
+        return values_a == values_b
 
     return True

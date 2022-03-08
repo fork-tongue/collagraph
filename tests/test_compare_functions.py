@@ -1,7 +1,5 @@
 from functools import partial
 
-import pytest
-
 from pygui import equivalent_functions
 
 
@@ -33,7 +31,7 @@ def test_compare_functions():
     assert not equivalent_functions(a, lambda: val + 1)
 
 
-def test_lambda_functions():
+def test_lambda_functions_with_closures():
     collection = {}
 
     def create(number):
@@ -42,7 +40,8 @@ def test_lambda_functions():
     for x in range(2):
         create(x)
 
-    assert equivalent_functions(collection[0], collection[1])
+    assert collection[0]() != collection[1]()
+    assert not equivalent_functions(collection[0], collection[1])
 
 
 def test_partial_functions():
@@ -93,7 +92,6 @@ def test_similar_lambda_functions():
     assert not equivalent_functions(a, b)
 
 
-@pytest.mark.xfail
 def test_closures():
     def outer(value):
         val = value
