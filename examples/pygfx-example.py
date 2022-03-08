@@ -24,7 +24,6 @@ VNodes are essentially a description of the to-be-displayed item.
       objects.
 
 """
-import logging
 import random
 
 import pygfx as gfx
@@ -33,45 +32,28 @@ from wgpu.gui.auto import run, WgpuCanvas
 from pygui import create_element as h, EventLoopType, PyGui
 from pygui.renderers import PygfxRenderer
 
-try:
-    # If rich is available, use it to improve (traceback) logs
-    from rich.logging import RichHandler
-    from rich.traceback import install
-    import shutil
-
-    terminal_width = shutil.get_terminal_size((100, 20)).columns - 2
-    install(width=terminal_width)
-
-    FORMAT = "%(message)s"
-    logging.basicConfig(
-        level="WARN",
-        format=FORMAT,
-        datefmt="[%X]",
-        handlers=[RichHandler(rich_tracebacks=True)],
-    )
-except ModuleNotFoundError:
-    pass
-
-
-logger = logging.getLogger(__name__)
-
 
 class SelectableObjectsCanvas(WgpuCanvas):
-    def handle_event(self, event):
-        if event["event_type"] == "pointer_down":
-            info = renderer.get_pick_info((event["x"], event["y"]))
-            wobject = info["world_object"]
-            if wobject:
-                if handle_event := getattr(wobject, "handle_event", None):
-                    handle_event({"event_type": "click"})
+    def _object_under_pointer(self, event):
+        info = renderer.get_pick_info((event["x"], event["y"]))
+        return info["world_object"]
 
-        super().handle_event(event)
+    def handle_click(self, event):
+        if wobject := self._object_under_pointer(event):
+            if handle_event := getattr(wobject, "handle_event", None):
+                handle_event({"event_type": "click"})
+
+    def handle_move(self, event):
+        if wobject := self._object_under_pointer(event):
+            if handle_event := getattr(wobject, "handle_event", None):
+                handle_event({"event_type": "hover"})
 
 
 sphere_geom = gfx.sphere_geometry(radius=0.5)
 materials = {
-    False: gfx.MeshPhongMaterial(color=[1, 1, 1]),
-    True: gfx.MeshPhongMaterial(color=[1, 0, 0]),
+    "default": gfx.MeshPhongMaterial(color=[1, 1, 1]),
+    "selected": gfx.MeshPhongMaterial(color=[1, 0, 0]),
+    "hovered": gfx.MeshPhongMaterial(color=[1, 0.6, 0]),
 }
 
 
@@ -80,21 +62,29 @@ def PointCloud(props):
 
     # Set some default values for props
     props.setdefault("selected", -1)
+    props.setdefault("hovered", -1)
     props.setdefault("count", 50)
 
+    def set_hovered(index):
+        props["hovered"] = index
+
     def set_selected(index):
-        logger.debug(f"select: {index}")
         if props["selected"] == index:
             props["selected"] = -1
         else:
             props["selected"] = index
 
-    def random_point(index, selected):
+    def random_point(index, selected, hovered):
+        material = materials["default"]
+        if index == selected:
+            material = materials["selected"]
+        elif index == hovered:
+            material = materials["hovered"]
         return h(
             "Mesh",
             {
                 "geometry": sphere_geom,
-                "material": materials[index == selected],
+                "material": material,
                 "position": [
                     random.randint(-10, 10),
                     random.randint(-10, 10),
@@ -102,16 +92,19 @@ def PointCloud(props):
                 ],
                 "key": index,
                 "onClick": lambda event: set_selected(index),
+                "onHover": lambda event: set_hovered(index),
             },
         )
 
     selected = props["selected"]
+    hovered = props["hovered"]
+
     number_of_points = props["count"]
 
     return h(
         "Group",
         props,
-        *[random_point(i, selected) for i in range(number_of_points)],
+        *[random_point(i, selected, hovered) for i in range(number_of_points)],
     )
 
 
@@ -119,7 +112,6 @@ def Landmark(props):
     props.setdefault("selected", False)
 
     def toggle():
-        logger.debug("toggle")
         props["selected"] = not props["selected"]
 
     return h(
@@ -145,8 +137,16 @@ def Landmark(props):
 
 if __name__ == "__main__":
     canvas = SelectableObjectsCanvas(size=(600, 400))
+    canvas.add_event_handler(canvas.handle_move, "pointer_move")
+    canvas.add_event_handler(canvas.handle_click, "pointer_down")
+    # Newer releases of pygfx don't need the following patch for Qt autogui
+    try:
+        canvas.setMouseTracking(True)
+        canvas._subwidget.setMouseTracking(True)
+    except ValueError:
+        pass
     renderer = gfx.renderers.WgpuRenderer(canvas)
-    camera = gfx.PerspectiveCamera(70, 16 / 9)
+    camera = gfx.PerspectiveCamera(60, 16 / 9)
     camera.position.z = 15
 
     controls = gfx.OrbitControls(camera.position.clone())
@@ -168,7 +168,7 @@ if __name__ == "__main__":
             # When increasing this number, it will take longer
             # and longer for pygfx to create the render pipeline
             # (compiling shaders and such), so be careful...
-            # {"count": 200},
+            # {"count": 20},
         ),
         h(
             Landmark,
