@@ -1,5 +1,7 @@
 from functools import partial
 
+import pytest
+
 from pygui import equivalent_functions
 
 
@@ -88,4 +90,23 @@ def test_similar_lambda_functions():
     # Switching the order around will produce
     # different bytecode, although the other
     b = lambda y: 2 * y  # noqa: E731
+    assert not equivalent_functions(a, b)
+
+
+@pytest.mark.xfail
+def test_closures():
+    def outer(value):
+        val = value
+
+        def inner():
+            return val
+
+        return inner
+
+    a = outer("a")
+    b = outer("b")
+
+    assert a() == "a"
+    assert b() == "b"
+
     assert not equivalent_functions(a, b)
