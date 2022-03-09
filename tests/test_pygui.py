@@ -261,3 +261,85 @@ def test_yield_if_time_is_up_for_lots_of_work(process_events):
     process_events()
 
     assert len(container["children"][0]["children"]) == 1000
+
+
+def test_add_remove_event_handlers(process_events):
+    def Counter(props):
+        def reset():
+            props["count"] = 0
+            # Remove reset handler
+            del props["onReset"]
+
+        props.setdefault("count", 0)
+        if props["count"] > 0:
+            # Add reset handler
+            props["onReset"] = reset
+
+        return h("counter", props)
+
+    gui = PyGui()
+    container = {"type": "root"}
+    state = reactive({"count": 0})
+    gui.render(h(Counter, state), container)
+
+    process_events()
+
+    assert container["children"][0]["attrs"]["count"] == 0
+
+    state["count"] = 1
+    process_events()
+
+    assert container["children"][0]["attrs"]["count"] == 1
+    assert len(container["children"][0]["handlers"]["reset"]) == 1
+
+    # Update state by triggering all listeners, which should trigger a re-render
+    for listener in container["children"][0]["handlers"]["reset"]:
+        listener()
+
+    process_events()
+
+    assert "onReset" not in state
+    assert len(container["children"][0]["handlers"]["reset"]) == 0
+
+
+def test_change_event_handler(process_events):
+    def Tick(props):
+        def tick():
+            props["value"] = "Tick"
+            props["onToggle"] = tock
+
+        def tock():
+            props["value"] = "Tock"
+            props["onToggle"] = tick
+
+        props.setdefault("onToggle", tock)
+        props.setdefault("value", "...")
+        return h("counter", props)
+
+    gui = PyGui()
+    container = {"type": "root"}
+    state = reactive({"count": 0})
+    gui.render(h(Tick, state), container)
+
+    process_events()
+
+    assert container["children"][0]["attrs"]["value"] == "..."
+    assert len(container["children"][0]["handlers"]["toggle"]) == 1
+
+    # Update state by triggering all listeners, which should trigger a re-render
+    for listener in container["children"][0]["handlers"]["toggle"]:
+        listener()
+
+    process_events()
+
+    assert container["children"][0]["attrs"]["value"] == "Tock"
+    assert len(container["children"][0]["handlers"]["toggle"]) == 1
+
+    # Update state by triggering all listeners, which should trigger a re-render
+    for listener in container["children"][0]["handlers"]["toggle"]:
+        listener()
+
+    process_events()
+
+    assert container["children"][0]["attrs"]["value"] == "Tick"
+    assert len(container["children"][0]["handlers"]["toggle"]) == 1

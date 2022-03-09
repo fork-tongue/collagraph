@@ -1,3 +1,4 @@
+from functools import partial
 from importlib.metadata import version
 from itertools import zip_longest
 import logging
@@ -252,7 +253,6 @@ class PyGui:
                         anchor = first(old_fibers, match, op["anchor"])
                         operations[op["value"]] = anchor.dom
 
-        # print(f"ordered old keys: {[fib.key for fib in ordered_old_fibers if fib]}")
         # In here, all the 'new' elements are compared to the old/current fiber/state
         prev_sibling = None
         for idx, (element, old_fiber) in enumerate(
@@ -390,11 +390,17 @@ class PyGui:
         def is_new(val, other, key):
             return val != other.get(key)
 
+        def is_equivalent_event_handler(val, other, key):
+            alt = other.get(key)
+            return equivalent_functions(val, alt)
+
         # Remove old event listeners
         for name, val in prev_props.items():
             if not is_event(name):
                 continue
-            if name not in next_props or not is_new(val, next_props, name):
+            if name in next_props and is_equivalent_event_handler(
+                val, next_props, name
+            ):
                 continue
 
             event_type = name.lower()[2:]
@@ -425,7 +431,7 @@ class PyGui:
         for name in next_props:
             if not is_event(name):
                 continue
-            if not is_new(prev_props.get(name), next_props, name):
+            if is_equivalent_event_handler(prev_props.get(name), next_props, name):
                 continue
 
             event_type = name.lower()[2:]
@@ -527,3 +533,71 @@ def create_ops(current, future):
             apply_op(ops[-1], wip)
 
     return ops
+
+
+def equivalent_functions(a: Callable, b: Callable):
+    """Returns whether function a is equivalent to function b.
+
+    ``functools.partial`` functions are also supported (but only when both
+    argument a and b are partial).
+    """
+    if not hasattr(a, "__code__") or not hasattr(b, "__code__"):
+        if isinstance(a, partial) and isinstance(b, partial):
+            return (
+                a.args == b.args
+                and a.keywords == b.keywords
+                and equivalent_functions(a.func, b.func)
+            )
+
+        return a == b
+
+    return equivalent_code(a.__code__, b.__code__) and equivalent_closure_values(a, b)
+
+
+def equivalent_code(a, b):
+    """Returns True if a and b are equivalent code.
+
+    In order to determine this, a number of properties are compared that
+    should be equal between similar functions.
+    It checks all co_* props of __code__ (as seen in Python 3.9), except for:
+      * co_varnames
+      * co_firstlineno
+      * co_lnotab
+      * co_name
+    because those vars can differ without having any impact on the equivalency
+    of the functions themselves.
+    """
+    for attr in [
+        "co_argcount",
+        "co_cellvars",
+        "co_code",
+        "co_consts",
+        "co_filename",
+        "co_flags",
+        "co_freevars",
+        "co_kwonlyargcount",
+        "co_names",
+        "co_nlocals",
+        "co_posonlyargcount",
+        "co_stacksize",
+    ]:
+        attr_a = getattr(a, attr, None)
+        attr_b = getattr(b, attr, None)
+        if attr_a != attr_b:
+            return False
+
+    return True
+
+
+def equivalent_closure_values(a, b):
+    """Compare the cell contents of the __closure__ attribute for the given
+    functions. This method assumes that the code for a and be is already
+    equivalent."""
+    if (closure_a := getattr(a, "__closure__", None)) and (
+        closure_b := getattr(b, "__closure__", None)
+    ):
+        values_a = [cell.cell_contents for cell in closure_a]
+        values_b = [cell.cell_contents for cell in closure_b]
+        return values_a == values_b
+
+    return True
