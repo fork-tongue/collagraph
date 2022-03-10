@@ -5,4 +5,6 @@
 
 Reactive user interfaces.
 
+> The word [Collagraphy](https://en.wikipedia.org/wiki/Collagraphy) is derived from the Greek word _koll_ or _kolla_, meaning glue, and graph, meaning the activity of drawing.
+
 Currently in alpha.
