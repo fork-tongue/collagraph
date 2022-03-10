@@ -2,8 +2,8 @@ from weakref import ref
 
 from observ import reactive
 
-from pygui import create_element as h, EventLoopType, PyGui
-from pygui.renderers import Renderer
+from collagraph import Collagraph, create_element as h, EventLoopType
+from collagraph.renderers import Renderer
 
 
 class CustomElement:
@@ -87,7 +87,7 @@ def test_reconcile_by_key():
     renderer = CustomElementRenderer()
 
     for before, after, name in states:
-        gui = PyGui(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+        gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
         container = CustomElement()
         container.type = "root"
         container.children = []

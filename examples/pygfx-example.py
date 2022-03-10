@@ -29,8 +29,8 @@ import random
 import pygfx as gfx
 from wgpu.gui.auto import run, WgpuCanvas
 
-from pygui import create_element as h, EventLoopType, PyGui
-from pygui.renderers import PygfxRenderer
+from collagraph import Collagraph, create_element as h, EventLoopType
+from collagraph.renderers import PygfxRenderer
 
 
 class SelectableObjectsCanvas(WgpuCanvas):
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     controls = gfx.OrbitControls(camera.position.clone())
     controls.add_default_event_handlers(canvas, camera)
 
-    gui = PyGui(renderer=PygfxRenderer(), event_loop_type=EventLoopType.QT)
+    gui = Collagraph(renderer=PygfxRenderer(), event_loop_type=EventLoopType.QT)
 
     # Should be possible to create this element
     # by rendering JSX to dict.

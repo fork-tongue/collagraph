@@ -12,8 +12,8 @@ from .renderers import DictRenderer, Renderer
 from .types import EffectTag, EventLoopType, Fiber, OpType, VNode
 
 
-__all__ = ["create_element", "PyGui", "EventLoopType"]
-__version__ = version("pygui")
+__all__ = ["create_element", "Collagraph", "EventLoopType"]
+__version__ = version("collagraph")
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ def create_element(type, props=None, *children) -> VNode:
     return VNode(type, reactive(props or {}), children or tuple(), key)
 
 
-class PyGui:
+class Collagraph:
     def __init__(
         self,
         renderer: Renderer = None,

@@ -51,7 +51,7 @@ jobs:
       - name: Install dependencies
         run: poetry install
       - name: Test
-        run: poetry run pytest --cov=pygui --cov-report=term-missing
+        run: poetry run pytest --cov=collagraph --cov-report=term-missing
 
   build:
     name: Build and test wheel
