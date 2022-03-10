@@ -1,11 +1,11 @@
 from observ import reactive
 
-from pygui import create_element as h, EventLoopType, PyGui
-from pygui.renderers import DictRenderer
+from collagraph import Collagraph, create_element as h, EventLoopType
+from collagraph.renderers import DictRenderer
 
 
 def test_basic_dict_renderer():
-    gui = PyGui(event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(event_loop_type=EventLoopType.SYNC)
 
     element = h("app")
 
@@ -21,10 +21,10 @@ def test_lots_of_elements():
 
     When using a recursive strategy to process fibers, this will result in a
     stack of 1000 calls to `commit_work` which triggers a RecursionError.
-    This test makes sure that `pygui` will not trigger any RecursionError.
+    This test makes sure that `collagraph` will not trigger any RecursionError.
     """
     renderer = DictRenderer()
-    gui = PyGui(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
 
     element = h("app", {}, *[h("node")] * 1000)
@@ -35,7 +35,7 @@ def test_lots_of_elements():
 
 def test_reactive_element():
     renderer = DictRenderer()
-    gui = PyGui(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive({"counter": 0})
     element = h("counter", state)
@@ -64,7 +64,7 @@ def test_reactive_element_with_events(process_events):
         )
 
     renderer = DictRenderer()
-    gui = PyGui(renderer=renderer, event_loop_type=EventLoopType.DEFAULT)
+    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.DEFAULT)
     container = {"type": "root"}
     state = reactive({"count": 0})
     element = h(Counter, state)
@@ -105,7 +105,7 @@ def test_delete_item_with_children_and_siblings(process_events):
         )
 
     renderer = DictRenderer()
-    gui = PyGui(renderer=renderer, event_loop_type=EventLoopType.DEFAULT)
+    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.DEFAULT)
     container = {"type": "root"}
     state = reactive(
         {
@@ -151,7 +151,7 @@ def test_deep_reactive_element():
         )
 
     renderer = DictRenderer()
-    gui = PyGui(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive({"counter": {"count": 0}})
     element = h(Counter, state)
@@ -177,7 +177,7 @@ def test_remove_attribute():
         )
 
     renderer = DictRenderer()
-    gui = PyGui(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive({"foo": True})
     element = h("foo", state)
@@ -201,7 +201,7 @@ def test_render_callback(process_events):
         nonlocal callback_counter
         callback_counter += 1
 
-    gui = PyGui()
+    gui = Collagraph()
     element = h("app")
     container = {"type": "root"}
     gui.render(element, container, callback=bump)
@@ -221,7 +221,7 @@ def test_update_element_with_event(process_events):
 
         return h("counter", props)
 
-    gui = PyGui()
+    gui = Collagraph()
     container = {"type": "root"}
     state = reactive({"count": 0})
     gui.render(h(Counter, state), container)
@@ -252,7 +252,7 @@ def test_yield_if_time_is_up_for_lots_of_work(process_events):
     This is probably too much work to process within the deadline
     so we can test whether the _next_unit_of_work is scheduled.
     """
-    gui = PyGui()
+    gui = Collagraph()
     container = {"type": "root"}
 
     element = h("app", {}, *[h("node")] * 1000)
@@ -277,7 +277,7 @@ def test_add_remove_event_handlers(process_events):
 
         return h("counter", props)
 
-    gui = PyGui()
+    gui = Collagraph()
     container = {"type": "root"}
     state = reactive({"count": 0})
     gui.render(h(Counter, state), container)
@@ -316,7 +316,7 @@ def test_change_event_handler(process_events):
         props.setdefault("value", "...")
         return h("counter", props)
 
-    gui = PyGui()
+    gui = Collagraph()
     container = {"type": "root"}
     state = reactive({"count": 0})
     gui.render(h(Tick, state), container)

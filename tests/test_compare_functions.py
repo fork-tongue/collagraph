@@ -1,6 +1,6 @@
 from functools import partial
 
-from pygui import equivalent_functions
+from collagraph import equivalent_functions
 
 
 def test_compare_functions():

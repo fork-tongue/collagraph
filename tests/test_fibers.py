@@ -1,13 +1,13 @@
 from observ import reactive
 import pytest
 
-from pygui import create_element as h, EventLoopType, PyGui
-from pygui.renderers import DictRenderer
+from collagraph import Collagraph, create_element as h, EventLoopType
+from collagraph.renderers import DictRenderer
 
 
 def test_fiber_reuse_update():
     renderer = DictRenderer()
-    gui = PyGui(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive({"counter": 0})
     element = h("counter", state)
@@ -94,7 +94,7 @@ def test_fiber_element_deletion():
         )
 
     renderer = DictRenderer()
-    gui = PyGui(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive({"count": 2, "start_index": 0})
     element = h(List, state)
@@ -161,7 +161,7 @@ def test_fiber_element_type_change():
         )
 
     renderer = DictRenderer()
-    gui = PyGui(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive({"foo": True})
     element = h(List, state)
