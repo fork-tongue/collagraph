@@ -53,3 +53,11 @@ except ImportError:  # pragma: no cover
     pass
 else:
     from .pygfx_renderer import PygfxRenderer  # pragma: no cover
+
+
+try:
+    import PySide6
+except ImportError:  # pragma: no cover
+    pass
+else:
+    from .pyside_renderer import PySideRenderer
