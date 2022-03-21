@@ -83,7 +83,7 @@ class Collagraph:
             deadline: targetted deadline for until when work can be done. If
                 no deadline is given, then it will be set to 16ms from now.
         """
-        logger.info("Request work")
+        logger.debug("Request work")
 
         # current in ns
         if not deadline:
@@ -188,7 +188,7 @@ class Collagraph:
         return dom
 
     def state_updated(self, fiber: Fiber):
-        logger.info(f"state update: {fiber.type}")
+        logger.debug(f"state update: {fiber.type}")
         # Clear the watcher that triggered the update
         fiber.watcher = None
 
