@@ -46,10 +46,14 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.pyversion }}
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -y -qq
+          sudo apt-get install -y libegl1-mesa
       - name: Install poetry
         run: pip install "poetry>=1.1.12,<1.2"
       - name: Install dependencies
-        run: poetry install  --extras pyside
+        run: poetry install --extras pyside
       - name: Test
         run: poetry run pytest --cov=collagraph --cov-report=term-missing
 
