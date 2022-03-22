@@ -26,6 +26,8 @@ flake8-print = "*"
 pre-commit = "*"
 pytest = "*"
 pytest-cov = "*"
+pytest-qt = "*"
+pytest-xvfb = "*"
 twine = "*"
 
 [build-system]
