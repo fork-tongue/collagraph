@@ -258,7 +258,8 @@ def test_yield_if_time_is_up_for_lots_of_work(process_events):
     element = h("app", {}, *[h("node")] * 1000)
     gui.render(element, container)
 
-    process_events()
+    while gui._wip_root is not None:
+        process_events()
 
     assert len(container["children"][0]["children"]) == 1000
 
