@@ -1,4 +1,13 @@
-from PySide6 import QtCore, QtWidgets
+import pytest
+
+
+try:
+    from PySide6 import QtCore, QtWidgets
+except ImportError:
+    pytest.skip(
+        "skip test for PySide6 renderer when not available", allow_module_level=True
+    )
+
 
 from collagraph import Collagraph, create_element as h, EventLoopType
 from collagraph.renderers import PySideRenderer
