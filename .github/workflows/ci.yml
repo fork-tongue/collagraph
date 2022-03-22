@@ -40,8 +40,6 @@ jobs:
             pyversion: '3.9'
           - name: Linux py310
             pyversion: '3.10'
-    env:
-      DISPLAY: ':99.0'
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.pyversion }}
