@@ -4,6 +4,16 @@ from . import Renderer
 
 
 class PygfxRenderer(Renderer):
+    """Renderer for Pygfx objects"""
+
+    def create_element(self, type: str) -> gfx.WorldObject:
+        """Create pygfx element for the given type"""
+        obj_type = getattr(gfx, type, None)
+        if not obj_type:
+            raise ValueError(f"Can't create element of type: {type}")
+
+        return obj_type()
+
     def insert(
         self,
         el: gfx.WorldObject,
@@ -14,14 +24,6 @@ class PygfxRenderer(Renderer):
 
     def remove(self, el: gfx.WorldObject, parent: gfx.WorldObject):
         parent.remove(el)
-
-    def create_element(self, type: str) -> gfx.WorldObject:
-        """Create pygfx element for the given type"""
-        obj_type = getattr(gfx, type, None)
-        if not obj_type:
-            raise ValueError(f"Can't create element of type: {type}")
-
-        return obj_type()
 
     def set_attribute(self, obj, attr, value):
         if attr == "position" or attr == "scale":
