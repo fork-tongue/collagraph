@@ -108,3 +108,22 @@ def test_closures():
     assert b() == "b"
 
     assert not equivalent_functions(a, b)
+
+
+def test_similar_lambda_function_which_captures_other_function():
+    def double(a):
+        return a * 2
+
+    def other_double(b):
+        return b * 2
+
+    def add(c):
+        return c + 2
+
+    x = lambda a: double(a)  # noqa: E731
+    y = lambda b: other_double(b)  # noqa: E731
+    z = lambda c: add(c)  # noqa: E731
+
+    assert equivalent_functions(x, y)
+    assert not equivalent_functions(x, z)
+    assert not equivalent_functions(y, z)

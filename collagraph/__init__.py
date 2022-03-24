@@ -560,7 +560,6 @@ def equivalent_code(a, b):
     In order to determine this, a number of properties are compared that
     should be equal between similar functions.
     It checks all co_* props of __code__ (as seen in Python 3.9), except for:
-      * co_varnames
       * co_firstlineno
       * co_lnotab
       * co_name
@@ -568,6 +567,7 @@ def equivalent_code(a, b):
     of the functions themselves.
     """
     for attr in [
+        "co_varnames",
         "co_argcount",
         "co_cellvars",
         "co_code",
@@ -583,7 +583,12 @@ def equivalent_code(a, b):
     ]:
         attr_a = getattr(a, attr, None)
         attr_b = getattr(b, attr, None)
-        if attr_a != attr_b:
+        if attr in ["co_freevars", "co_varnames"]:
+            # co_varnames and co_freevars can contain names, which might
+            # be different but should be similar at least in length
+            if len(attr_a) != len(attr_b):
+                return False
+        elif attr_a != attr_b:
             return False
 
     return True
@@ -598,6 +603,15 @@ def equivalent_closure_values(a, b):
     ):
         values_a = [cell.cell_contents for cell in closure_a]
         values_b = [cell.cell_contents for cell in closure_b]
-        return values_a == values_b
+        if len(values_a) != len(values_b):
+            return False
+
+        for a, b in zip(values_a, values_b):
+            if callable(a) and callable(b):
+                if not equivalent_functions(a, b):
+                    return False
+            else:
+                if a != b:
+                    return False
 
     return True
