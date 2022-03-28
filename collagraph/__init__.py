@@ -9,10 +9,17 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 from observ import reactive, scheduler, watch
 
 from .renderers import DictRenderer, Renderer
-from .types import EffectTag, EventLoopType, Fiber, OpType, VNode
+from .types import (
+    Component,
+    EffectTag,
+    EventLoopType,
+    Fiber,
+    OpType,
+    VNode,
+)
 
 
-__all__ = ["create_element", "Collagraph", "EventLoopType"]
+__all__ = ["create_element", "Collagraph", "EventLoopType", "Component"]
 __version__ = version("collagraph")
 
 
@@ -156,7 +163,10 @@ class Collagraph:
     def perform_unit_of_work(self, fiber: Fiber) -> Optional[Fiber]:
         is_function_component = callable(fiber.type)
         if is_function_component:
-            self.update_function_component(fiber)
+            if isinstance(fiber.type, type):
+                self.update_class_component(fiber)
+            else:
+                self.update_function_component(fiber)
         else:
             self.update_host_component(fiber)
 
@@ -169,6 +179,27 @@ class Collagraph:
             if sibling := next_fiber.sibling:
                 return sibling
             next_fiber = next_fiber.parent
+
+    def update_class_component(self, fiber: Fiber):
+        component = fiber.component or fiber.alternate and fiber.alternate.component
+        if not component:
+            component = fiber.type(fiber.props)
+
+        # Attach the component instance to the fiber
+        fiber.component = component
+        fiber.component_watcher = watch(
+            lambda: fiber.component._local_props,
+            lambda: self.state_updated(fiber),
+            deep=True,
+            sync=self.event_loop_type is EventLoopType.SYNC,
+        )
+
+        if fiber.alternate:
+            fiber.alternate.component = None
+            fiber.alternate.component_watcher = None
+
+        children = [component.render()]
+        self.reconcile_children(fiber, children)
 
     def update_function_component(self, fiber: Fiber):
         children = [fiber.type(fiber.props)]
@@ -230,6 +261,7 @@ class Collagraph:
         # Clear the watcher from the old fiber
         if old_fiber and old_fiber.props:
             old_fiber.watcher = None
+            old_fiber.component_watcher = None
 
         def matcher(x, y):
             return x.key == y.key
