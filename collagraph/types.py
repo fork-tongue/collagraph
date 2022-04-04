@@ -79,16 +79,8 @@ class Component(metaclass=ABCMeta):
             return self._local_props[name]
         return super().__getattribute__(name)
 
-    def on_mounted(self):
-        pass
-
     def before_mount(self):
-        """Called right before the component is to be mounted.
-
-        When this method is called, the component has finished setting up its reactive
-        state, but no DOM nodes have been created yet. It is about to execute its DOM
-        render effect for the first time.
-        """
+        """Called right before the component is to be mounted."""
         pass
 
     def mounted(self):
@@ -108,9 +100,7 @@ class Component(metaclass=ABCMeta):
         """Called right before the component is about to update its DOM tree due to a
         reactive state change.
 
-        This metho can be used to access the DOM state before Vue updates the DOM. It is
-        also safe to modify component state inside this method.
-        FIXME: is it really safe though?
+        This method can be used to access the DOM state before the DOM is updated.
         """
         pass
 
