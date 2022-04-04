@@ -54,37 +54,31 @@ def test_component_events():
 
 
 def test_component_basic_lifecycle():
-    lifecycle = []
-
     class SpecialCounter(Counter):
+        lifecycle = []
+
         def __init__(self, props):
             super().__init__(props)
             self.name = props["name"]
             self.children = props.get("children", [])
 
         def before_mount(self):
-            nonlocal lifecycle
-            lifecycle.append(f"{self.name}:before_mount")
+            SpecialCounter.lifecycle.append(f"{self.name}:before_mount")
 
         def mounted(self):
-            nonlocal lifecycle
-            lifecycle.append(f"{self.name}:mounted")
+            SpecialCounter.lifecycle.append(f"{self.name}:mounted")
 
         def before_update(self):
-            nonlocal lifecycle
-            lifecycle.append(f"{self.name}:before_update")
+            SpecialCounter.lifecycle.append(f"{self.name}:before_update")
 
         def updated(self):
-            nonlocal lifecycle
-            lifecycle.append(f"{self.name}:updated")
+            SpecialCounter.lifecycle.append(f"{self.name}:updated")
 
         def before_unmount(self):
-            nonlocal lifecycle
-            lifecycle.append(f"{self.name}:before_unmount")
+            SpecialCounter.lifecycle.append(f"{self.name}:before_unmount")
 
         def unmounted(self):
-            nonlocal lifecycle
-            lifecycle.append(f"{self.name}:unmounted")
+            SpecialCounter.lifecycle.append(f"{self.name}:unmounted")
 
         def render(self):
             return h(
@@ -106,12 +100,21 @@ def test_component_basic_lifecycle():
     gui = Collagraph(event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive(
-        {"counters": [{"name": "parent", "children": [{"name": "child"}]}]}
+        {
+            "counters": [
+                {
+                    "name": "parent",
+                    "children": [
+                        {"name": "child"},
+                    ],
+                },
+            ]
+        }
     )
 
     element = h(Counters, state)
 
-    assert lifecycle == []
+    assert SpecialCounter.lifecycle == []
 
     gui.render(element, container)
 
@@ -122,7 +125,7 @@ def test_component_basic_lifecycle():
     assert counter_a["attrs"]["count"] == 0
     assert counter_b["attrs"]["count"] == 0
 
-    assert lifecycle == [
+    assert SpecialCounter.lifecycle == [
         "parent:before_mount",
         "child:before_mount",
         "child:mounted",
@@ -130,7 +133,7 @@ def test_component_basic_lifecycle():
     ]
 
     # Reset lifecycle
-    lifecycle = []
+    SpecialCounter.lifecycle = []
 
     for i in range(1, 6):
         # Update state by triggering all listeners, which should trigger a re-render
@@ -140,7 +143,7 @@ def test_component_basic_lifecycle():
         assert counter_a["attrs"]["count"] == i
 
     assert (
-        lifecycle
+        SpecialCounter.lifecycle
         == [
             "parent:before_update",
             "parent:updated",
@@ -149,13 +152,13 @@ def test_component_basic_lifecycle():
     )
 
     # Reset lifecycle
-    lifecycle = []
+    SpecialCounter.lifecycle = []
 
     state["counters"] = []
 
     assert len(container["children"][0]["children"]) == 0
 
-    assert lifecycle == [
+    assert SpecialCounter.lifecycle == [
         "parent:before_unmount",
         "child:before_unmount",
         "child:unmounted",
