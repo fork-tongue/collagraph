@@ -14,8 +14,6 @@ class Counter(Component):
         self.count += 1
 
     def render(self):
-        # TODO: instaed of having to do: onBummp: self.bump, do something like:
-        #       def on_bump
         return h("counter", {"count": self.count, "onBump": self.bump})
 
     def __repr__(self):
@@ -53,3 +51,113 @@ def test_component_events():
 
     # Assert that global state hasn't been touched
     assert state["count"] == 0
+
+
+def test_component_basic_lifecycle():
+    lifecycle = []
+
+    class SpecialCounter(Counter):
+        def __init__(self, props):
+            super().__init__(props)
+            self.name = props["name"]
+            self.children = props.get("children", [])
+
+        def before_mount(self):
+            nonlocal lifecycle
+            lifecycle.append(f"{self.name}:before_mount")
+
+        def mounted(self):
+            nonlocal lifecycle
+            lifecycle.append(f"{self.name}:mounted")
+
+        def before_update(self):
+            nonlocal lifecycle
+            lifecycle.append(f"{self.name}:before_update")
+
+        def updated(self):
+            nonlocal lifecycle
+            lifecycle.append(f"{self.name}:updated")
+
+        def before_unmount(self):
+            nonlocal lifecycle
+            lifecycle.append(f"{self.name}:before_unmount")
+
+        def unmounted(self):
+            nonlocal lifecycle
+            lifecycle.append(f"{self.name}:unmounted")
+
+        def render(self):
+            return h(
+                "counter",
+                {"count": self.count, "onBump": self.bump},
+                *[h(SpecialCounter, props) for props in self.children],
+            )
+
+        def __repr__(self):
+            return f"<Counter({self.name}) {self.count}>"
+
+    def Counters(props):
+        props.setdefault("counters", [])
+
+        return h(
+            "counters", props, *[h(SpecialCounter, prop) for prop in props["counters"]]
+        )
+
+    gui = Collagraph(event_loop_type=EventLoopType.SYNC)
+    container = {"type": "root"}
+    state = reactive(
+        {"counters": [{"name": "parent", "children": [{"name": "child"}]}]}
+    )
+
+    element = h(Counters, state)
+
+    assert lifecycle == []
+
+    gui.render(element, container)
+
+    counter_a = container["children"][0]["children"][0]
+    counter_b = container["children"][0]["children"][0]["children"][0]
+    assert counter_a["type"] == "counter"
+    assert counter_b["type"] == "counter"
+    assert counter_a["attrs"]["count"] == 0
+    assert counter_b["attrs"]["count"] == 0
+
+    assert lifecycle == [
+        "parent:before_mount",
+        "child:before_mount",
+        "child:mounted",
+        "parent:mounted",
+    ]
+
+    # Reset lifecycle
+    lifecycle = []
+
+    for i in range(1, 6):
+        # Update state by triggering all listeners, which should trigger a re-render
+        for listener in counter_a["handlers"]["bump"]:
+            listener()
+
+        assert counter_a["attrs"]["count"] == i
+
+    assert (
+        lifecycle
+        == [
+            "parent:before_update",
+            "parent:updated",
+        ]
+        * 5
+    )
+
+    # Reset lifecycle
+    lifecycle = []
+
+    state["counters"] = []
+
+    assert len(container["children"][0]["children"]) == 0
+
+    assert lifecycle == [
+        "parent:before_unmount",
+        "child:before_unmount",
+        "child:unmounted",
+        "parent:unmounted",
+    ]

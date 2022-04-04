@@ -67,6 +67,8 @@ class Collagraph:
         self._request = None
         self._qt_timer = None
         self._work = SimpleQueue()
+        self._mounted = []
+        self._unmounted = []
 
     def render(self, element: VNode, container, callback=None):
         self._wip_root = Fiber(
@@ -163,6 +165,7 @@ class Collagraph:
     def perform_unit_of_work(self, fiber: Fiber) -> Optional[Fiber]:
         is_function_component = callable(fiber.type)
         if is_function_component:
+            # Check if the type is a class
             if isinstance(fiber.type, type):
                 self.update_class_component(fiber)
             else:
@@ -215,7 +218,7 @@ class Collagraph:
 
     def create_dom(self, fiber: Fiber) -> Any:
         dom = self.renderer.create_element(fiber.type)
-        self.update_dom(dom, prev_props={}, next_props=fiber.props)
+        self.update_dom(fiber, dom, prev_props={}, next_props=fiber.props)
         return dom
 
     def state_updated(self, fiber: Fiber):
@@ -364,6 +367,16 @@ class Collagraph:
             work = self._work.get()
             self.commit_work(work)
 
+        for component in reversed(self._unmounted):
+            component.unmounted()
+
+        for component in reversed(self._mounted):
+            component._mounted = True
+            component.mounted()
+
+        self._mounted = []
+        self._unmounted = []
+
         self._current_root = self._wip_root
         self._wip_root = None
 
@@ -374,11 +387,29 @@ class Collagraph:
         a fiber with a dom element that can be removed.
         Clears the child and dom attributes of the fiber.
         """
+
+        if fiber.component:
+            fiber.component.before_unmount()
+            self._unmounted.append(fiber.component)
+
+        def traverse_before_unmount(fiber):
+            if fiber is None:
+                return
+            if fiber.component:
+                if fiber.component not in self._unmounted:
+                    fiber.component.before_unmount()
+                    self._unmounted.append(fiber.component)
+            traverse_before_unmount(fiber.child)
+            traverse_before_unmount(fiber.sibling)
+
+        traverse_before_unmount(fiber.child)
+
         if dom := fiber.dom:
             self.renderer.remove(dom, dom_parent)
             fiber.dom = None
         else:
             self.commit_deletion(fiber.child, dom_parent)
+
         fiber.child = None
         fiber.sibling = None
 
@@ -391,17 +422,23 @@ class Collagraph:
             dom_parent_fiber = dom_parent_fiber.parent
         dom_parent = dom_parent_fiber.dom
 
-        if fiber.effect_tag == EffectTag.PLACEMENT and fiber.dom:
-            self.renderer.insert(fiber.dom, dom_parent, anchor=fiber.anchor)
-        elif fiber.effect_tag == EffectTag.UPDATE and fiber.dom:
-            if fiber.move:
-                self.renderer.remove(fiber.dom, dom_parent)
-                self.renderer.insert(
-                    fiber.dom,
-                    dom_parent,
-                    anchor=fiber.anchor,
-                )
+        if fiber.effect_tag == EffectTag.PLACEMENT:
+            if fiber.component:
+                fiber.component.before_mount()
+                self._mounted.append(fiber.component)
+            if fiber.dom:
+                self.renderer.insert(fiber.dom, dom_parent, anchor=fiber.anchor)
+        elif fiber.effect_tag == EffectTag.UPDATE:
+            if fiber.dom:
+                if fiber.move:
+                    self.renderer.remove(fiber.dom, dom_parent)
+                    self.renderer.insert(
+                        fiber.dom,
+                        dom_parent,
+                        anchor=fiber.anchor,
+                    )
             self.update_dom(
+                fiber,
                 fiber.dom,
                 prev_props=fiber.alternate.props_snapshot,
                 next_props=fiber.props_snapshot,
@@ -412,7 +449,7 @@ class Collagraph:
         self._work.put(fiber.child)
         self._work.put(fiber.sibling)
 
-    def update_dom(self, dom: Any, prev_props: Dict, next_props: Dict):
+    def update_dom(self, fiber: Fiber, dom: Any, prev_props: Dict, next_props: Dict):
         def is_event(key):
             return key.startswith("on")
 
@@ -426,6 +463,7 @@ class Collagraph:
             alt = other.get(key)
             return equivalent_functions(val, alt)
 
+        events_to_remove = {}
         # Remove old event listeners
         for name, val in prev_props.items():
             if not is_event(name):
@@ -436,9 +474,10 @@ class Collagraph:
                 continue
 
             event_type = name.lower()[2:]
-            self.renderer.remove_event_listener(dom, event_type, val)
+            events_to_remove[event_type] = val
 
         # Remove old properties
+        attrs_to_remove = {}
         for key in prev_props:
             # Is key an actual property?
             if not is_property(key):
@@ -447,8 +486,9 @@ class Collagraph:
             if key in next_props:
                 continue
 
-            self.renderer.remove_attribute(dom, key, prev_props[key])
+            attrs_to_remove[key] = prev_props[key]
 
+        attrs_to_update = {}
         # Set new or changed properties
         for key, val in next_props.items():
             if not is_property(key):
@@ -457,8 +497,9 @@ class Collagraph:
             if not is_new(val, prev_props, key):
                 continue
 
-            self.renderer.set_attribute(dom, key, val)
+            attrs_to_update[key] = val
 
+        events_to_add = {}
         # Add new event listeners
         for name in next_props:
             if not is_event(name):
@@ -467,7 +508,30 @@ class Collagraph:
                 continue
 
             event_type = name.lower()[2:]
-            self.renderer.add_event_listener(dom, event_type, next_props[name])
+            events_to_add[event_type] = next_props[name]
+
+        if fiber.parent and fiber.parent.component:
+            if events_to_remove or events_to_add or attrs_to_remove or attrs_to_update:
+                if fiber.parent.component._mounted:
+                    fiber.parent.component.before_update()
+
+        if dom:
+            for event_type, val in events_to_remove.items():
+                self.renderer.remove_event_listener(dom, event_type, val)
+
+            for key, val in attrs_to_remove.items():
+                self.renderer.remove_attribute(dom, key, val)
+
+            for key, val in attrs_to_update.items():
+                self.renderer.set_attribute(dom, key, val)
+
+            for event_type, val in events_to_add.items():
+                self.renderer.add_event_listener(dom, event_type, val)
+
+        if fiber.parent and fiber.parent.component:
+            if events_to_remove or events_to_add or attrs_to_remove or attrs_to_update:
+                if fiber.parent.component._mounted:
+                    fiber.parent.component.updated()
 
 
 def first(items: Iterable, match: Callable, *args):
