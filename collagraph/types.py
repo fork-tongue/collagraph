@@ -90,51 +90,30 @@ class Component(metaclass=ABCMeta):
 
         * All of its child components have been mounted.
         * Its own DOM tree has been created and inserted into the parent container.
-
-        This method is typically used for performing side effects that need access to
-        the component's rendered DOM.
         """
         pass
 
     def before_update(self):
-        """Called right before the component is about to update its DOM tree due to a
-        reactive state change.
-
-        This method can be used to access the DOM state before the DOM is updated.
-        """
+        """Called right before the component is about to update its DOM tree."""
         pass
 
     def updated(self):
-        """Called after the component has updated its DOM
-        tree due to a reactive state change.
+        """Called after the component has updated its DOM tree.
 
         A parent component's updated method is called after that of its child
         components.
-
-        This method is called after any DOM update of the component, which can be caused
-        by different state changes. If you need to access the updated DOM after a
-        specific state change, use [a timer] instead.
         """
         pass
 
     def before_unmount(self):
-        """Called right before a component instance is to be unmounted.
-
-        When this hook is called, the component instance is still fully functional.
-        """
+        """Called right before a component instance is to be unmounted."""
         pass
 
     def unmounted(self):
         """Called after the component has been unmounted.
 
-        A component is considered unmounted after:
-
-        * All of its child components have been unmounted.
-        * All of its associated reactive effects (render effect and computed / watchers
-          created during setup()) have been stopped.
-
-        Use this method to clean up manually created side effects such as timers, DOM
-        event listeners or server connections.
+        A component is considered unmounted after all of its child components have
+        been unmounted.
         """
         pass
 
