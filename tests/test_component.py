@@ -4,8 +4,6 @@ from collagraph import Collagraph, Component, create_element as h, EventLoopType
 
 
 class Counter(Component):
-    count = 0
-
     def __init__(self, props):
         super().__init__(props)
         self.count = props.get("count", 0)
