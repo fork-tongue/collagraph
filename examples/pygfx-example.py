@@ -33,27 +33,12 @@ from collagraph import Collagraph, create_element as h, EventLoopType
 from collagraph.renderers import PygfxRenderer
 
 
-class SelectableObjectsCanvas(WgpuCanvas):
-    def _object_under_pointer(self, event):
-        info = renderer.get_pick_info((event["x"], event["y"]))
-        return info["world_object"]
-
-    def handle_click(self, event):
-        if wobject := self._object_under_pointer(event):
-            if handle_event := getattr(wobject, "handle_event", None):
-                handle_event({"event_type": "click"})
-
-    def handle_move(self, event):
-        if wobject := self._object_under_pointer(event):
-            if handle_event := getattr(wobject, "handle_event", None):
-                handle_event({"event_type": "hover"})
-
-
 sphere_geom = gfx.sphere_geometry(radius=0.5)
 materials = {
     "default": gfx.MeshPhongMaterial(color=[1, 1, 1]),
     "selected": gfx.MeshPhongMaterial(color=[1, 0, 0]),
     "hovered": gfx.MeshPhongMaterial(color=[1, 0.6, 0]),
+    "other": gfx.MeshPhongMaterial(color=[1, 0, 0.5]),
 }
 
 
@@ -91,8 +76,8 @@ def PointCloud(props):
                     random.randint(-10, 10),
                 ],
                 "key": index,
-                "onClick": lambda event: set_selected(index),
-                "onHover": lambda event: set_hovered(index),
+                "on_click": lambda event: set_selected(index),
+                "on_pointer_move": lambda event: set_hovered(index),
             },
         )
 
@@ -108,49 +93,15 @@ def PointCloud(props):
     )
 
 
-def Landmark(props):
-    props.setdefault("selected", False)
-
-    def toggle():
-        props["selected"] = not props["selected"]
-
-    return h(
-        "Group",
-        props,
-        h(
-            "Point",
-            {
-                "scale": [2 if props["selected"] else 1] * 3,
-                "color": [1, 0.5, 0, 0.1],
-            },
-        ),
-        h(
-            "Point",
-            {
-                "scale": [0.5, 0.5, 0.5],
-                "color": [1, 1, 1, 1],
-                "onClick": lambda event: toggle(),
-            },
-        ),
-    )
-
-
 if __name__ == "__main__":
-    canvas = SelectableObjectsCanvas(size=(600, 400))
-    canvas.add_event_handler(canvas.handle_move, "pointer_move")
-    canvas.add_event_handler(canvas.handle_click, "pointer_down")
-    # Newer releases of pygfx don't need the following patch for Qt autogui
-    try:
-        canvas.setMouseTracking(True)
-        canvas._subwidget.setMouseTracking(True)
-    except ValueError:
-        pass
+    canvas = WgpuCanvas(size=(600, 400))
     renderer = gfx.renderers.WgpuRenderer(canvas)
+
     camera = gfx.PerspectiveCamera(60, 16 / 9)
     camera.position.z = 15
 
     controls = gfx.OrbitControls(camera.position.clone())
-    controls.add_default_event_handlers(canvas, camera)
+    controls.add_default_event_handlers(renderer, canvas, camera)
 
     gui = Collagraph(renderer=PygfxRenderer(), event_loop_type=EventLoopType.QT)
 
@@ -168,34 +119,15 @@ if __name__ == "__main__":
             # When increasing this number, it will take longer
             # and longer for pygfx to create the render pipeline
             # (compiling shaders and such), so be careful...
-            # {"count": 20},
+            {"count": 50},
         ),
         h(
-            Landmark,
-            {
-                "name": "funk",
-            },
-        ),
-        h(
-            Landmark,
-            {
-                "position": [4, 4, -4],
-            },
-        ),
-        h(
-            "Point",
+            "Mesh",
             {
                 "name": "Hip",
                 "position": [2, 2, 2],
-                "color": [1, 0.4, 0],
-            },
-        ),
-        h(
-            "Point",
-            {
-                "name": "Hap",
-                "position": [-2, 0, -6],
-                "color": [0.8, 1, 0],
+                "geometry": sphere_geom,
+                "material": materials["other"],
             },
         ),
     )

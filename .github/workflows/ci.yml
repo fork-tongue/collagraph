@@ -49,7 +49,7 @@ jobs:
       - name: Install poetry
         run: pip install "poetry>=1.1.12,<1.2"
       - name: Install dependencies
-        run: poetry install
+        run: poetry install --extras pygfx
       - name: Test
         run: poetry run pytest --cov=collagraph --cov-report=term-missing
 

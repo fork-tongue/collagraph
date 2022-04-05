@@ -52,4 +52,4 @@ try:
 except ImportError:  # pragma: no cover
     pass
 else:
-    from .pygfx_renderer import PygfxRenderer  # pragma: no cover
+    from .pygfx_renderer import PygfxRenderer
