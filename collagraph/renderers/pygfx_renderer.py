@@ -27,7 +27,7 @@ class PygfxRenderer(Renderer):
 
     def set_attribute(self, obj, attr, value):
         if isinstance(obj, gfx.WorldObject):
-            if attr == "position" or attr == "scale":
+            if attr in {"position", "scale"}:
                 value = gfx.linalg.Vector3(*value)
             elif attr == "rotation":
                 value = gfx.linalg.Quaternion(*value)
