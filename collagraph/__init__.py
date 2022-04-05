@@ -382,7 +382,11 @@ class Collagraph:
 
     def update_dom(self, dom: Any, prev_props: Dict, next_props: Dict):
         def is_event(key):
-            return key.startswith("on")
+            return key.startswith("on_")
+
+        def key_to_event(key):
+            # Events start with `on_`
+            return key.lower()[3:]
 
         def is_property(key):
             return not is_event(key)
@@ -403,7 +407,7 @@ class Collagraph:
             ):
                 continue
 
-            event_type = name.lower()[2:]
+            event_type = key_to_event(name)
             self.renderer.remove_event_listener(dom, event_type, val)
 
         # Remove old properties
@@ -434,7 +438,7 @@ class Collagraph:
             if is_equivalent_event_handler(prev_props.get(name), next_props, name):
                 continue
 
-            event_type = name.lower()[2:]
+            event_type = key_to_event(name)
             self.renderer.add_event_listener(dom, event_type, next_props[name])
 
 

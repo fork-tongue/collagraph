@@ -76,8 +76,8 @@ def PointCloud(props):
                     random.randint(-10, 10),
                 ],
                 "key": index,
-                "onClick": lambda event: set_selected(index),
-                "onPointer_move": lambda event: set_hovered(index),
+                "on_click": lambda event: set_selected(index),
+                "on_pointer_move": lambda event: set_hovered(index),
             },
         )
 
