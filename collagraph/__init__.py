@@ -583,7 +583,7 @@ def equivalent_code(a, b):
     ]:
         attr_a = getattr(a, attr, None)
         attr_b = getattr(b, attr, None)
-        if attr in ["co_freevars", "co_varnames"]:
+        if attr in {"co_freevars", "co_varnames"}:
             # co_varnames and co_freevars can contain names, which might
             # be different but should be similar at least in length
             if len(attr_a) != len(attr_b):
