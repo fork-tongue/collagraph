@@ -566,7 +566,7 @@ def equivalent_code(a, b):
     because those vars can differ without having any impact on the equivalency
     of the functions themselves.
     """
-    for attr in [
+    for attr in {
         "co_varnames",
         "co_argcount",
         "co_cellvars",
@@ -580,7 +580,7 @@ def equivalent_code(a, b):
         "co_nlocals",
         "co_posonlyargcount",
         "co_stacksize",
-    ]:
+    }:
         attr_a = getattr(a, attr, None)
         attr_b = getattr(b, attr, None)
         if attr in {"co_freevars", "co_varnames"}:
