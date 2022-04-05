@@ -12,7 +12,7 @@ class Counter(Component):
         self.count += 1
 
     def render(self):
-        return h("counter", {"count": self.count, "onBump": self.bump})
+        return h("counter", {"count": self.count, "on_bump": self.bump})
 
     def __repr__(self):
         return f"<Counter {self.count}>"
@@ -81,7 +81,7 @@ def test_component_basic_lifecycle():
         def render(self):
             return h(
                 "counter",
-                {"count": self.count, "onBump": self.bump},
+                {"count": self.count, "on_bump": self.bump},
                 *[h(SpecialCounter, props) for props in self.children],
             )
 
