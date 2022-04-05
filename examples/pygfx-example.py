@@ -126,7 +126,6 @@ if __name__ == "__main__":
             {
                 "name": "Hip",
                 "position": [2, 2, 2],
-                "color": [1, 0.4, 0],
                 "geometry": sphere_geom,
                 "material": materials["other"],
             },
