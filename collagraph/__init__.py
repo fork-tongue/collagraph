@@ -8,9 +8,9 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 from observ import reactive, scheduler, watch
 
 from .compare import equivalent_functions
+from .component import Component
 from .renderers import DictRenderer, Renderer
 from .types import (
-    Component,
     EffectTag,
     EventLoopType,
     Fiber,
