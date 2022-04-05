@@ -26,12 +26,13 @@ class PygfxRenderer(Renderer):
         parent.remove(el)
 
     def set_attribute(self, obj, attr, value):
-        if attr == "position" or attr == "scale":
-            value = gfx.linalg.Vector3(*value)
-        elif attr == "rotation":
-            value = gfx.linalg.Quaternion(*value)
-        elif attr == "matrix":
-            value = gfx.linalg.Matrix4(*value)
+        if isinstance(obj, gfx.WorldObject):
+            if attr == "position" or attr == "scale":
+                value = gfx.linalg.Vector3(*value)
+            elif attr == "rotation":
+                value = gfx.linalg.Quaternion(*value)
+            elif attr == "matrix":
+                value = gfx.linalg.Matrix4(*value)
 
         setattr(obj, attr, value)
 
