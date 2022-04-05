@@ -1,4 +1,3 @@
-from functools import partial
 from importlib.metadata import version
 from itertools import zip_longest
 import logging
@@ -8,6 +7,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 
 from observ import reactive, scheduler, watch
 
+from .compare import equivalent_functions
 from .renderers import DictRenderer, Renderer
 from .types import EffectTag, EventLoopType, Fiber, OpType, VNode
 
@@ -442,18 +442,27 @@ class Collagraph:
             self.renderer.add_event_listener(dom, event_type, next_props[name])
 
 
-def first(items: Iterable, match: Callable, *args):
-    idx = indexOf(items, match, *args)
-    return items[idx] if idx is not None else None
-
-
 def indexOf(items: Iterable, match: Callable, *args):
+    """Returns the index of the first item for which the `match` function returns
+    True."""
     for idx, item in enumerate(items):
         if match(item, *args):
             return idx
 
 
+def first(items: Iterable, match: Callable, *args):
+    """Returns the first item for which the `match` function returns True."""
+    idx = indexOf(items, match, *args)
+    return items[idx] if idx is not None else None
+
+
 def compare(a: Iterable, b: Iterable, match: Callable):
+    """Returns a list of `matches` between a and b and `removals` which contain
+    items that are in b but not in a.
+
+    The list of matches has the same length as a and contains 'None' values at
+    positions for which no match was found in b.
+    """
     b = b.copy()
     matches = []
     for item in a:
@@ -469,6 +478,7 @@ def compare(a: Iterable, b: Iterable, match: Callable):
 
 
 def apply_op(op: Dict, it: Iterable):
+    """Apply a single operation 'op' on a list 'it'."""
     if op["op"] is OpType.MOVE:
         idx = it.index(op["value"])
         val = it.pop(idx)
@@ -537,85 +547,3 @@ def create_ops(current, future):
             apply_op(ops[-1], wip)
 
     return ops
-
-
-def equivalent_functions(a: Callable, b: Callable):
-    """Returns whether function a is equivalent to function b.
-
-    ``functools.partial`` functions are also supported (but only when both
-    argument a and b are partial).
-    """
-    if not hasattr(a, "__code__") or not hasattr(b, "__code__"):
-        if isinstance(a, partial) and isinstance(b, partial):
-            return (
-                a.args == b.args
-                and a.keywords == b.keywords
-                and equivalent_functions(a.func, b.func)
-            )
-
-        return a == b
-
-    return equivalent_code(a.__code__, b.__code__) and equivalent_closure_values(a, b)
-
-
-def equivalent_code(a, b):
-    """Returns True if a and b are equivalent code.
-
-    In order to determine this, a number of properties are compared that
-    should be equal between similar functions.
-    It checks all co_* props of __code__ (as seen in Python 3.9), except for:
-      * co_firstlineno
-      * co_lnotab
-      * co_name
-    because those vars can differ without having any impact on the equivalency
-    of the functions themselves.
-    """
-    for attr in {
-        "co_varnames",
-        "co_argcount",
-        "co_cellvars",
-        "co_code",
-        "co_consts",
-        "co_filename",
-        "co_flags",
-        "co_freevars",
-        "co_kwonlyargcount",
-        "co_names",
-        "co_nlocals",
-        "co_posonlyargcount",
-        "co_stacksize",
-    }:
-        attr_a = getattr(a, attr, None)
-        attr_b = getattr(b, attr, None)
-        if attr in {"co_freevars", "co_varnames"}:
-            # co_varnames and co_freevars can contain names, which might
-            # be different but should be similar at least in length
-            if len(attr_a) != len(attr_b):
-                return False
-        elif attr_a != attr_b:
-            return False
-
-    return True
-
-
-def equivalent_closure_values(a, b):
-    """Compare the cell contents of the __closure__ attribute for the given
-    functions. This method assumes that the code for a and be is already
-    equivalent."""
-    if (closure_a := getattr(a, "__closure__", None)) and (
-        closure_b := getattr(b, "__closure__", None)
-    ):
-        values_a = [cell.cell_contents for cell in closure_a]
-        values_b = [cell.cell_contents for cell in closure_b]
-        if len(values_a) != len(values_b):
-            return False
-
-        for a, b in zip(values_a, values_b):
-            if callable(a) and callable(b):
-                if not equivalent_functions(a, b):
-                    return False
-            else:
-                if a != b:
-                    return False
-
-    return True
