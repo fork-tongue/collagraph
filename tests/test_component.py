@@ -112,12 +112,12 @@ def test_component_basic_lifecycle():
 
     gui.render(element, container)
 
-    counter_a = container["children"][0]["children"][0]
-    counter_b = container["children"][0]["children"][0]["children"][0]
-    assert counter_a["type"] == "counter"
-    assert counter_b["type"] == "counter"
-    assert counter_a["attrs"]["count"] == 0
-    assert counter_b["attrs"]["count"] == 0
+    parent_counter = container["children"][0]["children"][0]
+    child_counter = container["children"][0]["children"][0]["children"][0]
+    assert parent_counter["type"] == "counter"
+    assert child_counter["type"] == "counter"
+    assert parent_counter["attrs"]["count"] == 0
+    assert child_counter["attrs"]["count"] == 0
 
     assert SpecialCounter.lifecycle == [
         "child:mounted",
@@ -129,10 +129,10 @@ def test_component_basic_lifecycle():
 
     for i in range(1, 6):
         # Update state by triggering all listeners, which should trigger a re-render
-        for listener in counter_a["handlers"]["bump"]:
+        for listener in parent_counter["handlers"]["bump"]:
             listener()
 
-        assert counter_a["attrs"]["count"] == i
+        assert parent_counter["attrs"]["count"] == i
 
     assert (
         SpecialCounter.lifecycle
