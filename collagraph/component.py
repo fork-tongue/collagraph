@@ -7,13 +7,8 @@ class Component(metaclass=ABCMeta):
     """Abstract base class for components"""
 
     def __init__(self, props=None):
-        self.props = readonly(props)
+        self.props = readonly(props or {})
         self.state = reactive({})
-        self._mounted = False
-
-    def before_mount(self):
-        """Called right before the component is to be mounted."""
-        pass
 
     def mounted(self):
         """Called after the component has been mounted.
@@ -25,10 +20,6 @@ class Component(metaclass=ABCMeta):
         """
         pass
 
-    def before_update(self):
-        """Called right before the component is about to update its DOM tree."""
-        pass
-
     def updated(self):
         """Called after the component has updated its DOM tree.
 
@@ -38,17 +29,13 @@ class Component(metaclass=ABCMeta):
         pass
 
     def before_unmount(self):
-        """Called right before a component instance is to be unmounted."""
-        pass
+        """Called right before a component instance is to be unmounted.
 
-    def unmounted(self):
-        """Called after the component has been unmounted.
-
-        A component is considered unmounted after all of its child components have
-        been unmounted.
+        There are no specific guarantees about the order of when this method is called.
+        A parent component's method might be called before that of its child components.
         """
         pass
 
     @abstractmethod
-    def render():
-        return NotImplementedError
+    def render():  # pragma: no cover
+        pass

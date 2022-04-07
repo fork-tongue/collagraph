@@ -1,4 +1,5 @@
 from observ import reactive
+import pytest
 
 from collagraph import Collagraph, Component, create_element as h, EventLoopType
 
@@ -61,23 +62,17 @@ def test_component_basic_lifecycle():
             self.state["name"] = props["name"]
             self.state["children"] = props.get("children", [])
 
-        def before_mount(self):
-            SpecialCounter.lifecycle.append(f"{self.state['name']}:before_mount")
-
         def mounted(self):
+            super().mounted()
             SpecialCounter.lifecycle.append(f"{self.state['name']}:mounted")
 
-        def before_update(self):
-            SpecialCounter.lifecycle.append(f"{self.state['name']}:before_update")
-
         def updated(self):
+            super().updated()
             SpecialCounter.lifecycle.append(f"{self.state['name']}:updated")
 
         def before_unmount(self):
+            super().before_unmount()
             SpecialCounter.lifecycle.append(f"{self.state['name']}:before_unmount")
-
-        def unmounted(self):
-            SpecialCounter.lifecycle.append(f"{self.state['name']}:unmounted")
 
         def render(self):
             return h(
@@ -125,8 +120,6 @@ def test_component_basic_lifecycle():
     assert counter_b["attrs"]["count"] == 0
 
     assert SpecialCounter.lifecycle == [
-        "parent:before_mount",
-        "child:before_mount",
         "child:mounted",
         "parent:mounted",
     ]
@@ -144,11 +137,10 @@ def test_component_basic_lifecycle():
     assert (
         SpecialCounter.lifecycle
         == [
-            "parent:before_update",
             "parent:updated",
         ]
         * 5
-    )
+    ), SpecialCounter.lifecycle
 
     # Reset lifecycle
     SpecialCounter.lifecycle = []
@@ -160,6 +152,18 @@ def test_component_basic_lifecycle():
     assert SpecialCounter.lifecycle == [
         "parent:before_unmount",
         "child:before_unmount",
-        "child:unmounted",
-        "parent:unmounted",
     ]
+
+
+def test_component_without_render_method():
+    class Faulty(Component):
+        pass
+
+    gui = Collagraph(event_loop_type=EventLoopType.SYNC)
+    container = {"type": "root"}
+    state = reactive({})
+
+    element = h(Faulty, state)
+
+    with pytest.raises(TypeError):
+        gui.render(element, container)
