@@ -133,17 +133,17 @@ def test_component_basic_lifecycle():
             listener()
 
         assert parent_counter["attrs"]["count"] == i
+        assert SpecialCounter.lifecycle == ["parent:updated"]
+        SpecialCounter.lifecycle = []
 
-    assert (
-        SpecialCounter.lifecycle
-        == [
-            "parent:updated",
-        ]
-        * 5
-    ), SpecialCounter.lifecycle
+    for i in range(1, 6):
+        # Update state by triggering all listeners, which should trigger a re-render
+        for listener in child_counter["handlers"]["bump"]:
+            listener()
 
-    # Reset lifecycle
-    SpecialCounter.lifecycle = []
+        assert child_counter["attrs"]["count"] == i
+        assert SpecialCounter.lifecycle == ["child:updated"]
+        SpecialCounter.lifecycle = []
 
     state["counters"] = []
 

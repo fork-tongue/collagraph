@@ -227,7 +227,6 @@ class Collagraph:
         logger.info(f"state update: {fiber.type}")
         # Clear the watcher that triggered the update
         fiber.watcher = None
-        fiber.updated = True
 
         # Request an update to start building/update the wip fiber tree
         self._wip_root = (
@@ -374,7 +373,7 @@ class Collagraph:
         component_hooks.put((self._wip_root, True))
 
         while not component_hooks.empty():
-            # down is whether the tree is walked down toward the leaves
+            # `down` is whether the tree is walked down toward the leaves
             # or up, back towards the root. On the way back, all the children
             # for the current fiber have been processed
             fiber, down = component_hooks.get()
