@@ -6,26 +6,27 @@ from collagraph import Collagraph, Component, create_element as h, EventLoopType
 class Counter(Component):
     def __init__(self, props):
         super().__init__(props)
-        self.count = props.get("count", 0)
+        self.state["count"] = self.props.get("count", 0)
+        self.state["step_size"] = self.props.get("step_size", 1)
 
     def bump(self):
-        self.count += 1
+        self.state["count"] += self.state["step_size"]
 
     def render(self):
-        return h("counter", {"count": self.count, "on_bump": self.bump})
+        return h("counter", {"count": self.state["count"], "on_bump": self.bump})
 
     def __repr__(self):
-        return f"<Counter {self.count}>"
+        return f"<Counter {self.state['count']}>"
 
 
 def test_component_class():
     counter = Counter({})
 
-    assert counter.count == 0
+    assert counter.state["count"] == 0
 
     counter.bump()
 
-    assert counter.count == 1
+    assert counter.state["count"] == 1
 
 
 def test_component_events():
@@ -57,36 +58,36 @@ def test_component_basic_lifecycle():
 
         def __init__(self, props):
             super().__init__(props)
-            self.name = props["name"]
-            self.children = props.get("children", [])
+            self.state["name"] = props["name"]
+            self.state["children"] = props.get("children", [])
 
         def before_mount(self):
-            SpecialCounter.lifecycle.append(f"{self.name}:before_mount")
+            SpecialCounter.lifecycle.append(f"{self.state['name']}:before_mount")
 
         def mounted(self):
-            SpecialCounter.lifecycle.append(f"{self.name}:mounted")
+            SpecialCounter.lifecycle.append(f"{self.state['name']}:mounted")
 
         def before_update(self):
-            SpecialCounter.lifecycle.append(f"{self.name}:before_update")
+            SpecialCounter.lifecycle.append(f"{self.state['name']}:before_update")
 
         def updated(self):
-            SpecialCounter.lifecycle.append(f"{self.name}:updated")
+            SpecialCounter.lifecycle.append(f"{self.state['name']}:updated")
 
         def before_unmount(self):
-            SpecialCounter.lifecycle.append(f"{self.name}:before_unmount")
+            SpecialCounter.lifecycle.append(f"{self.state['name']}:before_unmount")
 
         def unmounted(self):
-            SpecialCounter.lifecycle.append(f"{self.name}:unmounted")
+            SpecialCounter.lifecycle.append(f"{self.state['name']}:unmounted")
 
         def render(self):
             return h(
                 "counter",
-                {"count": self.count, "on_bump": self.bump},
-                *[h(SpecialCounter, props) for props in self.children],
+                {"count": self.state["count"], "on_bump": self.bump},
+                *[h(SpecialCounter, props) for props in self.state["children"]],
             )
 
         def __repr__(self):
-            return f"<Counter({self.name}) {self.count}>"
+            return f"<SpecialCounter({self.state['name']}) {self.state['count']}>"
 
     def Counters(props):
         props.setdefault("counters", [])

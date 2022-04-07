@@ -29,7 +29,7 @@ class Scrubber(Component):
         self._captured = False
         self._sphere = None
         self._mouse_pos = (0, 0)
-        self.position = [0, 0, 0]
+        self.state["position"] = [0, 0, 0]
 
     def mouse_down(self, event):
         if not self._sphere:
@@ -49,14 +49,14 @@ class Scrubber(Component):
         )
 
         new_pos = [
-            self.position[0],
-            self.position[1],
-            self.position[2] - diff[0] / 40,
+            self.state["position"][0],
+            self.state["position"][1],
+            self.state["position"][2] - diff[0] / 40,
         ]
 
         self._mouse_pos = pos
-        # FIXME: updating one element of self.position doesn't update component
-        self.position = new_pos
+        # FIXME: updating one element of self.state["position"] doesn't update component
+        self.state["position"] = new_pos
 
     def mouse_up(self, event):
         self._captured = False
