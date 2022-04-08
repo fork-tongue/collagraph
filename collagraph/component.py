@@ -31,8 +31,12 @@ class Component(metaclass=ABCMeta):
     def before_unmount(self):
         """Called right before a component instance is to be unmounted.
 
-        There are no specific guarantees about the order of when this method is called.
-        A parent component's method might be called before that of its child components.
+        Use this method to clean up manually created side effects such as timers, DOM
+        event listeners or server connections.
+
+        Note that there are no specific guarantees about the order of when this method
+        is called. A parent component's method might be called before that of its child
+        components.
         """
         pass
 
