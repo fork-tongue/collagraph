@@ -16,7 +16,6 @@ class Button(Component):
         super().__init__(props)
         self.state["pressed"] = False
         self.state["scale"] = self.props.get("scale", [0.85] * 3)
-        self.mesh = None
 
     def pressed(self, event):
         def release():
