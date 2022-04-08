@@ -161,10 +161,10 @@ class Collagraph:
                 self._render_callback()
 
     def perform_unit_of_work(self, fiber: Fiber) -> Optional[Fiber]:
-        is_function_component = callable(fiber.type)
-        if is_function_component:
-            # Check if the type is a class
-            if isinstance(fiber.type, type):
+        is_function_or_class_component = callable(fiber.type)
+        if is_function_or_class_component:
+            is_class_component = isinstance(fiber.type, type)
+            if is_class_component:
                 self.update_class_component(fiber)
             else:
                 self.update_function_component(fiber)
