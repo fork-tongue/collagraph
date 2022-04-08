@@ -85,5 +85,4 @@ if __name__ == "__main__":
         renderer.render(container, camera)
 
     gui.render(element, container, callback=lambda: canvas.request_draw(animate))
-    canvas.request_draw(animate)
     run()
