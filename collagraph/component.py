@@ -7,7 +7,7 @@ class Component(metaclass=ABCMeta):
     """Abstract base class for components"""
 
     def __init__(self, props=None):
-        self.props = readonly(props or {})
+        self.props = readonly({} if props is None else props)
         self.state = reactive({})
 
     def mounted(self):
