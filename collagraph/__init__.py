@@ -369,6 +369,15 @@ class Collagraph:
             work = self._work.get()
             self.commit_work(work)
 
+        # Use a queue to walk through the whole tree of fibers in order to
+        # call component hooks (e.g: mounted, updated). The walk starts with
+        # the root down to the leaves.
+        # Here we use a tuple consisting of a fiber and boolean that indicates
+        # whether we are traversing down to the leaves, or going back up to
+        # a parent node. Only at the end of a collection of siblings we move
+        # back up at which point we know for certain that all children for
+        # the parent node have been processed, hence we can call the component
+        # hooks on the way up.
         component_hooks = SimpleQueue()
         component_hooks.put((self._wip_root, True))
 
