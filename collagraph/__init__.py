@@ -8,11 +8,18 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 from observ import reactive, scheduler, watch
 
 from .compare import equivalent_functions
+from .component import Component
 from .renderers import DictRenderer, Renderer
-from .types import EffectTag, EventLoopType, Fiber, OpType, VNode
+from .types import (
+    EffectTag,
+    EventLoopType,
+    Fiber,
+    OpType,
+    VNode,
+)
 
 
-__all__ = ["create_element", "Collagraph", "EventLoopType"]
+__all__ = ["create_element", "Collagraph", "EventLoopType", "Component"]
 __version__ = version("collagraph")
 
 
@@ -154,9 +161,13 @@ class Collagraph:
                 self._render_callback()
 
     def perform_unit_of_work(self, fiber: Fiber) -> Optional[Fiber]:
-        is_function_component = callable(fiber.type)
-        if is_function_component:
-            self.update_function_component(fiber)
+        is_function_or_class_component = callable(fiber.type)
+        if is_function_or_class_component:
+            is_class_component = isinstance(fiber.type, type)
+            if is_class_component:
+                self.update_class_component(fiber)
+            else:
+                self.update_function_component(fiber)
         else:
             self.update_host_component(fiber)
 
@@ -169,6 +180,31 @@ class Collagraph:
             if sibling := next_fiber.sibling:
                 return sibling
             next_fiber = next_fiber.parent
+
+    def update_class_component(self, fiber: Fiber):
+        component = fiber.component or fiber.alternate and fiber.alternate.component
+        if not component:
+            component = fiber.type(fiber.props)
+
+        # Attach the component instance to the fiber
+        fiber.component = component
+        fiber.component_watcher = watch(
+            # FIXME: sometimes fiber.component is None
+            # Seems to happen after a while after generating lots of changes.
+            # Could be that it is only when updates are coming in faster than
+            # they are rendered...
+            lambda: fiber.component and fiber.component.state,
+            lambda: self.state_updated(fiber),
+            deep=True,
+            sync=self.event_loop_type is EventLoopType.SYNC,
+        )
+
+        if fiber.alternate:
+            fiber.alternate.component = None
+            fiber.alternate.component_watcher = None
+
+        children = [component.render()]
+        self.reconcile_children(fiber, children)
 
     def update_function_component(self, fiber: Fiber):
         children = [fiber.type(fiber.props)]
@@ -184,7 +220,7 @@ class Collagraph:
 
     def create_dom(self, fiber: Fiber) -> Any:
         dom = self.renderer.create_element(fiber.type)
-        self.update_dom(dom, prev_props={}, next_props=fiber.props)
+        self.update_dom(fiber, dom, prev_props={}, next_props=fiber.props)
         return dom
 
     def state_updated(self, fiber: Fiber):
@@ -230,6 +266,7 @@ class Collagraph:
         # Clear the watcher from the old fiber
         if old_fiber and old_fiber.props:
             old_fiber.watcher = None
+            old_fiber.component_watcher = None
 
         def matcher(x, y):
             return x.key == y.key
@@ -332,6 +369,48 @@ class Collagraph:
             work = self._work.get()
             self.commit_work(work)
 
+        # Use a queue to walk through the whole tree of fibers in order to
+        # call component hooks (e.g: mounted, updated). The walk starts with
+        # the root down to the leaves.
+        # Here we use a tuple consisting of a fiber and boolean that indicates
+        # whether we are traversing down to the leaves, or going back up to
+        # a parent node. Only at the end of a collection of siblings we move
+        # back up at which point we know for certain that all children for
+        # the parent node have been processed, hence we can call the component
+        # hooks on the way up.
+        component_hooks = SimpleQueue()
+        component_hooks.put((self._wip_root, True))
+
+        while not component_hooks.empty():
+            # `down` is whether the tree is walked down toward the leaves
+            # or up, back towards the root. On the way back, all the children
+            # for the current fiber have been processed
+            fiber, down = component_hooks.get()
+            if not fiber:
+                continue
+
+            # Process children first
+            if down and fiber.child:
+                component_hooks.put((fiber.child, True))
+                continue
+
+            if fiber.mounted:
+                if fiber.component:
+                    fiber.component.mounted()
+                fiber.mounted = False
+                fiber.updated = False
+            elif fiber.updated:
+                if fiber.component:
+                    fiber.component.updated()
+                fiber.updated = False
+
+            if fiber.sibling:
+                component_hooks.put((fiber.sibling, True))
+            else:
+                # The last of the siblings signals the
+                # parent that we're walking back
+                component_hooks.put((fiber.parent, False))
+
         self._current_root = self._wip_root
         self._wip_root = None
 
@@ -342,11 +421,30 @@ class Collagraph:
         a fiber with a dom element that can be removed.
         Clears the child and dom attributes of the fiber.
         """
+
+        if fiber.component:
+            if not fiber.unmounted:
+                fiber.component.before_unmount()
+                fiber.unmounted = True
+
+        def traverse_before_unmount(fiber):
+            if fiber is None:
+                return
+            if fiber.component:
+                if not fiber.unmounted:
+                    fiber.component.before_unmount()
+                    fiber.unmounted = True
+            traverse_before_unmount(fiber.child)
+            traverse_before_unmount(fiber.sibling)
+
+        traverse_before_unmount(fiber.child)
+
         if dom := fiber.dom:
             self.renderer.remove(dom, dom_parent)
             fiber.dom = None
         else:
             self.commit_deletion(fiber.child, dom_parent)
+
         fiber.child = None
         fiber.sibling = None
 
@@ -359,17 +457,22 @@ class Collagraph:
             dom_parent_fiber = dom_parent_fiber.parent
         dom_parent = dom_parent_fiber.dom
 
-        if fiber.effect_tag == EffectTag.PLACEMENT and fiber.dom:
-            self.renderer.insert(fiber.dom, dom_parent, anchor=fiber.anchor)
-        elif fiber.effect_tag == EffectTag.UPDATE and fiber.dom:
-            if fiber.move:
-                self.renderer.remove(fiber.dom, dom_parent)
-                self.renderer.insert(
-                    fiber.dom,
-                    dom_parent,
-                    anchor=fiber.anchor,
-                )
+        if fiber.effect_tag == EffectTag.PLACEMENT:
+            if fiber.component:
+                fiber.mounted = True
+            if fiber.dom:
+                self.renderer.insert(fiber.dom, dom_parent, anchor=fiber.anchor)
+        elif fiber.effect_tag == EffectTag.UPDATE:
+            if fiber.dom:
+                if fiber.move:
+                    self.renderer.remove(fiber.dom, dom_parent)
+                    self.renderer.insert(
+                        fiber.dom,
+                        dom_parent,
+                        anchor=fiber.anchor,
+                    )
             self.update_dom(
+                fiber,
                 fiber.dom,
                 prev_props=fiber.alternate.props_snapshot,
                 next_props=fiber.props_snapshot,
@@ -380,7 +483,7 @@ class Collagraph:
         self._work.put(fiber.child)
         self._work.put(fiber.sibling)
 
-    def update_dom(self, dom: Any, prev_props: Dict, next_props: Dict):
+    def update_dom(self, fiber: Fiber, dom: Any, prev_props: Dict, next_props: Dict):
         def is_event(key):
             return key.startswith("on_")
 
@@ -398,6 +501,7 @@ class Collagraph:
             alt = other.get(key)
             return equivalent_functions(val, alt)
 
+        events_to_remove = {}
         # Remove old event listeners
         for name, val in prev_props.items():
             if not is_event(name):
@@ -408,9 +512,10 @@ class Collagraph:
                 continue
 
             event_type = key_to_event(name)
-            self.renderer.remove_event_listener(dom, event_type, val)
+            events_to_remove[event_type] = val
 
         # Remove old properties
+        attrs_to_remove = {}
         for key in prev_props:
             # Is key an actual property?
             if not is_property(key):
@@ -419,8 +524,9 @@ class Collagraph:
             if key in next_props:
                 continue
 
-            self.renderer.remove_attribute(dom, key, prev_props[key])
+            attrs_to_remove[key] = prev_props[key]
 
+        attrs_to_update = {}
         # Set new or changed properties
         for key, val in next_props.items():
             if not is_property(key):
@@ -429,8 +535,9 @@ class Collagraph:
             if not is_new(val, prev_props, key):
                 continue
 
-            self.renderer.set_attribute(dom, key, val)
+            attrs_to_update[key] = val
 
+        events_to_add = {}
         # Add new event listeners
         for name in next_props:
             if not is_event(name):
@@ -439,7 +546,32 @@ class Collagraph:
                 continue
 
             event_type = key_to_event(name)
-            self.renderer.add_event_listener(dom, event_type, next_props[name])
+            events_to_add[event_type] = next_props[name]
+
+        if dom:
+            for event_type, val in events_to_remove.items():
+                self.renderer.remove_event_listener(dom, event_type, val)
+
+            for key, val in attrs_to_remove.items():
+                self.renderer.remove_attribute(dom, key, val)
+
+            for key, val in attrs_to_update.items():
+                self.renderer.set_attribute(dom, key, val)
+
+            for event_type, val in events_to_add.items():
+                self.renderer.add_event_listener(dom, event_type, val)
+
+        # Climb up the tree to find first component to mark as updated
+        if events_to_remove or events_to_add or attrs_to_remove or attrs_to_update:
+            parent = fiber.parent
+            component = None
+            while parent:
+                component = parent.component
+                if component:
+                    # Mark the fiber as updated
+                    parent.updated = True
+                    break
+                parent = parent.parent
 
 
 def indexOf(items: Iterable, match: Callable, *args):
