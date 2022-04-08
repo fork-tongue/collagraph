@@ -14,7 +14,8 @@ pyside = ["PySide6"]
 [tool.poetry.dependencies]
 python = ">=3.8"
 observ = "~0.9.1"
-pygfx = { version = "~0.1.7", optional = true }
+# pygfx = { version = "~0.1.7", optional = true }
+pygfx = { git = "https://github.com/pygfx/pygfx.git", branch = "main", optional = true }
 PySide6 = { version = "*", python = "<3.11", optional = true }
 
 [tool.poetry.dev-dependencies]

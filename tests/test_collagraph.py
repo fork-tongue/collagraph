@@ -60,7 +60,7 @@ def test_reactive_element_with_events(process_events):
             props["count"] += 1
 
         return h(
-            "counter", props, h("count", {"count": props["count"], "onBump": bump})
+            "counter", props, h("count", {"count": props["count"], "on_bump": bump})
         )
 
     renderer = DictRenderer()
@@ -217,7 +217,7 @@ def test_update_element_with_event(process_events):
             props["count"] += 1
 
         props.setdefault("count", 0)
-        props.setdefault("onBump", bump)
+        props.setdefault("on_bump", bump)
 
         return h("counter", props)
 
@@ -269,12 +269,12 @@ def test_add_remove_event_handlers(process_events):
         def reset():
             props["count"] = 0
             # Remove reset handler
-            del props["onReset"]
+            del props["on_reset"]
 
         props.setdefault("count", 0)
         if props["count"] > 0:
             # Add reset handler
-            props["onReset"] = reset
+            props["on_reset"] = reset
 
         return h("counter", props)
 
@@ -299,7 +299,7 @@ def test_add_remove_event_handlers(process_events):
 
     process_events()
 
-    assert "onReset" not in state
+    assert "on_reset" not in state
     assert len(container["children"][0]["handlers"]["reset"]) == 0
 
 
@@ -307,13 +307,13 @@ def test_change_event_handler(process_events):
     def Tick(props):
         def tick():
             props["value"] = "Tick"
-            props["onToggle"] = tock
+            props["on_toggle"] = tock
 
         def tock():
             props["value"] = "Tock"
-            props["onToggle"] = tick
+            props["on_toggle"] = tick
 
-        props.setdefault("onToggle", tock)
+        props.setdefault("on_toggle", tock)
         props.setdefault("value", "...")
         return h("counter", props)
 
