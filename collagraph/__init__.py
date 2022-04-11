@@ -5,7 +5,7 @@ from queue import SimpleQueue
 import time
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
-from observ import reactive, scheduler, watch
+from observ import reactive, scheduler, to_raw, watch
 
 from .compare import equivalent_functions
 from .component import Component
@@ -255,7 +255,7 @@ class Collagraph:
 
         # Create watcher for the wip_fiber if not already there
         if wip_fiber.props:
-            if wip_fiber.dom and not wip_fiber.watcher:
+            if (wip_fiber.dom or wip_fiber.component) and not wip_fiber.watcher:
                 wip_fiber.watcher = watch(
                     lambda: wip_fiber.props,
                     lambda: self.state_updated(wip_fiber),
@@ -307,7 +307,7 @@ class Collagraph:
                 new_fiber = old_fiber.alternate or Fiber()
                 new_fiber.type = element.type
                 new_fiber.props = element.props
-                new_fiber.props_snapshot = element.props.copy()
+                new_fiber.props_snapshot = to_raw(element.props)
                 new_fiber.children = element.children
                 new_fiber.key = element.key
                 new_fiber.dom = old_fiber.dom
@@ -324,7 +324,7 @@ class Collagraph:
                 new_fiber = (old_fiber and old_fiber.alternate) or Fiber()
                 new_fiber.type = element.type
                 new_fiber.props = element.props
-                new_fiber.props_snapshot = element.props.copy()
+                new_fiber.props_snapshot = to_raw(element.props)
                 new_fiber.children = element.children
                 new_fiber.key = element.key
                 new_fiber.dom = None
