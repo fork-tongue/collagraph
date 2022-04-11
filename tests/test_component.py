@@ -193,3 +193,29 @@ def test_component_props_update():
 
     assert Counter.updates == 1
     assert container["children"][0]["attrs"]["prop"] is True
+
+
+def test_component_props_deep_update():
+    class Counter(Component):
+        updates = 0
+
+        def updated(self):
+            Counter.updates += 1
+
+        def render(self):
+            return h("Counter", {**self.props})
+
+    state = reactive({"prop": [0, 1]})
+
+    gui = Collagraph(event_loop_type=EventLoopType.SYNC)
+    container = {"type": "root"}
+    element = h(Counter, state)
+    gui.render(element, container)
+
+    assert Counter.updates == 0
+    assert container["children"][0]["attrs"]["prop"] == [0, 1]
+
+    state["prop"].append(2)
+
+    assert container["children"][0]["attrs"]["prop"] == [0, 1, 2]
+    assert Counter.updates == 1

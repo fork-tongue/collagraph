@@ -5,7 +5,7 @@ from queue import SimpleQueue
 import time
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
-from observ import reactive, scheduler, watch
+from observ import reactive, scheduler, to_raw, watch
 
 from .compare import equivalent_functions
 from .component import Component
@@ -307,7 +307,7 @@ class Collagraph:
                 new_fiber = old_fiber.alternate or Fiber()
                 new_fiber.type = element.type
                 new_fiber.props = element.props
-                new_fiber.props_snapshot = element.props.copy()
+                new_fiber.props_snapshot = to_raw(element.props)
                 new_fiber.children = element.children
                 new_fiber.key = element.key
                 new_fiber.dom = old_fiber.dom
@@ -324,7 +324,7 @@ class Collagraph:
                 new_fiber = (old_fiber and old_fiber.alternate) or Fiber()
                 new_fiber.type = element.type
                 new_fiber.props = element.props
-                new_fiber.props_snapshot = element.props.copy()
+                new_fiber.props_snapshot = to_raw(element.props)
                 new_fiber.children = element.children
                 new_fiber.key = element.key
                 new_fiber.dom = None
