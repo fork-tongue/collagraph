@@ -255,7 +255,7 @@ class Collagraph:
 
         # Create watcher for the wip_fiber if not already there
         if wip_fiber.props:
-            if wip_fiber.dom and not wip_fiber.watcher:
+            if (wip_fiber.dom or wip_fiber.component) and not wip_fiber.watcher:
                 wip_fiber.watcher = watch(
                     lambda: wip_fiber.props,
                     lambda: self.state_updated(wip_fiber),

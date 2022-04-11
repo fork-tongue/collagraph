@@ -167,3 +167,29 @@ def test_component_without_render_method():
 
     with pytest.raises(TypeError):
         gui.render(element, container)
+
+
+def test_component_props_update():
+    class Counter(Component):
+        updates = 0
+
+        def updated(self):
+            Counter.updates += 1
+
+        def render(self):
+            return h("Counter", {**self.props})
+
+    state = reactive({"prop": False})
+
+    gui = Collagraph(event_loop_type=EventLoopType.SYNC)
+    container = {"type": "root"}
+    element = h(Counter, state)
+    gui.render(element, container)
+
+    assert Counter.updates == 0
+    assert container["children"][0]["attrs"]["prop"] is False
+
+    state["prop"] = True
+
+    assert Counter.updates == 1
+    assert container["children"][0]["attrs"]["prop"] is True
