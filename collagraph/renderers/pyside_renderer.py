@@ -10,26 +10,51 @@ from . import Renderer
 logger = logging.getLogger(__name__)
 
 
-def name_to_type(name, modules=None):
+MAPPING = {
+    "Button": QtWidgets.QPushButton,
+    "CheckBox": QtWidgets.QCheckBox,
+    "ComboBox": QtWidgets.QComboBox,
+    "Label": QtWidgets.QLabel,
+    "LineEdit": QtWidgets.QLineEdit,
+    "MenuBar": QtWidgets.QMenuBar,
+    "RadioButton": QtWidgets.QRadioButton,
+    "Slider": QtWidgets.QSlider,
+    "SpinBox": QtWidgets.QSpinBox,
+    "StatusBar": QtWidgets.QStatusBar,
+    "TreeView": QtWidgets.QTreeView,
+    "Widget": QtWidgets.QWidget,
+    "Window": QtWidgets.QMainWindow,
+}
+
+
+def name_to_type(name, modules=None, orig=None):
     # IDEA: use a dict as cache (or lru_cache). Might speed things up a bit?
     # Using a dict might be handy, because we can specify certain types in advance?
+    if name in MAPPING:
+        return MAPPING[name]
     if modules is None:
         modules = [QtWidgets, QtCore, QtCore.Qt]
     parts = name.split(".")
     for module in modules:
-        if element_class := getattr(module, parts[0], None):
+        if (element_class := getattr(module, parts[0], None)) is not None:
             if len(parts) > 1:
-                return name_to_type(".".join(parts[1:]), modules=[element_class])
+                return name_to_type(
+                    ".".join(parts[1:]), modules=[element_class], orig=name
+                )
+            MAPPING[orig or name] = element_class
             return element_class
 
     raise TypeError(f"Couldn't find type for name: '{name}'")
 
 
+def camel_case(event, split):
+    parts = event.split(split)
+    return "".join([parts[0]] + [part.capitalize() for part in parts[1:]])
+
+
 def attr_name_to_method_name(name, setter=False):
-    parts = name.split("-")
-    prefix = parts[0].lower() if not setter else f"set{parts[0].capitalize()}"
-    rest = "".join([p.capitalize() for p in parts[1:]])
-    return f"{prefix}{rest}"
+    prefix = "set-" if setter else ""
+    return camel_case(f"{prefix}{name}", "-")
 
 
 class PySideRenderer(Renderer):
@@ -118,6 +143,7 @@ class PySideRenderer(Renderer):
         """Remove the element `el` from the children of the element `parent`."""
         layout = parent.layout()
         layout.removeWidget(el)
+        el.setParent(None)
 
     def set_attribute(self, el: Any, attr: str, value: Any):
         """Set the attribute `attr` of the element `el` to the value `value`."""
@@ -152,12 +178,14 @@ class PySideRenderer(Renderer):
     def remove_attribute(self, el: Any, attr: str, value: Any):
         """Remove the attribute `attr` from the element `el`."""
         # TODO: what does it mean to remove an attribute? How to define default values?
-        pass
+        raise NotImplementedError
 
     def add_event_listener(self, el: Any, event_type: str, value: Callable):
         """Add event listener for `event_type` to the element `el`."""
         if not value:
             return
+
+        event_type = camel_case(event_type, "_")
 
         # Add a slots attribute to hold all the generated slots, keyed on event_type
         if not hasattr(el, "slots"):

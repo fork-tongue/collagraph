@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 from observ import reactive, scheduler, to_raw, watch
 
 from .compare import equivalent_functions
-from .component import Component
+from .components import Component
 from .renderers import DictRenderer, Renderer
 from .types import (
     EffectTag,
@@ -421,7 +421,6 @@ class Collagraph:
         a fiber with a dom element that can be removed.
         Clears the child and dom attributes of the fiber.
         """
-
         if fiber.component:
             if not fiber.unmounted:
                 fiber.component.before_unmount()

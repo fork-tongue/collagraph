@@ -13,11 +13,11 @@ app = QtWidgets.QApplication()
 
 def PushButton(props):
     props.setdefault("text", "Push me")
-    props.setdefault("onclicked", None)
+    props.setdefault("on_clicked", None)
 
-    props["enabled"] = props["onclicked"] is not None
+    props["enabled"] = props["on_clicked"] is not None
 
-    return h("QPushButton", {**props, "enabled": props["onclicked"] is not None})
+    return h("Button", {**props, "enabled": props["on_clicked"] is not None})
 
 
 if __name__ == "__main__":
@@ -37,7 +37,7 @@ if __name__ == "__main__":
             )
         elif " is " in state["content"]["text"]:
             state["content"]["text"] = state["content"]["text"].replace(" is ", " was ")
-            state["button"]["onclicked"] = None
+            state["button"]["on_clicked"] = None
 
     # Define some state
     state = reactive(
@@ -58,19 +58,19 @@ if __name__ == "__main__":
             },
             # Use prefix 'on' with the signal name to attach a callback / slot
             # to the signal of the created PySide element
-            "button": {"onclicked": improve_content},
+            "button": {"on_clicked": improve_content},
         }
     )
 
     # Define Qt structure and map state to the structure
     element = h(
-        "QMainWindow",
+        "Window",
         {},
         h(
-            "QWidget",
+            "Widget",
             {"layout_direction": "QBoxLayout.Direction.TopToBottom"},
-            h("QLabel", state["title"]),
-            h("QLabel", state["content"]),
+            h("Label", state["title"]),
+            h("Label", state["content"]),
             h(PushButton, state["button"]),
         ),
     )
