@@ -3,6 +3,26 @@ import logging
 from typing import Any, Callable
 
 from PySide6 import QtCore, QtWidgets
+from PySide6.QtWidgets import (
+    QBoxLayout,
+    QCheckBox,
+    QComboBox,
+    QFormLayout,
+    QGridLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMenuBar,
+    QPushButton,
+    QRadioButton,
+    QSlider,
+    QSpacerItem,
+    QSpinBox,
+    QStatusBar,
+    QTextEdit,
+    QTreeView,
+    QWidget,
+)
 
 from . import Renderer
 
@@ -10,28 +30,65 @@ from . import Renderer
 logger = logging.getLogger(__name__)
 
 
-MAPPING = {
-    "Button": QtWidgets.QPushButton,
-    "CheckBox": QtWidgets.QCheckBox,
-    "ComboBox": QtWidgets.QComboBox,
-    "Label": QtWidgets.QLabel,
-    "LineEdit": QtWidgets.QLineEdit,
-    "MenuBar": QtWidgets.QMenuBar,
-    "RadioButton": QtWidgets.QRadioButton,
-    "Slider": QtWidgets.QSlider,
-    "SpinBox": QtWidgets.QSpinBox,
-    "StatusBar": QtWidgets.QStatusBar,
-    "TreeView": QtWidgets.QTreeView,
-    "Widget": QtWidgets.QWidget,
-    "Window": QtWidgets.QMainWindow,
+CONFIG_MAPPING = {
+    QCheckBox: {},
+    QComboBox: {},
+    QLabel: {},
+    QLineEdit: {},
+    QMainWindow: {},
+    QMenuBar: {},
+    QPushButton: {},
+    QRadioButton: {},
+    QSlider: {},
+    QSpinBox: {},
+    QStatusBar: {},
+    QTreeView: {},
+    QWidget: {},
+}
+
+
+TYPE_MAPPING = {
+    "Button": QPushButton,
+    "CheckBox": QCheckBox,
+    "ComboBox": QComboBox,
+    "Label": QLabel,
+    "LineEdit": QLineEdit,
+    "MenuBar": QMenuBar,
+    "RadioButton": QRadioButton,
+    "Slider": QSlider,
+    "SpinBox": QSpinBox,
+    "StatusBar": QStatusBar,
+    "TextEdit": QTextEdit,
+    "TreeView": QTreeView,
+    "Widget": QWidget,
+    "Window": QMainWindow,
+    # Layout directions
+    "TopToBottom": QBoxLayout.Direction.TopToBottom,
+    "LeftToRight": QBoxLayout.Direction.LeftToRight,
+    "RightToLeft": QBoxLayout.Direction.RightToLeft,
+    "BottomToTop": QBoxLayout.Direction.BottomToTop,
+}
+
+LAYOUT = {
+    "Box": QBoxLayout,
+    "Grid": QGridLayout,
+    "Form": QFormLayout,
+}
+
+
+DIRECTIONS = {
+    "TopToBottom": QBoxLayout.Direction.TopToBottom,
+    "LeftToRight": QBoxLayout.Direction.LeftToRight,
+    "RightToLeft": QBoxLayout.Direction.RightToLeft,
+    "BottomToTop": QBoxLayout.Direction.BottomToTop,
 }
 
 
 def name_to_type(name, modules=None, orig=None):
     # IDEA: use a dict as cache (or lru_cache). Might speed things up a bit?
     # Using a dict might be handy, because we can specify certain types in advance?
-    if name in MAPPING:
-        return MAPPING[name]
+    if name in TYPE_MAPPING:
+        return TYPE_MAPPING[name]
     if modules is None:
         modules = [QtWidgets, QtCore, QtCore.Qt]
     parts = name.split(".")
@@ -41,10 +98,10 @@ def name_to_type(name, modules=None, orig=None):
                 return name_to_type(
                     ".".join(parts[1:]), modules=[element_class], orig=name
                 )
-            MAPPING[orig or name] = element_class
+            TYPE_MAPPING[orig or name] = element_class
             return element_class
 
-    raise TypeError(f"Couldn't find type for name: '{name}'")
+    raise TypeError(f"Couldn't find type for name: '{name}' ({orig})")
 
 
 def camel_case(event, split):
@@ -53,8 +110,27 @@ def camel_case(event, split):
 
 
 def attr_name_to_method_name(name, setter=False):
-    prefix = "set-" if setter else ""
-    return camel_case(f"{prefix}{name}", "-")
+    sep = "-"
+    if "_" in name:
+        sep = "_"
+
+    prefix = f"set{sep}" if setter else ""
+    return camel_case(f"{prefix}{name}", sep)
+
+
+def call_method(method, args):
+    if isinstance(args, str):
+        try:
+            args = name_to_type(args)
+        except TypeError:
+            pass
+        method(args)
+    else:
+        try:
+            method(args)
+        except TypeError:
+            # TODO: Maybe also call name_to_type on all values?
+            method(*args)
 
 
 class PySideRenderer(Renderer):
@@ -66,6 +142,10 @@ class PySideRenderer(Renderer):
         # are created. Otherwise we might experience a
         # hard segfault.
         QtCore.QCoreApplication.instance() or QtWidgets.QApplication()
+        if type == "Spacing":
+            return QSpacerItem(0, 0)
+        if type == "Stretch":
+            return QSpacerItem(0, 0)
         return name_to_type(type)()
 
     def insert(self, el: Any, parent: Any, anchor: Any = None):
@@ -74,6 +154,19 @@ class PySideRenderer(Renderer):
         If an anchor is specified, it inserts `el` before the `anchor`
         element.
         """
+        if isinstance(parent, QtWidgets.QDialogButtonBox) and isinstance(
+            el, QPushButton
+        ):
+            if hasattr(el, "flag"):
+                parent.addButton(getattr(QtWidgets.QDialogButtonBox, el.flag))
+                return
+            elif hasattr(el, "role"):
+                parent.addButton(el, getattr(QtWidgets.QDialogButtonBox, el.role))
+                return
+
+        if hasattr(el, "setParent") and isinstance(parent, QtWidgets.QWidget):
+            el.setParent(parent)
+
         if isinstance(el, QtWidgets.QMainWindow):
             # If the inserted element is a window, then there is
             # no real parent to add it to, so let's just show the
@@ -101,6 +194,9 @@ class PySideRenderer(Renderer):
                 parent.setCentralWidget(el)
                 return
 
+            # else:
+            #     parent.addButton(el, getattr(QtWidgets.QDialogButtonBox, el.role))
+
         # Adding a widget to a widget involves getting the layout of the parent
         # and then inserting the widget into the layout. The layout might not
         # exist yet, so let's create a default QBoxLayout.
@@ -108,36 +204,33 @@ class PySideRenderer(Renderer):
         layout = parent.layout()
         if not layout:
             layout = QtWidgets.QBoxLayout(
-                QtWidgets.QBoxLayout.Direction.LeftToRight, parent
+                QtWidgets.QBoxLayout.Direction.TopToBottom, parent
             )
+            parent.setLayout(layout)
 
         index = -1
         if anchor:
             index = layout.indexOf(anchor)
 
+        if isinstance(el, QSpacerItem):
+            layout.insertSpacerItem(index, el)
+            return
+
+        if hasattr(el, "grid_index"):
+            layout.addWidget(el, *el.grid_index)
+            return
+
+        if hasattr(el, "form_label"):
+            if hasattr(el, "form_index"):
+                layout.insertRow(el.form_index, el.form_label, el)
+            else:
+                layout.addRow(el.form_label, el)
+            return
+
         if hasattr(layout, "insertWidget"):
-            # QBoxLayout and QStackedLayout support `insertWidget(index, widget)`
             layout.insertWidget(index, el)
         else:
-            # Try and support other layouts (all QLayout subclasses should
-            # support `addWidget` and `takeAt`). This is a really dump and
-            # inefficient way of updating the layout, but it might work?
-            if index == -1:
-                layout.addWidget(el)
-            else:
-                # Pop items until we can add, then re-add
-                # all the popped items.
-                popped_items = []
-                count = layout.count()
-                disparity = count - index
-                for i in range(count, disparity, -1):
-                    # takeAt returns layout items, not widgets
-                    item = layout.takeAt(i)
-                    popped_items.append(item)
-
-                layout.addWidget(el)
-                for item in popped_items:
-                    layout.addItem(item)
+            raise NotImplementedError
 
     def remove(self, el: Any, parent: Any):
         """Remove the element `el` from the children of the element `parent`."""
@@ -149,31 +242,61 @@ class PySideRenderer(Renderer):
         """Set the attribute `attr` of the element `el` to the value `value`."""
         # Support a custom attribute 'layout_direction' so that we can
         # set the layout direction of the layout of the given element
-        if attr == "layout_direction":
-            direction = name_to_type(value)
-            if layout := el.layout():
-                layout.setDirection(direction)
-            else:
-                el.setLayout(QtWidgets.QBoxLayout(direction))
+        if attr == "layout":
+            if value["type"] == "Box":
+                direction = DIRECTIONS[value.get("direction", "TopToBottom")]
+                if isinstance(el.layout(), QBoxLayout):
+                    el.layout().setDirection(direction)
+                else:
+                    el.setLayout(QBoxLayout(direction))
+            elif value["type"] == "Grid":
+                if isinstance(el.layout(), QGridLayout):
+                    pass
+                else:
+                    el.setLayout(QGridLayout())
+            elif value["type"] == "Form":
+                if isinstance(el.layout(), QFormLayout):
+                    pass
+                else:
+                    el.setLayout(QFormLayout())
+
+            for key, val in value.items():
+                if key == "type":
+                    continue
+                method_name = attr_name_to_method_name(key, setter=True)
+                method = getattr(el.layout(), method_name, None)
+                if method:
+                    if key in ["column_stretch", "row_stretch"]:
+                        for args in val:
+                            call_method(method, args)
+                    else:
+                        call_method(method, val)
+            return
+
+        if attr == "grid_index":
+            setattr(el, "grid_index", value)
+            if parent := el.parent():
+                layout = parent.layout()
+                layout.addWidget(el, *value)
+            return
+
+        if attr in ["form_label", "form_index"]:
+            setattr(el, attr, value)
+            if parent := el.parent():
+                layout = parent.layout()
+                if hasattr(el, "form_label") and hasattr(el, "form_index"):
+                    layout.insertRow(el.form_index, el.form_label, el)
+                elif hasattr(el, "form_label"):
+                    layout.addRow(el.form_label, el)
             return
 
         method_name = attr_name_to_method_name(attr, setter=True)
         method = getattr(el, method_name, None)
         if not method:
+            setattr(el, attr, value)
             return
 
-        if isinstance(value, str):
-            try:
-                value = name_to_type(value)
-            except TypeError:
-                pass
-            method(value)
-        else:
-            try:
-                method(value)
-            except TypeError:
-                # TODO: Maybe also call name_to_type on all values?
-                method(*value)
+        call_method(method, value)
 
     def remove_attribute(self, el: Any, attr: str, value: Any):
         """Remove the attribute `attr` from the element `el`."""

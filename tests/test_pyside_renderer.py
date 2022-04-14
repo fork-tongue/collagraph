@@ -21,12 +21,14 @@ def test_simple_widget():
     renderer = PySideRenderer()
     gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
 
-    element = h("QWidget", {"layout_direction": "QBoxLayout.Direction.RightToLeft"})
+    element = h("Widget", {"layout": {"type": "Box", "direction": "RightToLeft"}})
     container = QtWidgets.QWidget()
     gui.render(element, container)
 
-    assert container.layout().direction() == QtWidgets.QBoxLayout.Direction.LeftToRight
+    # Test the default direction of box layout
+    assert container.layout().direction() == QtWidgets.QBoxLayout.Direction.TopToBottom
     el = container.findChild(QtWidgets.QWidget)
+    # Test the custom direction for the widget
     assert el.layout().direction() == QtWidgets.QBoxLayout.Direction.RightToLeft
 
 
@@ -34,11 +36,7 @@ def test_label():
     renderer = PySideRenderer()
     gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
 
-    element = h(
-        "QWidget",
-        {"layout_direction": "QBoxLayout.Direction.TopToBottom"},
-        h("QLabel", {"text": "Foo"}),
-    )
+    element = h("Widget", {"layout": {"type": "Box"}}, h("Label", {"text": "Foo"}))
     container = QtWidgets.QMainWindow()
     gui.render(element, container)
 
