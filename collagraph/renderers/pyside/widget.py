@@ -17,13 +17,12 @@ DIRECTIONS = {
 
 
 def insert(self, el, anchor=None):
-    # Adding a widget to a widget involves getting the layout of the parent
-    # and then inserting the widget into the layout. The layout might not
-    # exist yet, so let's create a default QBoxLayout.
-    # TODO: add support for other layouts? Maybe through special/custom attributes?
     if hasattr(el, "setParent"):
         el.setParent(self)
 
+    # Adding a widget to a widget involves getting the layout of the parent
+    # and then inserting the widget into the layout. The layout might not
+    # exist yet, so let's create a default QBoxLayout.
     layout = self.layout()
     if not layout:
         layout = QBoxLayout(QBoxLayout.Direction.TopToBottom, self)
