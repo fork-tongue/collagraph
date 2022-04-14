@@ -22,7 +22,7 @@ def test_simple_widget():
     gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
 
     element = h("Widget", {"layout": {"type": "Box", "direction": "RightToLeft"}})
-    container = QtWidgets.QWidget()
+    container = renderer.create_element("Widget")
     gui.render(element, container)
 
     # Test the default direction of box layout
@@ -37,7 +37,7 @@ def test_label():
     gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
 
     element = h("Widget", {"layout": {"type": "Box"}}, h("Label", {"text": "Foo"}))
-    container = QtWidgets.QMainWindow()
+    container = renderer.create_element("Window")
     gui.render(element, container)
 
     label = container.findChild(QtWidgets.QLabel)

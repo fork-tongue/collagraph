@@ -50,7 +50,7 @@ def LayoutExample(props):
                 # }
             },
             h(
-                "QGroupBox",
+                "GroupBox",
                 {
                     "title": "Horizontal layout",
                     "layout": {
@@ -61,7 +61,7 @@ def LayoutExample(props):
                 *[h(item[0], item[1]) for item in box],
             ),
             h(
-                "QGroupBox",
+                "GroupBox",
                 {
                     "title": "Grid layout",
                     "layout": {
@@ -78,7 +78,7 @@ def LayoutExample(props):
                 *[h(item[0], item[1]) for item in grid],
             ),
             h(
-                "QGroupBox",
+                "GroupBox",
                 {
                     "title": "Form layout",
                     "layout": {
@@ -95,7 +95,7 @@ def LayoutExample(props):
                 },
             ),
             h(
-                "QDialogButtonBox",
+                "DialogButtonBox",
                 {},
                 h("Button", {"flag": "Ok"}),
                 h("Button", {"flag": "Cancel"}),
