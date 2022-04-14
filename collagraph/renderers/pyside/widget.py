@@ -8,6 +8,14 @@ from PySide6.QtWidgets import (
 from . import camel_case, name_to_type
 
 
+DIRECTIONS = {
+    "TopToBottom": QBoxLayout.Direction.TopToBottom,
+    "LeftToRight": QBoxLayout.Direction.LeftToRight,
+    "RightToLeft": QBoxLayout.Direction.RightToLeft,
+    "BottomToTop": QBoxLayout.Direction.BottomToTop,
+}
+
+
 def insert(self, el, anchor=None):
     # Adding a widget to a widget involves getting the layout of the parent
     # and then inserting the widget into the layout. The layout might not
@@ -50,14 +58,6 @@ def remove(self, el):
     layout = self.layout()
     layout.removeWidget(el)
     el.setParent(None)
-
-
-DIRECTIONS = {
-    "TopToBottom": QBoxLayout.Direction.TopToBottom,
-    "LeftToRight": QBoxLayout.Direction.LeftToRight,
-    "RightToLeft": QBoxLayout.Direction.RightToLeft,
-    "BottomToTop": QBoxLayout.Direction.BottomToTop,
-}
 
 
 def set_attribute(self, attr, value):
