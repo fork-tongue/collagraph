@@ -68,7 +68,7 @@ if __name__ == "__main__":
         {},
         h(
             "Widget",
-            {"layout_direction": "QBoxLayout.Direction.TopToBottom"},
+            {},
             h("Label", state["title"]),
             h("Label", state["content"]),
             h(PushButton, state["button"]),

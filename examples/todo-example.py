@@ -10,14 +10,18 @@ from collagraph.renderers import PySideRenderer
 
 
 def TodoList(props):
-    # props.setdefault("layout_direction", "QBoxLayout.Direction.TopToBottom")
     return h(
         "Widget",
-        {"layout_direction": "QBoxLayout.Direction.TopToBottom"},
+        {},
         *[
             h(
                 "Widget",
-                {},
+                {
+                    "layout": {
+                        "type": "Box",
+                        "direction": "LeftToRight",
+                    }
+                },
                 h(
                     "Button",
                     {
@@ -68,7 +72,6 @@ class TodoApp(Component):
                 "Widget",
                 {
                     "name": "main-content",
-                    "layout_direction": "QBoxLayout.Direction.TopToBottom",
                 },
                 h("Label", {"text": "What needs to be done?"}),
                 h(
