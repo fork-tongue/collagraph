@@ -69,3 +69,27 @@ def name_to_type(name, modules=None, orig=None):
 def camel_case(event, split):
     parts = event.split(split)
     return "".join([parts[0]] + [part.capitalize() for part in parts[1:]])
+
+
+def attr_name_to_method_name(name, setter=False):
+    sep = "-"
+    if "_" in name:
+        sep = "_"
+
+    prefix = f"set{sep}" if setter else ""
+    return camel_case(f"{prefix}{name}", sep)
+
+
+def call_method(method, args):
+    if isinstance(args, str):
+        try:
+            args = name_to_type(args)
+        except TypeError:
+            pass
+        method(args)
+    else:
+        try:
+            method(args)
+        except TypeError:
+            # TODO: Maybe also call name_to_type on all values?
+            method(*args)
