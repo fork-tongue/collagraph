@@ -5,220 +5,35 @@ from typing import Any, Callable
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtWidgets import (
     QBoxLayout,
-    QCheckBox,
-    QComboBox,
     QDialogButtonBox,
     QFormLayout,
     QGridLayout,
-    QGroupBox,
-    QLabel,
-    QLineEdit,
     QMainWindow,
-    QMenuBar,
-    QPushButton,
-    QRadioButton,
-    QSlider,
     QSpacerItem,
-    QSpinBox,
-    QStatusBar,
-    QTextEdit,
-    QTreeView,
     QWidget,
 )
 
 from . import Renderer
+from .pyside import camel_case, dialog, name_to_type, widget, window
 
 
 logger = logging.getLogger(__name__)
 
 
-def not_implemented(self, *args, **kwargs):
-    raise NotImplementedError(type(self).__name__)
-
-
-def set_attr(self, attr, value):
-    if attr == "layout":
-        if value["type"] == "Box":
-            direction = DIRECTIONS[value.get("direction", "TopToBottom")]
-            if isinstance(self.layout(), QBoxLayout):
-                self.layout().setDirection(direction)
-            else:
-                self.setLayout(QBoxLayout(direction))
-        elif value["type"] == "Grid":
-            if isinstance(self.layout(), QGridLayout):
-                pass
-            else:
-                self.setLayout(QGridLayout())
-        elif value["type"] == "Form":
-            if isinstance(self.layout(), QFormLayout):
-                pass
-            else:
-                self.setLayout(QFormLayout())
-
-        for key, val in value.items():
-            if key == "type":
-                continue
-            method_name = attr_name_to_method_name(key, setter=True)
-            method = getattr(self.layout(), method_name, None)
-            if method:
-                if key in ["column_stretch", "row_stretch"]:
-                    for args in val:
-                        call_method(method, args)
-                else:
-                    call_method(method, val)
-        return
-
-    if attr == "grid_index":
-        setattr(self, "grid_index", value)
-        if parent := self.parent():
-            layout = parent.layout()
-            layout.addWidget(self, *value)
-        return
-
-    if attr in ["form_label", "form_index"]:
-        setattr(self, attr, value)
-        if parent := self.parent():
-            layout = parent.layout()
-            if hasattr(self, "form_label") and hasattr(self, "form_index"):
-                layout.insertRow(self.form_index, self.form_label, self)
-            elif hasattr(self, "form_label"):
-                layout.addRow(self.form_label, self)
-        return
-
-    method_name = attr_name_to_method_name(attr, setter=True)
-    method = getattr(self, method_name, None)
-    if not method:
-        setattr(self, attr, value)
-        return
-
-    call_method(method, value)
-
-
-def remove_from_widget(self, other):
-    layout = self.layout()
-    layout.removeWidget(other)
-    other.setParent(None)
-
-
-def add_to_window(self, other, anchor=None):
-    # If the parent is a QMainWindow, then depending on the
-    # type of child, we can add the element in special ways
-    if isinstance(other, QtWidgets.QDockWidget):
-        # FIXME: how to specify area?
-        # parent.addDockWidget(area, other)
-        pass
-    elif isinstance(other, QtWidgets.QToolBar):
-        # FIXME: how to specify area?
-        # parent.addToolBar(area, other)
-        self.addToolBar(other)
-    else:
-        # Let's assume any other given widget is just the
-        # central widget of the QMainWindow
-        if self.centralWidget():
-            logger.warning("central widget of QMainWindow already set")
-        self.setCentralWidget(other)
-        other.setParent(self)
-
-
-def add_to_widget(self, other, anchor=None):
-    # Adding a widget to a widget involves getting the layout of the parent
-    # and then inserting the widget into the layout. The layout might not
-    # exist yet, so let's create a default QBoxLayout.
-    # TODO: add support for other layouts? Maybe through special/custom attributes?
-    if hasattr(other, "setParent"):
-        other.setParent(self)
-    layout = self.layout()
-    if not layout:
-        layout = QtWidgets.QBoxLayout(QtWidgets.QBoxLayout.Direction.TopToBottom, self)
-        self.setLayout(layout)
-
-    index = -1
-    if anchor:
-        index = layout.indexOf(anchor)
-
-    if isinstance(other, QSpacerItem):
-        layout.insertSpacerItem(index, other)
-        return
-
-    if hasattr(other, "grid_index"):
-        layout.addWidget(other, *other.grid_index)
-        return
-
-    if hasattr(other, "form_label"):
-        if hasattr(other, "form_index"):
-            layout.insertRow(other.form_index, other.form_label, other)
-        else:
-            layout.addRow(other.form_label, other)
-        return
-
-    if hasattr(layout, "insertWidget"):
-        layout.insertWidget(index, other)
-    else:
-        raise NotImplementedError
-
-
-def add_to_dialog_button_box(self, other, anchor=None):
-    if hasattr(other, "flag"):
-        self.addButton(getattr(QtWidgets.QDialogButtonBox, other.flag))
-        return
-    elif hasattr(other, "role"):
-        self.addButton(other, getattr(QtWidgets.QDialogButtonBox, other.role))
-        return
-    raise NotImplementedError
-
-
 INSERT_MAPPING = {
-    "Widget": add_to_widget,
-    "GroupBox": add_to_widget,
-    "Window": add_to_window,
-    "DialogButtonBox": add_to_dialog_button_box,
+    QWidget: widget.insert,
+    QMainWindow: window.insert,
+    QDialogButtonBox: dialog.insert,
 }
 REMOVE_MAPPING = {
-    "Widget": remove_from_widget,
+    QWidget: widget.remove,
 }
 SET_ATTR_MAPPING = {
-    "Window": set_attr,
-    "Widget": set_attr,
+    QWidget: widget.set_attribute,
 }
 
-# Dicts with types to their custom implementations
-# * insertChild -> insert
-# * patchProp -> set_attribute
-# * removeChild -> remove
 
-
-# Add examples for:
-# * QTabWidget
-# * QTreeView
-# * QTableView
-# * QListView
-# * slider / progress / float all connected
-
-
-TYPE_MAPPING = {
-    "Button": QPushButton,
-    "CheckBox": QCheckBox,
-    "ComboBox": QComboBox,
-    "Label": QLabel,
-    "LineEdit": QLineEdit,
-    "MenuBar": QMenuBar,
-    "RadioButton": QRadioButton,
-    "DialogButtonBox": QDialogButtonBox,
-    "GroupBox": QGroupBox,
-    "Slider": QSlider,
-    "SpinBox": QSpinBox,
-    "StatusBar": QStatusBar,
-    "TextEdit": QTextEdit,
-    "TreeView": QTreeView,
-    "Widget": QWidget,
-    "Window": QMainWindow,
-    # Layout directions
-    "TopToBottom": QBoxLayout.Direction.TopToBottom,
-    "LeftToRight": QBoxLayout.Direction.LeftToRight,
-    "RightToLeft": QBoxLayout.Direction.RightToLeft,
-    "BottomToTop": QBoxLayout.Direction.BottomToTop,
-}
-
+# Cache for wrapped types
 WRAPPED_TYPES = {}
 
 LAYOUT = {
@@ -228,61 +43,8 @@ LAYOUT = {
 }
 
 
-DIRECTIONS = {
-    "TopToBottom": QBoxLayout.Direction.TopToBottom,
-    "LeftToRight": QBoxLayout.Direction.LeftToRight,
-    "RightToLeft": QBoxLayout.Direction.RightToLeft,
-    "BottomToTop": QBoxLayout.Direction.BottomToTop,
-}
-
-
-def name_to_type(name, modules=None, orig=None):
-    # IDEA: use a dict as cache (or lru_cache). Might speed things up a bit?
-    # Using a dict might be handy, because we can specify certain types in advance?
-    if name in TYPE_MAPPING:
-        return TYPE_MAPPING[name]
-    if modules is None:
-        modules = [QtWidgets, QtCore, QtCore.Qt]
-    parts = name.split(".")
-    for module in modules:
-        if (element_class := getattr(module, parts[0], None)) is not None:
-            if len(parts) > 1:
-                return name_to_type(
-                    ".".join(parts[1:]), modules=[element_class], orig=name
-                )
-            TYPE_MAPPING[orig or name] = element_class
-            return element_class
-
-    raise TypeError(f"Couldn't find type for name: '{name}' ({orig})")
-
-
-def camel_case(event, split):
-    parts = event.split(split)
-    return "".join([parts[0]] + [part.capitalize() for part in parts[1:]])
-
-
-def attr_name_to_method_name(name, setter=False):
-    sep = "-"
-    if "_" in name:
-        sep = "_"
-
-    prefix = f"set{sep}" if setter else ""
-    return camel_case(f"{prefix}{name}", sep)
-
-
-def call_method(method, args):
-    if isinstance(args, str):
-        try:
-            args = name_to_type(args)
-        except TypeError:
-            pass
-        method(args)
-    else:
-        try:
-            method(args)
-        except TypeError:
-            # TODO: Maybe also call name_to_type on all values?
-            method(*args)
+def not_implemented(self, *args, **kwargs):
+    raise NotImplementedError(type(self).__name__)
 
 
 class PySideRenderer(Renderer):
@@ -293,30 +55,40 @@ class PySideRenderer(Renderer):
         # Make sure that an app exists before any widgets
         # are created. Otherwise we might experience a
         # hard segfault.
-
-        # TODO: create dynamic subclasses (meta) which implement
-        # insert, set_attribute and remove
-        # Make sure to 'cache' the generated types in a dict or something to
-        # ensure equality
         QtCore.QCoreApplication.instance() or QtWidgets.QApplication()
+
         # TODO: how to do spacing / stretch?
         if type_name in ["Spacing", "Stretch"]:
             return QSpacerItem(0, 0)
 
+        # Create dynamic subclasses which implement `insert`, `set_attribute`
+        # and `remove` methods.
+        # The generated types are cached in WRAPPED_TYPES so they only have
+        # to be generated once and can be used in equality comparisons
         if type_name in WRAPPED_TYPES:
             return WRAPPED_TYPES[type_name]()
 
         original_type = name_to_type(type_name)
-        wrapped_type = type(
-            type_name,
-            (original_type,),
-            {
-                "insert": INSERT_MAPPING.get(type_name, not_implemented),
-                "remove": REMOVE_MAPPING.get(type_name, not_implemented),
-                # Note: set_attribute defaults now to set_attr
-                "set_attribute": SET_ATTR_MAPPING.get(type_name, set_attr),
-            },
-        )
+
+        attrs = {
+            "insert": not_implemented,
+            "remove": not_implemented,
+            "set_attribute": not_implemented,
+        }
+        for insert_class in INSERT_MAPPING:
+            if issubclass(original_type, insert_class):
+                attrs["insert"] = INSERT_MAPPING[insert_class]
+
+        for remove_class in REMOVE_MAPPING:
+            if issubclass(original_type, remove_class):
+                attrs["remove"] = REMOVE_MAPPING[remove_class]
+
+        for set_class in SET_ATTR_MAPPING:
+            if issubclass(original_type, set_class):
+                attrs["set_attribute"] = SET_ATTR_MAPPING[set_class]
+
+        # Create the new type with the new methods
+        wrapped_type = type(type_name, (original_type,), attrs)
         WRAPPED_TYPES[type_name] = wrapped_type
         return wrapped_type()
 
@@ -359,7 +131,7 @@ class PySideRenderer(Renderer):
 
         # Add a slots attribute to hold all the generated slots, keyed on event_type
         if not hasattr(el, "slots"):
-            el.slots = defaultdict(set)
+            setattr(el, "slots", defaultdict(set))
 
         # Create a slot with the given value
         # Note that the slot apparently does not need arguments to specify the type
