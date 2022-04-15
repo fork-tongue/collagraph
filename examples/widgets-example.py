@@ -20,16 +20,16 @@ def Example(props):
                 h(
                     "Widget",
                     {
-                        "tab_label": "Tab 1",
-                        "tab_index": 0,
+                        "tab_label": "Tab 2",
+                        "tab_index": 1,
                     },
                     h("Label", {"text": "Content of tab 1"}),
                 ),
                 h(
                     "Widget",
                     {
-                        "tab_label": "Tab 2",
-                        "tab_index": 1,
+                        "tab_label": "Tab 1",
+                        "tab_index": 0,
                     },
                     h("Label", {"text": "Content of tab 2"}),
                 ),
