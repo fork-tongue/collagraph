@@ -104,25 +104,19 @@ class PySideRenderer(Renderer):
 
         original_type = name_to_type(type_name)
 
-        attrs = {
-            "insert": not_implemented,
-            "remove": not_implemented,
-            "set_attribute": not_implemented,
+        attrs = {}
+        maps = {
+            "insert": INSERT_MAPPING,
+            "remove": REMOVE_MAPPING,
+            "set_attribute": SET_ATTR_MAPPING,
         }
-        for insert_class in INSERT_MAPPING:
-            if issubclass(original_type, insert_class):
-                attrs["insert"] = INSERT_MAPPING[insert_class]
-                break
-
-        for remove_class in REMOVE_MAPPING:
-            if issubclass(original_type, remove_class):
-                attrs["remove"] = REMOVE_MAPPING[remove_class]
-                break
-
-        for set_class in SET_ATTR_MAPPING:
-            if issubclass(original_type, set_class):
-                attrs["set_attribute"] = SET_ATTR_MAPPING[set_class]
-                break
+        for key, map in maps.items():
+            for cls, method in map.items():
+                if issubclass(original_type, cls):
+                    attrs[key] = method
+                    break
+            else:
+                attrs[key] = not_implemented
 
         # Create the new type with the new methods
         wrapped_type = type(type_name, (original_type,), attrs)
