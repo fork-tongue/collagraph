@@ -86,7 +86,12 @@ class PySideRenderer(Renderer):
         # Make sure that an app exists before any widgets
         # are created. Otherwise we might experience a
         # hard segfault.
-        QtCore.QCoreApplication.instance() or QtWidgets.QApplication()
+        if not hasattr(self, "_app"):
+            setattr(
+                self,
+                "_app",
+                QtCore.QCoreApplication.instance() or QtWidgets.QApplication(),
+            )
 
         # TODO: how to do spacing / stretch?
         if type_name in ["Spacing", "Stretch"]:
