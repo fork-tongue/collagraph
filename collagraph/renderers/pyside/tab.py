@@ -10,3 +10,9 @@ def insert(self, el, anchor=None):
         self.insertTab(index, el, label)
     else:
         self.addTab(el, label)
+
+
+def remove(self, el):
+    index = self.indexOf(el)
+    if index >= 0:
+        self.removeTab(index)

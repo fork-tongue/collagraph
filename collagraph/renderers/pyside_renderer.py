@@ -39,6 +39,7 @@ INSERT_MAPPING = sorted_on_class_hierarchy(
 REMOVE_MAPPING = sorted_on_class_hierarchy(
     {
         QWidget: widget.remove,
+        QTabWidget: tab.remove,
     }
 )
 SET_ATTR_MAPPING = sorted_on_class_hierarchy(
