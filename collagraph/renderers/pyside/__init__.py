@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import (
     QBoxLayout,
@@ -46,9 +48,16 @@ TYPE_MAPPING = {
 }
 
 
+@lru_cache
 def name_to_type(name, modules=None, orig=None):
-    # IDEA: use a dict as cache (or lru_cache). Might speed things up a bit?
-    # Using a dict might be handy, because we can specify certain types in advance?
+    """Lookup a class/type from PySide6 for the given name.
+
+    See TYPE_MAPPING for some default names that you can use for
+    DOM elements. It is also possible to use the complete PySide6
+    class name instead, such as 'QWidget', 'QLine' or
+    'QBoxLayout.Direction.TopToBottom'. As long as the name can
+    be found in teh QtWidget, QtGui, QtCore or QtCore.Qt module.
+    """
     if name in TYPE_MAPPING:
         return TYPE_MAPPING[name]
     if modules is None:
@@ -60,7 +69,6 @@ def name_to_type(name, modules=None, orig=None):
                 return name_to_type(
                     ".".join(parts[1:]), modules=[element_class], orig=name
                 )
-            TYPE_MAPPING[orig or name] = element_class
             return element_class
 
     raise TypeError(f"Couldn't find type for name: '{name}' ({orig})")
@@ -71,6 +79,7 @@ def camel_case(event, split):
     return "".join([parts[0]] + [part.capitalize() for part in parts[1:]])
 
 
+@lru_cache
 def attr_name_to_method_name(name, setter=False):
     sep = "-"
     if "_" in name:
