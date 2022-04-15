@@ -20,18 +20,30 @@ from .pyside import camel_case, dialog, name_to_type, widget, window
 logger = logging.getLogger(__name__)
 
 
-INSERT_MAPPING = {
-    QWidget: widget.insert,
-    QMainWindow: window.insert,
-    QDialogButtonBox: dialog.insert,
-}
-REMOVE_MAPPING = {
-    QWidget: widget.remove,
-}
-SET_ATTR_MAPPING = {
-    QWidget: widget.set_attribute,
-}
+def sorted_on_class_hierarchy(value):
+    # __mro__ is a tuple of all the classes that an class inherits. The longer the
+    # __mro__, the 'deeper' the subclass is, so we can use that to sort the classes
+    # to make the deepest class come first.
+    return dict(sorted(value.items(), key=lambda x: -len(x[0].__mro__)))
 
+
+INSERT_MAPPING = sorted_on_class_hierarchy(
+    {
+        QWidget: widget.insert,
+        QMainWindow: window.insert,
+        QDialogButtonBox: dialog.insert,
+    }
+)
+REMOVE_MAPPING = sorted_on_class_hierarchy(
+    {
+        QWidget: widget.remove,
+    }
+)
+SET_ATTR_MAPPING = sorted_on_class_hierarchy(
+    {
+        QWidget: widget.set_attribute,
+    }
+)
 
 # Cache for wrapped types
 WRAPPED_TYPES = {}
@@ -78,14 +90,17 @@ class PySideRenderer(Renderer):
         for insert_class in INSERT_MAPPING:
             if issubclass(original_type, insert_class):
                 attrs["insert"] = INSERT_MAPPING[insert_class]
+                break
 
         for remove_class in REMOVE_MAPPING:
             if issubclass(original_type, remove_class):
                 attrs["remove"] = REMOVE_MAPPING[remove_class]
+                break
 
         for set_class in SET_ATTR_MAPPING:
             if issubclass(original_type, set_class):
                 attrs["set_attribute"] = SET_ATTR_MAPPING[set_class]
+                break
 
         # Create the new type with the new methods
         wrapped_type = type(type_name, (original_type,), attrs)
