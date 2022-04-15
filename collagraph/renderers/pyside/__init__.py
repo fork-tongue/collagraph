@@ -1,4 +1,4 @@
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import (
     QBoxLayout,
     QCheckBox,
@@ -52,7 +52,7 @@ def name_to_type(name, modules=None, orig=None):
     if name in TYPE_MAPPING:
         return TYPE_MAPPING[name]
     if modules is None:
-        modules = [QtWidgets, QtCore, QtCore.Qt]
+        modules = [QtWidgets, QtGui, QtCore, QtCore.Qt]
     parts = name.split(".")
     for module in modules:
         if (element_class := getattr(module, parts[0], None)) is not None:

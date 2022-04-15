@@ -3,19 +3,32 @@ import logging
 from typing import Any, Callable
 
 from PySide6 import QtCore, QtWidgets
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QBoxLayout,
     QDialogButtonBox,
     QFormLayout,
     QGridLayout,
     QMainWindow,
+    QMenu,
+    QMenuBar,
     QSpacerItem,
     QTabWidget,
     QWidget,
 )
 
 from . import Renderer
-from .pyside import camel_case, dialog, name_to_type, tab, widget, window
+from .pyside import (
+    action,
+    camel_case,
+    dialog,
+    menu,
+    menubar,
+    name_to_type,
+    tab,
+    widget,
+    window,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -34,6 +47,8 @@ INSERT_MAPPING = sorted_on_class_hierarchy(
         QMainWindow: window.insert,
         QDialogButtonBox: dialog.insert,
         QTabWidget: tab.insert,
+        QMenuBar: menubar.insert,
+        QMenu: menu.insert,
     }
 )
 REMOVE_MAPPING = sorted_on_class_hierarchy(
@@ -45,6 +60,7 @@ REMOVE_MAPPING = sorted_on_class_hierarchy(
 SET_ATTR_MAPPING = sorted_on_class_hierarchy(
     {
         QWidget: widget.set_attribute,
+        QAction: action.set_attribute,
     }
 )
 
@@ -75,6 +91,9 @@ class PySideRenderer(Renderer):
         # TODO: how to do spacing / stretch?
         if type_name in ["Spacing", "Stretch"]:
             return QSpacerItem(0, 0)
+
+        # if type_name in ["QAction", "Action"]:
+        #     return QAction("")
 
         # Create dynamic subclasses which implement `insert`, `set_attribute`
         # and `remove` methods.
@@ -108,6 +127,8 @@ class PySideRenderer(Renderer):
         # Create the new type with the new methods
         wrapped_type = type(type_name, (original_type,), attrs)
         WRAPPED_TYPES[type_name] = wrapped_type
+        if original_type == QAction:
+            return wrapped_type("")
         return wrapped_type()
 
     def insert(self, el: Any, parent: Any, anchor: Any = None):

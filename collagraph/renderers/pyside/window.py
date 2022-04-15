@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QDockWidget, QToolBar
+from PySide6.QtWidgets import QDockWidget, QMenuBar, QToolBar
 
 
 def insert(self, el, anchor=None):
@@ -12,6 +12,8 @@ def insert(self, el, anchor=None):
         # FIXME: how to specify area?
         # parent.addToolBar(area, el)
         self.addToolBar(el)
+    elif isinstance(el, QMenuBar):
+        self.setMenuBar(el)
     else:
         # Let's assume any other given widget is just the
         # central widget of the QMainWindow

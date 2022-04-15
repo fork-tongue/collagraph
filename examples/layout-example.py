@@ -43,12 +43,20 @@ def LayoutExample(props):
         "Window",
         {},
         h(
+            "QMenuBar",
+            {},
+            h(
+                "QMenu",
+                {"title": "File"},
+                h(
+                    "QAction",
+                    {"text": "Open"},
+                ),
+            ),
+        ),
+        h(
             "Widget",
-            {
-                # "layout": {
-                #     "type": "Box",
-                # }
-            },
+            {},
             h(
                 "GroupBox",
                 {
