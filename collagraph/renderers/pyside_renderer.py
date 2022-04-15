@@ -10,11 +10,12 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QMainWindow,
     QSpacerItem,
+    QTabWidget,
     QWidget,
 )
 
 from . import Renderer
-from .pyside import camel_case, dialog, name_to_type, widget, window
+from .pyside import camel_case, dialog, name_to_type, tab, widget, window
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ INSERT_MAPPING = sorted_on_class_hierarchy(
         QWidget: widget.insert,
         QMainWindow: window.insert,
         QDialogButtonBox: dialog.insert,
+        QTabWidget: tab.insert,
     }
 )
 REMOVE_MAPPING = sorted_on_class_hierarchy(
