@@ -48,7 +48,7 @@ TYPE_MAPPING = {
 }
 
 
-@lru_cache
+@lru_cache(maxsize=None)
 def name_to_type(name, modules=None, orig=None):
     """Lookup a class/type from PySide6 for the given name.
 
@@ -79,7 +79,7 @@ def camel_case(event, split):
     return "".join([parts[0]] + [part.capitalize() for part in parts[1:]])
 
 
-@lru_cache
+@lru_cache(maxsize=None)
 def attr_name_to_method_name(name, setter=False):
     sep = "-"
     if "_" in name:
