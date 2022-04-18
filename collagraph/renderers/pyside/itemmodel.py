@@ -1,13 +1,8 @@
-from PySide6.QtGui import QStandardItemModel
+from PySide6.QtGui import QStandardItem, QStandardItemModel
 
 
 def insert(self, el, anchor=None):
-    assert isinstance(el, QStandardItemModel)
-    # model = self.model()
-    # if not model:
-    # model = QStandardItemModel(self)
-    el.setParent(self)
-    self.setModel(el)
+    assert isinstance(el, QStandardItem)
 
     # TODO: This should probably be part of pyside_renderer's
     # 'add_event_listener' or maybe that function needs
@@ -24,14 +19,16 @@ def insert(self, el, anchor=None):
     #                 signal.connect(slot)
 
     # TODO: list with multiple columns?
-    # if anchor:
-    # index = model.indexFromItem(anchor)
-    # model.insertRow(index.row(), el)
-    # else:
-    # model.appendRow(el)
+    if isinstance(self, QStandardItemModel):
+        if anchor:
+            index = self.indexFromItem(anchor)
+            self.insertRow(index.row(), el)
+        else:
+            self.appendRow(el)
+    else:
+        raise NotImplementedError(type(self).__name__)
 
 
 def remove(self, el):
-    self.setModel(None)
-    # index = self.model().indexFromItem(el)
-    # self.model().takeRow(index.row())
+    index = self.indexFromItem(el)
+    self.takeRow(index.row())

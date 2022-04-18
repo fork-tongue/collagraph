@@ -26,9 +26,32 @@ def Example(props):
             "Widget",
             {},
             h(
-                "QListView",
-                {"on_item_changed": item_changed},
-                *[h("QStandardItem", {"text": item[0]}) for item in props["items"]]
+                "QSplitter",
+                {},
+                h(
+                    "QListView",
+                    {},
+                    h(
+                        "QStandardItemModel",
+                        {"on_item_changed": item_changed},
+                        *[
+                            h("QStandardItem", {"text": item[0]})
+                            for item in props["items"]
+                        ]
+                    ),
+                ),
+                h(
+                    "QListView",
+                    {},
+                    h(
+                        "QStandardItemModel",
+                        {"on_item_changed": item_changed},
+                        *[
+                            h("QStandardItem", {"text": item[0]})
+                            for item in props["items"]
+                        ]
+                    ),
+                ),
             ),
             h(
                 "Widget",

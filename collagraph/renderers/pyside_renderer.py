@@ -3,7 +3,7 @@ import logging
 from typing import Any, Callable
 
 from PySide6 import QtCore, QtWidgets
-from PySide6.QtGui import QAction, QStandardItem
+from PySide6.QtGui import QAction, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QBoxLayout,
     QDialogButtonBox,
@@ -23,6 +23,7 @@ from .pyside import (
     action,
     camel_case,
     dialog,
+    itemmodel,
     listview,
     menu,
     menubar,
@@ -52,6 +53,7 @@ INSERT_MAPPING = sorted_on_class_hierarchy(
         QMenuBar: menubar.insert,
         QMenu: menu.insert,
         QListView: listview.insert,
+        QStandardItemModel: itemmodel.insert,
     }
 )
 REMOVE_MAPPING = sorted_on_class_hierarchy(
@@ -59,6 +61,7 @@ REMOVE_MAPPING = sorted_on_class_hierarchy(
         QWidget: widget.remove,
         QTabWidget: tab.remove,
         QListView: listview.remove,
+        QStandardItemModel: itemmodel.remove,
     }
 )
 SET_ATTR_MAPPING = sorted_on_class_hierarchy(
@@ -66,6 +69,7 @@ SET_ATTR_MAPPING = sorted_on_class_hierarchy(
         QWidget: widget.set_attribute,
         QAction: action.set_attribute,
         QStandardItem: widget.set_attribute,
+        QStandardItemModel: widget.set_attribute,
     }
 )
 
