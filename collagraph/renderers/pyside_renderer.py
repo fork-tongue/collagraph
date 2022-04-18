@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QMenuBar,
     QSpacerItem,
     QSplitter,
+    QTableView,
     QTabWidget,
     QWidget,
 )
@@ -55,6 +56,7 @@ INSERT_MAPPING = sorted_on_class_hierarchy(
         QMenuBar: menubar.insert,
         QMenu: menu.insert,
         QListView: listview.insert,
+        QTableView: listview.insert,
         QSplitter: splitter.insert,
         QStandardItemModel: itemmodel.insert,
     }
@@ -64,6 +66,7 @@ REMOVE_MAPPING = sorted_on_class_hierarchy(
         QWidget: widget.remove,
         QTabWidget: tab.remove,
         QListView: listview.remove,
+        QTableView: listview.remove,
         QStandardItemModel: itemmodel.remove,
     }
 )
