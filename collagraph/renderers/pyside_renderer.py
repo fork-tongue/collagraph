@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QMenu,
     QMenuBar,
     QSpacerItem,
+    QSplitter,
     QTabWidget,
     QWidget,
 )
@@ -28,6 +29,7 @@ from .pyside import (
     menu,
     menubar,
     name_to_type,
+    splitter,
     tab,
     widget,
     window,
@@ -53,6 +55,7 @@ INSERT_MAPPING = sorted_on_class_hierarchy(
         QMenuBar: menubar.insert,
         QMenu: menu.insert,
         QListView: listview.insert,
+        QSplitter: splitter.insert,
         QStandardItemModel: itemmodel.insert,
     }
 )
