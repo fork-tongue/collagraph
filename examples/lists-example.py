@@ -19,6 +19,22 @@ def Example(props):
     def item_changed(item):
         props["items"][item.row()][item.column()] = item.text()
 
+    item_model = h(
+        "QStandardItemModel",
+        {
+            "on_item_changed": item_changed,
+            "column_count": len(props["items"][0]),
+        },
+        *[
+            h("QStandardItem", {"text": item[0], "model_index": (i, 0)})
+            for i, item in enumerate(props["items"])
+        ],
+        *[
+            h("QStandardItem", {"text": item[1], "model_index": (i, 1)})
+            for i, item in enumerate(props["items"])
+        ]
+    )
+
     return h(
         "Window",
         props,
@@ -31,59 +47,17 @@ def Example(props):
                 h(
                     "QListView",
                     {},
-                    h(
-                        "QStandardItemModel",
-                        {
-                            "on_item_changed": item_changed,
-                            "column_count": len(props["items"][0]),
-                        },
-                        *[
-                            h("QStandardItem", {"text": item[0], "model_index": (i, 0)})
-                            for i, item in enumerate(props["items"])
-                        ],
-                        *[
-                            h("QStandardItem", {"text": item[1], "model_index": (i, 1)})
-                            for i, item in enumerate(props["items"])
-                        ]
-                    ),
+                    item_model,
                 ),
                 h(
                     "QTableView",
                     {},
-                    h(
-                        "QStandardItemModel",
-                        {
-                            "on_item_changed": item_changed,
-                            "column_count": len(props["items"][0]),
-                        },
-                        *[
-                            h("QStandardItem", {"text": item[0], "model_index": (i, 0)})
-                            for i, item in enumerate(props["items"])
-                        ],
-                        *[
-                            h("QStandardItem", {"text": item[1], "model_index": (i, 1)})
-                            for i, item in enumerate(props["items"])
-                        ]
-                    ),
+                    item_model,
                 ),
                 h(
                     "QTreeView",
                     {},
-                    h(
-                        "QStandardItemModel",
-                        {
-                            "on_item_changed": item_changed,
-                            "column_count": len(props["items"][0]),
-                        },
-                        *[
-                            h("QStandardItem", {"text": item[0], "model_index": (i, 0)})
-                            for i, item in enumerate(props["items"])
-                        ],
-                        *[
-                            h("QStandardItem", {"text": item[1], "model_index": (i, 1)})
-                            for i, item in enumerate(props["items"])
-                        ]
-                    ),
+                    item_model,
                 ),
             ),
             h(
