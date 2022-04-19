@@ -105,6 +105,15 @@ def set_attribute(self, attr, value):
             elif hasattr(self, "form_label"):
                 layout.addRow(self.form_label, self)
         return
+    elif attr in ["model_index"]:
+        setattr(self, attr, value)
+        if model := self.model():
+            if len(value):
+                index = self.index()
+                if (index.row(), index.column()) != value:
+                    model.setItem(*value, self)
+            # TODO: log warning?
+        return
 
     method_name = attr_name_to_method_name(attr, setter=True)
     method = getattr(self, method_name, None)
