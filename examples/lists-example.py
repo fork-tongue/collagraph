@@ -1,38 +1,50 @@
 """
-Example of how to render to PySide6 UI.
+Example of how to render lists, tables and trees.
 """
 from observ import reactive
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from collagraph import Collagraph, create_element as h, EventLoopType
 from collagraph.renderers import PySideRenderer
 
 
+STATE_MAP = {
+    False: QtCore.Qt.Unchecked,
+    True: QtCore.Qt.Checked,
+}
+
+
 def Example(props):
     def bump():
-        props["items"].append(["NEW", "NEW"])
+        props["items"].append([["NEW", "ITEM"], False])
 
     def decr():
         if len(props["items"]):
-            props["items"].pop()
+            props["items"].pop(0)
 
     def item_changed(item):
-        props["items"][item.row()][item.column()] = item.text()
+        props["items"][item.row()][0][item.column()] = item.text()
+        props["items"][item.row()][1] = item.checkState() == QtCore.Qt.Checked
+
+    children = []
+    for row, (item, check_state) in enumerate(props["items"]):
+        for column, text in enumerate(item):
+            child_props = {
+                "text": text,
+                "model_index": (row, column),
+                "checkable": column == 0,
+            }
+            if column == 0:
+                child_props["check_state"] = STATE_MAP[check_state]
+            children.append(h("QStandardItem", child_props))
 
     item_model = h(
         "QStandardItemModel",
         {
             "on_item_changed": item_changed,
-            "column_count": len(props["items"][0]),
+            "column_count": 2,
         },
-        *[
-            h("QStandardItem", {"text": item[0], "model_index": (i, 0)})
-            for i, item in enumerate(props["items"])
-        ],
-        *[
-            h("QStandardItem", {"text": item[1], "model_index": (i, 1)})
-            for i, item in enumerate(props["items"])
-        ]
+        *children
     )
 
     return h(
@@ -62,7 +74,13 @@ def Example(props):
             ),
             h(
                 "Widget",
-                {"layout": {"type": "Box", "direction": "LeftToRight"}},
+                {
+                    "layout": {
+                        "type": "Box",
+                        "direction": "LeftToRight",
+                    },
+                    "maximum-height": 50,
+                },
                 h("Button", {"text": "Add", "on_clicked": bump}),
                 h("Button", {"text": "Remove", "on_clicked": decr}),
             ),
@@ -78,9 +96,9 @@ if __name__ == "__main__":
     state = reactive(
         {
             "items": [
-                ["Item", "Value"],
-                ["Foo", "Bar"],
-            ]
+                [["Item", "Value"], False],
+                [["Foo", "Bar"], False],
+            ],
         }
     )
 
