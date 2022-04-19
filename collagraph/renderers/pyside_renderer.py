@@ -201,6 +201,10 @@ class PySideRenderer(Renderer):
         signal = getattr(el, event_type, None)
         if signal:
             signal.connect(slot)
+        else:
+            logger.warning(
+                f"Could not find signal for: {type(el).__name__}:{event_type}"
+            )
 
     def remove_event_listener(self, el: Any, event_type: str, value: Callable):
         """Remove event listener for `event_type` to the element `el`."""
