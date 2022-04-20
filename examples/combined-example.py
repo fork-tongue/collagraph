@@ -96,7 +96,7 @@ class RenderWidget(Component):
                 # When increasing this number, it will take longer
                 # and longer for pygfx to create the render pipeline
                 # (compiling shaders and such), so be careful...
-                {"count": 50},
+                self.props,
             ),
             h(
                 "Mesh",
@@ -126,20 +126,21 @@ class RenderWidget(Component):
 
 def Example(props):
     def add(event):
-        pass
+        props["count"] += 1
 
     def remove(event):
-        pass
+        if props["count"] > 0:
+            props["count"] -= 1
 
     return h(
         "Window",
-        props,
+        {},
         h(
             "Widget",
             {},
             h(
                 RenderWidget,
-                {},
+                props,
             ),
             h(
                 "Widget",
@@ -164,7 +165,7 @@ if __name__ == "__main__":
     renderer.register("WgpuCanvas", WgpuCanvas)
     gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
 
-    state = reactive({"state": []})
+    state = reactive({"count": 50})
 
     # Define Qt structure and map state to the structure
     element = h(Example, state)
