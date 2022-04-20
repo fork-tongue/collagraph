@@ -396,6 +396,7 @@ class Collagraph:
 
             if fiber.mounted:
                 if fiber.component:
+                    fiber.component.element = fiber.child.dom
                     fiber.component.mounted()
                 fiber.mounted = False
                 fiber.updated = False

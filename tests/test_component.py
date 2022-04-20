@@ -217,3 +217,26 @@ def test_component_props_deep_update():
 
     assert container["children"][0]["attrs"]["prop"] == [0, 1, 2]
     assert Counter.updates == 1
+
+
+def test_component_element():
+    component = None
+
+    class SpecialComponent(Component):
+        def mounted(self):
+            nonlocal component
+            component = self
+
+        def render(self):
+            return h("special")
+
+    gui = Collagraph(event_loop_type=EventLoopType.SYNC)
+    container = {"type": "root"}
+    state = reactive({"count": 0})
+    element = h(SpecialComponent, state)
+
+    gui.render(element, container)
+
+    assert component is not None
+    assert isinstance(component, SpecialComponent)
+    assert component.element is container["children"][0]
