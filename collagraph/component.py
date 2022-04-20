@@ -54,7 +54,3 @@ class Component(metaclass=ABCMeta):
     @abstractmethod
     def render():  # pragma: no cover
         pass
-
-    def __del__(self):
-        # Make sure to clean-up _element.
-        self._element = None
