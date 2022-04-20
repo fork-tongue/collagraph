@@ -1,5 +1,4 @@
 from abc import ABCMeta, abstractmethod
-from weakref import ref
 
 from observ import reactive, readonly
 
@@ -15,17 +14,12 @@ class Component(metaclass=ABCMeta):
     @property
     def element(self):
         """The root DOM element of this component."""
-        return self._element and self._element()
+        return self._element
 
     @element.setter
     def element(self, value):
         """Setter that is used by the internals of Collagraph. Please don't use this."""
-        try:
-            self._element = ref(value)
-        except TypeError:
-            # It is not possible to create weak refs to dicts and lists
-            # so instead wrap the element in a lambda.
-            self._element = lambda: value
+        self._element = value
 
     def mounted(self):
         """Called after the component has been mounted.
@@ -62,7 +56,5 @@ class Component(metaclass=ABCMeta):
         pass
 
     def __del__(self):
-        # Make sure to clean-up _element. Normally this shouldn't be needed as it is
-        # a weak ref, but if a type of element was set for which no weak ref can be
-        # made, we still need to do the clean-up.
+        # Make sure to clean-up _element.
         self._element = None
