@@ -33,6 +33,7 @@ from .pyside import (
     name_to_type,
     splitter,
     tab,
+    TYPE_MAPPING,
     widget,
     window,
 )
@@ -98,6 +99,14 @@ def not_implemented(self, *args, **kwargs):
 
 class PySideRenderer(Renderer):
     """PySide6 renderer."""
+
+    def register(self, type_name, custom_type):
+        # Check that the custom type is a subclass of QWidget.
+        # This ensures that the custom widget can be properly wrapped
+        # and will get the `insert`, `remove` and `set_attribute`
+        # methods.
+        assert QWidget in custom_type.__mro__
+        TYPE_MAPPING[type_name] = custom_type
 
     def create_element(self, type_name: str) -> Any:
         """Create an element for the given type."""
