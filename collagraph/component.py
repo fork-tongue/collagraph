@@ -9,6 +9,17 @@ class Component(metaclass=ABCMeta):
     def __init__(self, props=None):
         self.props = readonly({} if props is None else props)
         self.state = reactive({})
+        self._element = None
+
+    @property
+    def element(self):
+        """The root DOM element of this component."""
+        return self._element
+
+    @element.setter
+    def element(self, value):
+        """Setter that is used by the internals of Collagraph. Please don't use this."""
+        self._element = value
 
     def mounted(self):
         """Called after the component has been mounted.
