@@ -80,8 +80,8 @@ class RenderWidget(Component):
         camera = gfx.PerspectiveCamera(60, 16 / 9)
         camera.position.z = 15
 
-        controls = gfx.OrbitControls(camera.position.clone())
-        controls.add_default_event_handlers(renderer, self.element, camera)
+        controls = gfx.OrbitController(camera.position.clone())
+        controls.add_default_event_handlers(renderer, camera)
 
         self.gui = Collagraph(
             renderer=PygfxRenderer(), event_loop_type=EventLoopType.QT
@@ -121,7 +121,7 @@ class RenderWidget(Component):
         self.element.request_draw(animate)
 
     def render(self):
-        return h("WgpuCanvas")
+        return h("WgpuCanvas", {"minimum_height": 400, "minimum_width": 600})
 
 
 def Example(props):

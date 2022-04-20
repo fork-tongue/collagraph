@@ -355,7 +355,7 @@ python-versions = ">=3.8"
 
 [[package]]
 name = "observ"
-version = "0.9.1"
+version = "0.9.2"
 description = "Reactive state management for Python"
 category = "main"
 optional = false
@@ -404,15 +404,15 @@ testing = ["coverage", "nose"]
 
 [[package]]
 name = "platformdirs"
-version = "2.5.1"
+version = "2.5.2"
 description = "A small Python module for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 
 [package.extras]
-docs = ["Sphinx (>=4)", "furo (>=2021.7.5b38)", "proselint (>=0.10.2)", "sphinx-autodoc-typehints (>=1.12)"]
-test = ["appdirs (==1.4.4)", "pytest (>=6)", "pytest-cov (>=2.7)", "pytest-mock (>=3.6)"]
+docs = ["furo (>=2021.7.5b38)", "proselint (>=0.10.2)", "sphinx-autodoc-typehints (>=1.12)", "sphinx (>=4)"]
+test = ["appdirs (==1.4.4)", "pytest-cov (>=2.7)", "pytest-mock (>=3.6)", "pytest (>=6)"]
 
 [[package]]
 name = "pluggy"
@@ -476,23 +476,16 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "pygfx"
-version = "0.1.7"
+version = "0.1.8"
 description = "A threejs-like render engine based on wgpu"
 category = "main"
 optional = true
 python-versions = ">=3.7.0"
-develop = false
 
 [package.dependencies]
 Jinja2 = "*"
 numpy = "*"
 wgpu = ">=0.7.6,<0.8.0"
-
-[package.source]
-type = "git"
-url = "https://github.com/pygfx/pygfx.git"
-reference = "main"
-resolved_reference = "9cc7720673efb19defa24c70966e3779be6b1fb2"
 
 [[package]]
 name = "pygments"
@@ -504,25 +497,25 @@ python-versions = ">=3.5"
 
 [[package]]
 name = "pyparsing"
-version = "3.0.7"
-description = "Python parsing module"
+version = "3.0.8"
+description = "pyparsing module - Classes and methods to define and execute parsing grammars"
 category = "dev"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.6.8"
 
 [package.extras]
-diagrams = ["jinja2", "railroad-diagrams"]
+diagrams = ["railroad-diagrams", "jinja2"]
 
 [[package]]
-name = "pyside6"
-version = "6.2.4"
-description = "Python bindings for the Qt cross-platform application and UI framework"
+name = "pyside6-essentials"
+version = "6.3.0"
+description = "Python bindings for the Qt cross-platform application and UI framework (Essentials)"
 category = "main"
 optional = true
-python-versions = ">=3.6, <3.11"
+python-versions = "<3.11,>=3.6"
 
 [package.dependencies]
-shiboken6 = "6.2.4"
+shiboken6 = "6.3.0"
 
 [[package]]
 name = "pytest"
@@ -613,11 +606,11 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "readme-renderer"
-version = "34.0"
+version = "35.0"
 description = "readme_renderer is a library for rendering \"readme\" descriptions for Warehouse"
 category = "dev"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [package.dependencies]
 bleach = ">=2.1.0"
@@ -677,7 +670,7 @@ python-versions = ">=3.5"
 
 [[package]]
 name = "secretstorage"
-version = "3.3.1"
+version = "3.3.2"
 description = "Python bindings to FreeDesktop.org Secret Service API"
 category = "dev"
 optional = false
@@ -689,11 +682,11 @@ jeepney = ">=0.6"
 
 [[package]]
 name = "shiboken6"
-version = "6.2.4"
-description = "Python / C++ bindings helper module"
+version = "6.3.0"
+description = "Python/C++ bindings helper module"
 category = "main"
 optional = true
-python-versions = ">=3.6, <3.11"
+python-versions = "<3.11,>=3.6"
 
 [[package]]
 name = "six"
@@ -757,11 +750,11 @@ tqdm = ">=4.14"
 
 [[package]]
 name = "typing-extensions"
-version = "4.1.1"
-description = "Backported and Experimental Type Hints for Python 3.6+"
+version = "4.2.0"
+description = "Backported and Experimental Type Hints for Python 3.7+"
 category = "dev"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [[package]]
 name = "urllib3"
@@ -777,7 +770,7 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 
 [[package]]
 name = "virtualenv"
-version = "20.14.0"
+version = "20.14.1"
 description = "Virtual Python Environment builder"
 category = "dev"
 optional = false
@@ -803,11 +796,11 @@ python-versions = "*"
 
 [[package]]
 name = "wgpu"
-version = "0.7.6"
+version = "0.7.7"
 description = "Next generation GPU API for Python"
 category = "main"
 optional = true
-python-versions = ">=3.6.0"
+python-versions = ">=3.7.0"
 
 [package.dependencies]
 cffi = ">=1.15.0rc2"
@@ -831,12 +824,12 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 
 [extras]
 pygfx = ["pygfx"]
-pyside = ["PySide6"]
+pyside = ["pyside6_essentials"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8"
-content-hash = "5772db198d452eda96047609d8f801a38fcf14ac3b2b6628b590bc31a9858e38"
+content-hash = "472f6cc5b47712616d78b527cba721d9de6d45d224b8a43ea948573da299dbce"
 
 [metadata.files]
 atomicwrites = [
@@ -1146,8 +1139,8 @@ numpy = [
     {file = "numpy-1.22.3.zip", hash = "sha256:dbc7601a3b7472d559dc7b933b18b4b66f9aa7452c120e87dfb33d02008c8a18"},
 ]
 observ = [
-    {file = "observ-0.9.1-py3-none-any.whl", hash = "sha256:123818484845f3576200d6ff1383d921bd610f1c9c873ab97817a0928c9da9b9"},
-    {file = "observ-0.9.1.tar.gz", hash = "sha256:f4ab0f1abd8acd79ec154d12785757cfb1b06114d255c1b4d5fd6e5f288799d5"},
+    {file = "observ-0.9.2-py3-none-any.whl", hash = "sha256:eb958a2bb8ac1e30b864f91e27cbb5fca54028f928cd9d6591d12abd8d438e10"},
+    {file = "observ-0.9.2.tar.gz", hash = "sha256:0476708fcad070921754c7512ecf73672334c89ae40819fba0f0db09891ccdec"},
 ]
 packaging = [
     {file = "packaging-21.3-py3-none-any.whl", hash = "sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522"},
@@ -1166,8 +1159,8 @@ pkginfo = [
     {file = "pkginfo-1.8.2.tar.gz", hash = "sha256:542e0d0b6750e2e21c20179803e40ab50598d8066d51097a0e382cba9eb02bff"},
 ]
 platformdirs = [
-    {file = "platformdirs-2.5.1-py3-none-any.whl", hash = "sha256:bcae7cab893c2d310a711b70b24efb93334febe65f8de776ee320b517471e227"},
-    {file = "platformdirs-2.5.1.tar.gz", hash = "sha256:7535e70dfa32e84d4b34996ea99c5e432fa29a708d0f4e394bbcb2a8faa4f16d"},
+    {file = "platformdirs-2.5.2-py3-none-any.whl", hash = "sha256:027d8e83a2d7de06bbac4e5ef7e023c02b863d7ea5d079477e722bb41ab25788"},
+    {file = "platformdirs-2.5.2.tar.gz", hash = "sha256:58c8abb07dcb441e6ee4b11d8df0ac856038f944ab98b7be6b27b2a3c7feef19"},
 ]
 pluggy = [
     {file = "pluggy-1.0.0-py2.py3-none-any.whl", hash = "sha256:74134bbf457f031a36d68416e1509f34bd5ccc019f0bcc952c7b909d06b37bd3"},
@@ -1193,19 +1186,22 @@ pyflakes = [
     {file = "pyflakes-2.4.0-py2.py3-none-any.whl", hash = "sha256:3bb3a3f256f4b7968c9c788781e4ff07dce46bdf12339dcda61053375426ee2e"},
     {file = "pyflakes-2.4.0.tar.gz", hash = "sha256:05a85c2872edf37a4ed30b0cce2f6093e1d0581f8c19d7393122da7e25b2b24c"},
 ]
-pygfx = []
+pygfx = [
+    {file = "pygfx-0.1.8-py3-none-any.whl", hash = "sha256:72a91d719d974d20ac5c4f650a9de71db62fe15aac71fb482650389d1d4a36a7"},
+    {file = "pygfx-0.1.8.tar.gz", hash = "sha256:fc8c65bd592769734125f65e2a1b5e3bbfc349254384b8d7132c00fb7e8668f4"},
+]
 pygments = [
     {file = "Pygments-2.11.2-py3-none-any.whl", hash = "sha256:44238f1b60a76d78fc8ca0528ee429702aae011c265fe6a8dd8b63049ae41c65"},
     {file = "Pygments-2.11.2.tar.gz", hash = "sha256:4e426f72023d88d03b2fa258de560726ce890ff3b630f88c21cbb8b2503b8c6a"},
 ]
 pyparsing = [
-    {file = "pyparsing-3.0.7-py3-none-any.whl", hash = "sha256:a6c06a88f252e6c322f65faf8f418b16213b51bdfaece0524c1c1bc30c63c484"},
-    {file = "pyparsing-3.0.7.tar.gz", hash = "sha256:18ee9022775d270c55187733956460083db60b37d0d0fb357445f3094eed3eea"},
+    {file = "pyparsing-3.0.8-py3-none-any.whl", hash = "sha256:ef7b523f6356f763771559412c0d7134753f037822dad1b16945b7b846f7ad06"},
+    {file = "pyparsing-3.0.8.tar.gz", hash = "sha256:7bf433498c016c4314268d95df76c81b842a4cb2b276fa3312cfb1e1d85f6954"},
 ]
-pyside6 = [
-    {file = "PySide6-6.2.4-6.2.4-cp36.cp37.cp38.cp39.cp310-abi3-macosx_10_14_universal2.whl", hash = "sha256:d18f4d5ad2d4921dbb47166d3fce11a2eca1c83b670e210f983d60871d2e6bdb"},
-    {file = "PySide6-6.2.4-6.2.4-cp36.cp37.cp38.cp39.cp310-abi3-manylinux1_x86_64.whl", hash = "sha256:4656853a34bea096bb0a1f74e22607f99cca6e68d55a4f86a73770c5ec74565e"},
-    {file = "PySide6-6.2.4-6.2.4-cp36.cp37.cp38.cp39.cp310-none-win_amd64.whl", hash = "sha256:5e79a476fe05f303c1aadf6be7d31c486e6064319393ad1519f1f3f114296571"},
+pyside6-essentials = [
+    {file = "PySide6_Essentials-6.3.0-cp36-abi3-macosx_10_9_universal2.whl", hash = "sha256:1c2a2a2b26fc923b3527907462ae5828b7e50a2c0fcf9923b086781af3911060"},
+    {file = "PySide6_Essentials-6.3.0-cp36-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:a486abe04be6270da798eae9c78b40f605008f19d5d9c880b1683783c715882d"},
+    {file = "PySide6_Essentials-6.3.0-cp36-abi3-win_amd64.whl", hash = "sha256:7304353ab13cc9b5b0a86b3487f24b133a68c5b8c1312516510c0d49469f80d8"},
 ]
 pytest = [
     {file = "pytest-7.1.1-py3-none-any.whl", hash = "sha256:92f723789a8fdd7180b6b06483874feca4c48a5c76968e03bb3e7f806a1869ea"},
@@ -1267,8 +1263,8 @@ pyyaml = [
     {file = "PyYAML-6.0.tar.gz", hash = "sha256:68fb519c14306fec9720a2a5b45bc9f0c8d1b9c72adf45c37baedfcd949c35a2"},
 ]
 readme-renderer = [
-    {file = "readme_renderer-34.0-py3-none-any.whl", hash = "sha256:262510fe6aae81ed4e94d8b169077f325614c0b1a45916a80442c6576264a9c2"},
-    {file = "readme_renderer-34.0.tar.gz", hash = "sha256:dfb4d17f21706d145f7473e0b61ca245ba58e810cf9b2209a48239677f82e5b0"},
+    {file = "readme_renderer-35.0-py3-none-any.whl", hash = "sha256:73b84905d091c31f36e50b4ae05ae2acead661f6a09a9abb4df7d2ddcdb6a698"},
+    {file = "readme_renderer-35.0.tar.gz", hash = "sha256:a727999acfc222fc21d82a12ed48c957c4989785e5865807c65a487d21677497"},
 ]
 requests = [
     {file = "requests-2.27.1-py2.py3-none-any.whl", hash = "sha256:f22fa1e554c9ddfd16e6e41ac79759e17be9e492b3587efa038054674760e72d"},
@@ -1287,13 +1283,13 @@ rubicon-objc = [
     {file = "rubicon_objc-0.4.2-py3-none-any.whl", hash = "sha256:c8780b9d6c3c906642080a9f8b710f5823a498c17e9bbea7f70781ea6ede7962"},
 ]
 secretstorage = [
-    {file = "SecretStorage-3.3.1-py3-none-any.whl", hash = "sha256:422d82c36172d88d6a0ed5afdec956514b189ddbfb72fefab0c8a1cee4eaf71f"},
-    {file = "SecretStorage-3.3.1.tar.gz", hash = "sha256:fd666c51a6bf200643495a04abb261f83229dcb6fd8472ec393df7ffc8b6f195"},
+    {file = "SecretStorage-3.3.2-py3-none-any.whl", hash = "sha256:755dc845b6ad76dcbcbc07ea3da75ae54bb1ea529eb72d15f83d26499a5df319"},
+    {file = "SecretStorage-3.3.2.tar.gz", hash = "sha256:0a8eb9645b320881c222e827c26f4cfcf55363e8b374a021981ef886657a912f"},
 ]
 shiboken6 = [
-    {file = "shiboken6-6.2.4-6.2.4-cp36.cp37.cp38.cp39.cp310-abi3-macosx_10_14_universal2.whl", hash = "sha256:5030b6314ef504cc5d93d272aaef4e0ccb256324caa2de965c88d32c994d98b2"},
-    {file = "shiboken6-6.2.4-6.2.4-cp36.cp37.cp38.cp39.cp310-abi3-manylinux1_x86_64.whl", hash = "sha256:05f4652dda7043b1a04265cabc1709c22d643d204fac2c4b0ccf7d0044092c62"},
-    {file = "shiboken6-6.2.4-6.2.4-cp36.cp37.cp38.cp39.cp310-none-win_amd64.whl", hash = "sha256:8eb2ed2ba8ec3f6505cf80b81c7e85d996165a9e4664f99675ecc8a82b7b3c36"},
+    {file = "shiboken6-6.3.0-cp36-abi3-macosx_10_9_universal2.whl", hash = "sha256:ead1cee2fea2566321e725a50070c40a9e67aaa015a20a84a39a9e72ff9b426e"},
+    {file = "shiboken6-6.3.0-cp36-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:e68e3cbb595c3047c4d893b84ef88eb5b23dea4e94241e80f5509dcb6613ad3d"},
+    {file = "shiboken6-6.3.0-cp36-abi3-win_amd64.whl", hash = "sha256:096e6b2254e59729ae61acbb80d09c31ad7ea35b6624ec120c15a35b95c70b69"},
 ]
 six = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
@@ -1316,29 +1312,29 @@ twine = [
     {file = "twine-3.7.1.tar.gz", hash = "sha256:28460a3db6b4532bde6a5db6755cf2dce6c5020bada8a641bb2c5c7a9b1f35b8"},
 ]
 typing-extensions = [
-    {file = "typing_extensions-4.1.1-py3-none-any.whl", hash = "sha256:21c85e0fe4b9a155d0799430b0ad741cdce7e359660ccbd8b530613e8df88ce2"},
-    {file = "typing_extensions-4.1.1.tar.gz", hash = "sha256:1a9462dcc3347a79b1f1c0271fbe79e844580bb598bafa1ed208b94da3cdcd42"},
+    {file = "typing_extensions-4.2.0-py3-none-any.whl", hash = "sha256:6657594ee297170d19f67d55c05852a874e7eb634f4f753dbd667855e07c1708"},
+    {file = "typing_extensions-4.2.0.tar.gz", hash = "sha256:f1c24655a0da0d1b67f07e17a5e6b2a105894e6824b92096378bb3668ef02376"},
 ]
 urllib3 = [
     {file = "urllib3-1.22-py2.py3-none-any.whl", hash = "sha256:06330f386d6e4b195fbfc736b297f58c5a892e4440e54d294d7004e3a9bbea1b"},
     {file = "urllib3-1.22.tar.gz", hash = "sha256:cc44da8e1145637334317feebd728bd869a35285b93cbb4cca2577da7e62db4f"},
 ]
 virtualenv = [
-    {file = "virtualenv-20.14.0-py2.py3-none-any.whl", hash = "sha256:1e8588f35e8b42c6ec6841a13c5e88239de1e6e4e4cedfd3916b306dc826ec66"},
-    {file = "virtualenv-20.14.0.tar.gz", hash = "sha256:8e5b402037287126e81ccde9432b95a8be5b19d36584f64957060a3488c11ca8"},
+    {file = "virtualenv-20.14.1-py2.py3-none-any.whl", hash = "sha256:e617f16e25b42eb4f6e74096b9c9e37713cf10bf30168fb4a739f3fa8f898a3a"},
+    {file = "virtualenv-20.14.1.tar.gz", hash = "sha256:ef589a79795589aada0c1c5b319486797c03b67ac3984c48c669c0e4f50df3a5"},
 ]
 webencodings = [
     {file = "webencodings-0.5.1-py2.py3-none-any.whl", hash = "sha256:a0af1213f3c2226497a97e2b3aa01a7e4bee4f403f95be16fc9acd2947514a78"},
     {file = "webencodings-0.5.1.tar.gz", hash = "sha256:b36a1c245f2d304965eb4e0a82848379241dc04b865afcc4aab16748587e1923"},
 ]
 wgpu = [
-    {file = "wgpu-0.7.6-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:597b178f67082b5219850572af00b54441cb084cf5930a379702eff10ee7b9ba"},
-    {file = "wgpu-0.7.6-py3-none-macosx_11_0_arm64.whl", hash = "sha256:d9569faa0338aead9413ef6f52d424f5510f693cc974dfcdc5cf69b82a1b8d61"},
-    {file = "wgpu-0.7.6-py3-none-manylinux_2_24_i686.whl", hash = "sha256:b98d4f97d1f861a39986e0c4ce74951ce89577b477b218355d5ca386904aba14"},
-    {file = "wgpu-0.7.6-py3-none-manylinux_2_24_x86_64.whl", hash = "sha256:b144e5ccab19d9eeb0ff277a645817d09b118a3b6e5f0ef39d4640f57d47043d"},
-    {file = "wgpu-0.7.6-py3-none-win32.whl", hash = "sha256:3ab9da2e94d325b5a4d55affe27bad6ee13423fdf1bb62bce7e5901ec24208b3"},
-    {file = "wgpu-0.7.6-py3-none-win_amd64.whl", hash = "sha256:9a2b8685ccb2a382d79699d8b36f93fcb40fe75d8e425c4f73beec00110310b9"},
-    {file = "wgpu-0.7.6.tar.gz", hash = "sha256:c096e13b0578cd82cf66931b21f302d3bcb0b9551dea99eb8b396c086a6e3565"},
+    {file = "wgpu-0.7.7-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:49c7ac7bd5520b684c0f1cddf9469f2576b20120319b5348c7ef907bc8ce2824"},
+    {file = "wgpu-0.7.7-py3-none-macosx_11_0_arm64.whl", hash = "sha256:17010754cf05e383c9cf2442900cd156610c044870ee87c2ba8afb6d10d6e327"},
+    {file = "wgpu-0.7.7-py3-none-manylinux_2_24_i686.whl", hash = "sha256:debca0a6f208826130787f3cda1216490381505ec15e45a20df7d48aacf3a457"},
+    {file = "wgpu-0.7.7-py3-none-manylinux_2_24_x86_64.whl", hash = "sha256:f9785b81aa9b3fa75edcfffe17b2d303403cd2d334e7874ccf4e1055e477fbb8"},
+    {file = "wgpu-0.7.7-py3-none-win32.whl", hash = "sha256:905e88a1e6e4769ffdbebe11d84e2bfc23f44cbe5d2cdb54a471b6616ceac6a7"},
+    {file = "wgpu-0.7.7-py3-none-win_amd64.whl", hash = "sha256:b4edb23029ed3e26ac3cd4e23dd43ac10046fc6eddca30af5a9f33d95bf094d6"},
+    {file = "wgpu-0.7.7.tar.gz", hash = "sha256:45be447bc3abd0d1845e985ae9487e87f8ff2c74a342f838d2a334a46f7efcbc"},
 ]
 zipp = [
     {file = "zipp-3.8.0-py3-none-any.whl", hash = "sha256:c4f6e5bbf48e74f7a38e7cc5b0480ff42b0ae5178957d564d18932525d5cf099"},

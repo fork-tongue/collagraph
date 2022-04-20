@@ -100,8 +100,8 @@ if __name__ == "__main__":
     camera = gfx.PerspectiveCamera(60, 16 / 9)
     camera.position.z = 15
 
-    controls = gfx.OrbitControls(camera.position.clone())
-    controls.add_default_event_handlers(renderer, canvas, camera)
+    controls = gfx.OrbitController(camera.position.clone())
+    controls.add_default_event_handlers(renderer, camera)
 
     gui = Collagraph(renderer=PygfxRenderer(), event_loop_type=EventLoopType.QT)
 
