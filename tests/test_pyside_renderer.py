@@ -62,3 +62,16 @@ def test_register_custom_type():
 
     with pytest.raises(TypeError):
         renderer.create_element("Bar")
+
+
+def test_not_implemented():
+    renderer = PySideRenderer()
+
+    # QAbstractAnimation is a type that we'll likely not
+    # support so is a good candidate for checking for
+    # NotImplementedError
+    item = renderer.create_element("QAbstractAnimation")
+    assert isinstance(item, QtCore.QAbstractAnimation)
+
+    with pytest.raises(NotImplementedError):
+        item.insert(None)
