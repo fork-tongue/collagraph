@@ -476,7 +476,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "pygfx"
-version = "0.1.8"
+version = "0.1.9"
 description = "A threejs-like render engine based on wgpu"
 category = "main"
 optional = true
@@ -485,15 +485,19 @@ python-versions = ">=3.7.0"
 [package.dependencies]
 Jinja2 = "*"
 numpy = "*"
-wgpu = ">=0.7.6,<0.8.0"
+wgpu = ">=0.8.0,<0.9.0"
+
+[package.extras]
+dev = ["black", "flake8", "flake8-black", "pep8-naming", "pytest", "setuptools", "wheel", "twine", "imageio"]
+examples = ["pytest", "pyside6", "imageio", "imageio-ffmpeg (>=0.4.7)", "scikit-image", "trimesh"]
 
 [[package]]
 name = "pygments"
-version = "2.11.2"
+version = "2.12.0"
 description = "Pygments is a syntax highlighting package written in Python."
 category = "dev"
 optional = false
-python-versions = ">=3.5"
+python-versions = ">=3.6"
 
 [[package]]
 name = "pyparsing"
@@ -519,7 +523,7 @@ shiboken6 = "6.3.0"
 
 [[package]]
 name = "pytest"
-version = "7.1.1"
+version = "7.1.2"
 description = "pytest: simple powerful testing with Python"
 category = "dev"
 optional = false
@@ -796,7 +800,7 @@ python-versions = "*"
 
 [[package]]
 name = "wgpu"
-version = "0.7.7"
+version = "0.8.0"
 description = "Next generation GPU API for Python"
 category = "main"
 optional = true
@@ -829,7 +833,7 @@ pyside = ["pyside6_essentials"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8"
-content-hash = "472f6cc5b47712616d78b527cba721d9de6d45d224b8a43ea948573da299dbce"
+content-hash = "051cd09b0dca39c8b79272e6426edcf26b34de463fa77685a64a51d889b90e87"
 
 [metadata.files]
 atomicwrites = [
@@ -1187,12 +1191,12 @@ pyflakes = [
     {file = "pyflakes-2.4.0.tar.gz", hash = "sha256:05a85c2872edf37a4ed30b0cce2f6093e1d0581f8c19d7393122da7e25b2b24c"},
 ]
 pygfx = [
-    {file = "pygfx-0.1.8-py3-none-any.whl", hash = "sha256:72a91d719d974d20ac5c4f650a9de71db62fe15aac71fb482650389d1d4a36a7"},
-    {file = "pygfx-0.1.8.tar.gz", hash = "sha256:fc8c65bd592769734125f65e2a1b5e3bbfc349254384b8d7132c00fb7e8668f4"},
+    {file = "pygfx-0.1.9-py3-none-any.whl", hash = "sha256:6d18f51471a29bf956e6edf35fc1cfb4dba80d6c790e71c1bbb7369809295a5e"},
+    {file = "pygfx-0.1.9.tar.gz", hash = "sha256:7689a7349dd649cc7d9b705696ef322a913bd26fd315525ba4b6cfd62e8dba10"},
 ]
 pygments = [
-    {file = "Pygments-2.11.2-py3-none-any.whl", hash = "sha256:44238f1b60a76d78fc8ca0528ee429702aae011c265fe6a8dd8b63049ae41c65"},
-    {file = "Pygments-2.11.2.tar.gz", hash = "sha256:4e426f72023d88d03b2fa258de560726ce890ff3b630f88c21cbb8b2503b8c6a"},
+    {file = "Pygments-2.12.0-py3-none-any.whl", hash = "sha256:dc9c10fb40944260f6ed4c688ece0cd2048414940f1cea51b8b226318411c519"},
+    {file = "Pygments-2.12.0.tar.gz", hash = "sha256:5eb116118f9612ff1ee89ac96437bb6b49e8f04d8a13b514ba26f620208e26eb"},
 ]
 pyparsing = [
     {file = "pyparsing-3.0.8-py3-none-any.whl", hash = "sha256:ef7b523f6356f763771559412c0d7134753f037822dad1b16945b7b846f7ad06"},
@@ -1204,8 +1208,8 @@ pyside6-essentials = [
     {file = "PySide6_Essentials-6.3.0-cp36-abi3-win_amd64.whl", hash = "sha256:7304353ab13cc9b5b0a86b3487f24b133a68c5b8c1312516510c0d49469f80d8"},
 ]
 pytest = [
-    {file = "pytest-7.1.1-py3-none-any.whl", hash = "sha256:92f723789a8fdd7180b6b06483874feca4c48a5c76968e03bb3e7f806a1869ea"},
-    {file = "pytest-7.1.1.tar.gz", hash = "sha256:841132caef6b1ad17a9afde46dc4f6cfa59a05f9555aae5151f73bdf2820ca63"},
+    {file = "pytest-7.1.2-py3-none-any.whl", hash = "sha256:13d0e3ccfc2b6e26be000cb6568c832ba67ba32e719443bfe725814d3c42433c"},
+    {file = "pytest-7.1.2.tar.gz", hash = "sha256:a06a0425453864a270bc45e71f783330a7428defb4230fb5e6a731fde06ecd45"},
 ]
 pytest-cov = [
     {file = "pytest-cov-3.0.0.tar.gz", hash = "sha256:e7f0f5b1617d2210a2cabc266dfe2f4c75a8d32fb89eafb7ad9d06f6d076d470"},
@@ -1328,13 +1332,13 @@ webencodings = [
     {file = "webencodings-0.5.1.tar.gz", hash = "sha256:b36a1c245f2d304965eb4e0a82848379241dc04b865afcc4aab16748587e1923"},
 ]
 wgpu = [
-    {file = "wgpu-0.7.7-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:49c7ac7bd5520b684c0f1cddf9469f2576b20120319b5348c7ef907bc8ce2824"},
-    {file = "wgpu-0.7.7-py3-none-macosx_11_0_arm64.whl", hash = "sha256:17010754cf05e383c9cf2442900cd156610c044870ee87c2ba8afb6d10d6e327"},
-    {file = "wgpu-0.7.7-py3-none-manylinux_2_24_i686.whl", hash = "sha256:debca0a6f208826130787f3cda1216490381505ec15e45a20df7d48aacf3a457"},
-    {file = "wgpu-0.7.7-py3-none-manylinux_2_24_x86_64.whl", hash = "sha256:f9785b81aa9b3fa75edcfffe17b2d303403cd2d334e7874ccf4e1055e477fbb8"},
-    {file = "wgpu-0.7.7-py3-none-win32.whl", hash = "sha256:905e88a1e6e4769ffdbebe11d84e2bfc23f44cbe5d2cdb54a471b6616ceac6a7"},
-    {file = "wgpu-0.7.7-py3-none-win_amd64.whl", hash = "sha256:b4edb23029ed3e26ac3cd4e23dd43ac10046fc6eddca30af5a9f33d95bf094d6"},
-    {file = "wgpu-0.7.7.tar.gz", hash = "sha256:45be447bc3abd0d1845e985ae9487e87f8ff2c74a342f838d2a334a46f7efcbc"},
+    {file = "wgpu-0.8.0-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:f15bb14d06be3c8682dbe50ab9a5a4ad5d827e3fc366e6c5fcf749cc8df7b3e7"},
+    {file = "wgpu-0.8.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:33d3c66b9cb155b5365b1636d4fcb3b8b37676522d865d3ad605e5019e727703"},
+    {file = "wgpu-0.8.0-py3-none-manylinux_2_24_i686.whl", hash = "sha256:da3d7b6cf9b5ce610bf82d15cb15ae8c57f49f958516597dd0d618f2b0c45484"},
+    {file = "wgpu-0.8.0-py3-none-manylinux_2_24_x86_64.whl", hash = "sha256:83a1f523bbbd809dd9b53e1239293d3cfd885b24719d0c7ec1716c6a314cd308"},
+    {file = "wgpu-0.8.0-py3-none-win32.whl", hash = "sha256:0bae2eb0f02d9a960fcd64c6c226a9468b434a4c1533dd541678745f4e47d453"},
+    {file = "wgpu-0.8.0-py3-none-win_amd64.whl", hash = "sha256:1c666a28081e79baa3db095eb734fc6db638ea3dca2eed8beab98e855ab793aa"},
+    {file = "wgpu-0.8.0.tar.gz", hash = "sha256:42d6eee14cd3827cc866d8f524bba56a159c76561a9c73f005e4b4c53f15a2c5"},
 ]
 zipp = [
     {file = "zipp-3.8.0-py3-none-any.whl", hash = "sha256:c4f6e5bbf48e74f7a38e7cc5b0480ff42b0ae5178957d564d18932525d5cf099"},
