@@ -186,14 +186,10 @@ class PySideRenderer(Renderer):
 
     def remove_attribute(self, el: Any, attr: str, value: Any):
         """Remove the attribute `attr` from the element `el`."""
-        # TODO: what does it mean to remove an attribute? How to define default values?
         raise NotImplementedError
 
     def add_event_listener(self, el: Any, event_type: str, value: Callable):
         """Add event listener for `event_type` to the element `el`."""
-        if not value:
-            return
-
         event_type = camel_case(event_type, "_")
 
         # Add a slots attribute to hold all the generated slots, keyed on event_type
