@@ -118,7 +118,6 @@ class RenderWidget(Component):
         self.gui.render(
             element, container, callback=lambda: self.element.request_draw(animate)
         )
-        self.element.request_draw(animate)
 
     def render(self):
         return h("WgpuCanvas", {"minimum_height": 400, "minimum_width": 600})
