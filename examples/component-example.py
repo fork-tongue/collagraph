@@ -72,8 +72,8 @@ if __name__ == "__main__":
     camera.position.z = 7
     camera.position.y = -2
 
-    controls = gfx.OrbitControls(camera.position.clone())
-    controls.add_default_event_handlers(renderer, canvas, camera)
+    controls = gfx.OrbitController(camera.position.clone())
+    controls.add_default_event_handlers(renderer, camera)
 
     gui = Collagraph(renderer=PygfxRenderer(), event_loop_type=EventLoopType.QT)
 
