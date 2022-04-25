@@ -49,6 +49,10 @@ TYPE_MAPPING = {
     "BottomToTop": QBoxLayout.Direction.BottomToTop,
 }
 
+DEFAULT_ARGS = {
+    QtGui.QAction: (("",), {}),
+}
+
 
 @lru_cache(maxsize=None)
 def name_to_type(name, modules=None, orig=None):

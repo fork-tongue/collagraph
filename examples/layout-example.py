@@ -14,8 +14,6 @@ def LayoutExample(props):
     for i in range(1, 5):
         box.append(("Button", {"text": f"Button {i}"}))
 
-    box.insert(2, ("Spacing", {}))
-
     # Data to fill the grid layout
     grid = []
     for i in range(1, 5):

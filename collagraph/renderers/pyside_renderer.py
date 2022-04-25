@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMenu,
     QMenuBar,
-    QSpacerItem,
     QSplitter,
     QTableView,
     QTabWidget,
@@ -25,6 +24,7 @@ from . import Renderer
 from .pyside import (
     action,
     camel_case,
+    DEFAULT_ARGS,
     dialog,
     itemmodel,
     listview,
@@ -97,6 +97,13 @@ def not_implemented(self, *args, **kwargs):
     raise NotImplementedError(type(self).__name__)
 
 
+def create_instance(pyside_type):
+    """Creates an instance of the given type with the any default
+    arguments (if any) passed into the constructor."""
+    args, kwargs = DEFAULT_ARGS.get(pyside_type, ((), {}))
+    return pyside_type(*args, **kwargs)
+
+
 class PySideRenderer(Renderer):
     """PySide6 renderer."""
 
@@ -121,19 +128,12 @@ class PySideRenderer(Renderer):
                 QtCore.QCoreApplication.instance() or QtWidgets.QApplication(),
             )
 
-        # TODO: how to do spacing / stretch?
-        if type_name in ["Spacing", "Stretch"]:
-            return QSpacerItem(0, 0)
-
-        # if type_name in ["QAction", "Action"]:
-        #     return QAction("")
-
         # Create dynamic subclasses which implement `insert`, `set_attribute`
         # and `remove` methods.
         # The generated types are cached in WRAPPED_TYPES so they only have
         # to be generated once and can be used in equality comparisons
         if type_name in WRAPPED_TYPES:
-            return WRAPPED_TYPES[type_name]()
+            return create_instance(WRAPPED_TYPES[type_name])
 
         original_type = name_to_type(type_name)
 
@@ -154,9 +154,10 @@ class PySideRenderer(Renderer):
         # Create the new type with the new methods
         wrapped_type = type(type_name, (original_type,), attrs)
         WRAPPED_TYPES[type_name] = wrapped_type
-        if original_type == QAction:
-            return wrapped_type("")
-        return wrapped_type()
+        # Update the default arguments map with the new wrapped type
+        DEFAULT_ARGS[wrapped_type] = DEFAULT_ARGS.get(original_type, ((), {}))
+
+        return create_instance(wrapped_type)
 
     def insert(self, el: Any, parent: Any, anchor: Any = None):
         """

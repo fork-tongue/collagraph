@@ -2,7 +2,6 @@ from PySide6.QtWidgets import (
     QBoxLayout,
     QFormLayout,
     QGridLayout,
-    QSpacerItem,
 )
 
 from . import attr_name_to_method_name, call_method
@@ -31,10 +30,6 @@ def insert(self, el, anchor=None):
     index = -1
     if anchor:
         index = layout.indexOf(anchor)
-
-    if isinstance(el, QSpacerItem):
-        layout.insertSpacerItem(index, el)
-        return
 
     if hasattr(el, "grid_index"):
         layout.addWidget(el, *el.grid_index)
