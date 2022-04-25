@@ -75,3 +75,9 @@ def test_not_implemented():
 
     with pytest.raises(NotImplementedError):
         item.insert(None)
+
+
+def test_removing_attribute_not_supported():
+    renderer = PySideRenderer()
+    with pytest.raises(NotImplementedError):
+        renderer.remove_attribute(None, None, None)
