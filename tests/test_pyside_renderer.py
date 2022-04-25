@@ -42,3 +42,23 @@ def test_label():
 
     label = container.findChild(QtWidgets.QLabel)
     assert label.text() == "Foo"
+
+
+def test_register_custom_type():
+    class CustomWidget(QtWidgets.QWidget):
+        pass
+
+    renderer = PySideRenderer()
+    renderer.register("Foo", CustomWidget)
+
+    foo = renderer.create_element("Foo")
+    assert isinstance(foo, CustomWidget)
+
+    class NonWidget:
+        pass
+
+    with pytest.raises(TypeError):
+        renderer.register("Bar", NonWidget)
+
+    with pytest.raises(TypeError):
+        renderer.create_element("Bar")

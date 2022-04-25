@@ -105,7 +105,8 @@ class PySideRenderer(Renderer):
         # This ensures that the custom widget can be properly wrapped
         # and will get the `insert`, `remove` and `set_attribute`
         # methods.
-        assert QWidget in custom_type.__mro__
+        if QWidget not in custom_type.__mro__:
+            raise TypeError(f"Specified type '{custom_type}' not a subclass of QWidget")
         TYPE_MAPPING[type_name] = custom_type
 
     def create_element(self, type_name: str) -> Any:
