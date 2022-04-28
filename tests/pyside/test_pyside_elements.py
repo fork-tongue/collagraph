@@ -23,7 +23,7 @@ def current_window(app):
     return windows[0] if windows else None
 
 
-def test_simple_structure(qtbot, qt_app):
+def test_simple_structure(qtbot, qapp):
     renderer = PySideRenderer(autoshow=False)
     gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
 
@@ -42,7 +42,7 @@ def test_simple_structure(qtbot, qt_app):
     qtbot.waitUntil(check_simple_is_child, timeout=500)
 
 
-def test_layouts(qt_app, qtbot):
+def test_layouts(qapp, qtbot):
     renderer = PySideRenderer(autoshow=False)
     gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
 
@@ -128,10 +128,10 @@ def test_layouts(qt_app, qtbot):
         )
 
     element = h(LayoutExample, {})
-    gui.render(element, qt_app)
+    gui.render(element, qapp)
 
     def check_label():
-        window = current_window(qt_app)
+        window = current_window(qapp)
         assert window
 
         box = window.findChild(QtWidgets.QGroupBox, name="box")
@@ -147,7 +147,7 @@ def test_layouts(qt_app, qtbot):
     qtbot.waitUntil(check_label, timeout=500)
 
 
-def test_lists(qt_app, qtbot, qtmodeltester):
+def test_lists(qapp, qtbot, qtmodeltester):
     def ListsExample(props):
         def add_item():
             props["items"].append([["NEW", "ITEM"], False])
@@ -214,10 +214,10 @@ def test_lists(qt_app, qtbot, qtmodeltester):
         }
     )
 
-    assert len(qt_app.topLevelWidgets()) == 0
+    assert len(qapp.topLevelWidgets()) == 0
 
     element = h(ListsExample, state)
-    gui.render(element, qt_app)
+    gui.render(element, qapp)
 
     window = None
     model = None
@@ -227,7 +227,7 @@ def test_lists(qt_app, qtbot, qtmodeltester):
         nonlocal window
         nonlocal model
 
-        window = current_window(qt_app)
+        window = current_window(qapp)
         assert window
 
         list_view = window.findChild(QtWidgets.QListView)
@@ -277,7 +277,7 @@ def test_lists(qt_app, qtbot, qtmodeltester):
 
 
 @pytest.mark.skip("QMenuBar prevents destruction of QMainWindow")
-def test_menu(qt_app):
+def test_menu(qapp):
     """
     Currently, adding a QMenuBar will make the QMainWindow
     instance impossible to destroy after the test.
@@ -309,4 +309,4 @@ def test_menu(qt_app):
 
     renderer = PySideRenderer(autoshow=False)
     gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
-    gui.render(h(MenuExample, {}), qt_app)
+    gui.render(h(MenuExample, {}), qapp)
