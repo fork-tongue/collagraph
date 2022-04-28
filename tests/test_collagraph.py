@@ -239,8 +239,6 @@ def test_update_element_with_event(process_events):
     assert len(container["children"][0]["handlers"]) == 1
     assert len(container["children"][0]["handlers"]["bump"]) == 1
     # And it should be the same handler as before
-    # TODO: maybe start using a MockRenderer to check whether certain
-    # methods have been called?
     assert handler is container["children"][0]["handlers"]["bump"]
 
 

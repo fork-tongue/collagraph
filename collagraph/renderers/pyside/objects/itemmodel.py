@@ -2,7 +2,6 @@ from PySide6.QtGui import QStandardItemModel
 
 
 def insert(self, el, anchor=None):
-    # TODO: list with multiple columns?
     if isinstance(self, QStandardItemModel):
         if index := getattr(el, "model_index", None):
             self.setItem(*index, el)
