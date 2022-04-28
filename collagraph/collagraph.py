@@ -187,7 +187,7 @@ class Collagraph:
             # Seems to happen after a while after generating lots of changes.
             # Could be that it is only when updates are coming in faster than
             # they are rendered...
-            lambda: fiber.component and fiber.component.state,
+            lambda: fiber.component.state,
             lambda: self.state_updated(fiber),
             deep=True,
             sync=self.event_loop_type is EventLoopType.SYNC,
