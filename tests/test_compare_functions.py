@@ -1,6 +1,6 @@
 from functools import partial
 
-from collagraph import equivalent_functions
+from collagraph.compare import equivalent_functions
 
 
 def test_compare_functions():

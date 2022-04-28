@@ -4,8 +4,8 @@ Example of how to render to PySide6 UI.
 from observ import reactive
 from PySide6 import QtWidgets
 
-from collagraph import Collagraph, create_element as h, EventLoopType
-from collagraph.renderers import PySideRenderer
+import collagraph as cg
+from collagraph import h
 
 
 def Example(props):
@@ -49,7 +49,9 @@ def Example(props):
 if __name__ == "__main__":
     app = QtWidgets.QApplication()
 
-    gui = Collagraph(renderer=PySideRenderer(), event_loop_type=EventLoopType.QT)
+    gui = cg.Collagraph(
+        renderer=cg.PySideRenderer(), event_loop_type=cg.EventLoopType.QT
+    )
 
     state = reactive({"tab_count": 2})
 

@@ -4,9 +4,8 @@ Example of how to render to PySide6 UI.
 from observ import reactive
 from PySide6 import QtWidgets
 
-from collagraph import Collagraph, create_element as h, EventLoopType
-from collagraph.components import Component
-from collagraph.renderers import PySideRenderer
+import collagraph as cg
+from collagraph import h
 
 
 def TodoList(props):
@@ -38,7 +37,7 @@ def TodoList(props):
     )
 
 
-class TodoApp(Component):
+class TodoApp(cg.Component):
     def __init__(self, props):
         super().__init__(props)
         self.state = reactive(
@@ -104,7 +103,9 @@ class TodoApp(Component):
 if __name__ == "__main__":
     app = QtWidgets.QApplication()
 
-    gui = Collagraph(renderer=PySideRenderer(), event_loop_type=EventLoopType.QT)
+    gui = cg.Collagraph(
+        renderer=cg.PySideRenderer(), event_loop_type=cg.EventLoopType.QT
+    )
 
     # Define Qt structure and map state to the structure
     element = h(TodoApp, {})

@@ -4,8 +4,8 @@ the layout of widgets.
 """
 from PySide6 import QtWidgets
 
-from collagraph import Collagraph, create_element as h, EventLoopType
-from collagraph.renderers import PySideRenderer
+import collagraph as cg
+from collagraph import h
 
 
 def LayoutExample(props):
@@ -113,7 +113,9 @@ def LayoutExample(props):
 if __name__ == "__main__":
     app = QtWidgets.QApplication()
 
-    gui = Collagraph(renderer=PySideRenderer(), event_loop_type=EventLoopType.QT)
+    gui = cg.Collagraph(
+        renderer=cg.PySideRenderer(), event_loop_type=cg.EventLoopType.QT
+    )
 
     # Define Qt structure and map state to the structure
     element = h(LayoutExample, {})

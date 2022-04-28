@@ -2,10 +2,10 @@
 Example of how to render to PySide6 UI.
 """
 from observ import reactive
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 
-from collagraph import Collagraph, create_element as h, EventLoopType
-from collagraph.renderers import PySideRenderer
+import collagraph as cg
+from collagraph import h
 
 
 app = QtWidgets.QApplication()
@@ -21,8 +21,8 @@ def PushButton(props):
 
 
 if __name__ == "__main__":
-    renderer = PySideRenderer()
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
+    renderer = cg.PySideRenderer()
+    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
 
     # Define top-level actions
     def improve_content(checked):
@@ -52,9 +52,9 @@ if __name__ == "__main__":
                 # 'setText' and 'text-interaction-flags' will become
                 # 'setTextInteractionFlags'.
                 "text": "This is a PySide6 example",
-                "text-interaction-flags": "TextSelectableByMouse",
+                "text-interaction-flags": QtCore.Qt.TextSelectableByMouse,
                 # TODO: The selection does not seem to work completely yet :/
-                "selection": [10, 7],
+                "selection": (10, 7),
             },
             # Use prefix 'on' with the signal name to attach a callback / slot
             # to the signal of the created PySide element

@@ -8,9 +8,8 @@ import pygfx as gfx
 from PySide6 import QtWidgets
 from wgpu.gui.qt import WgpuCanvas
 
-from collagraph import Collagraph, create_element as h, EventLoopType
-from collagraph.components import Component
-from collagraph.renderers import PygfxRenderer, PySideRenderer
+import collagraph as cg
+from collagraph import h
 
 
 sphere_geom = gfx.sphere_geometry(radius=0.5)
@@ -73,7 +72,7 @@ def PointCloud(props):
     )
 
 
-class RenderWidget(Component):
+class RenderWidget(cg.Component):
     def mounted(self):
         renderer = gfx.renderers.WgpuRenderer(self.element)
 
@@ -83,8 +82,8 @@ class RenderWidget(Component):
         controls = gfx.OrbitController(camera.position.clone())
         controls.add_default_event_handlers(renderer, camera)
 
-        self.gui = Collagraph(
-            renderer=PygfxRenderer(), event_loop_type=EventLoopType.QT
+        self.gui = cg.Collagraph(
+            renderer=cg.PygfxRenderer(), event_loop_type=cg.EventLoopType.QT
         )
         element = h(
             "Group",
@@ -160,9 +159,9 @@ def Example(props):
 if __name__ == "__main__":
     app = QtWidgets.QApplication()
 
-    renderer = PySideRenderer()
+    renderer = cg.PySideRenderer()
     renderer.register("WgpuCanvas", WgpuCanvas)
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
+    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
 
     state = reactive({"count": 50})
 
