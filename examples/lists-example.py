@@ -49,7 +49,7 @@ def Example(props):
 
     return h(
         "Window",
-        props,
+        {},
         h(
             "Widget",
             {},
