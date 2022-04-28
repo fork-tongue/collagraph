@@ -221,6 +221,7 @@ class Collagraph:
         logger.debug(f"state update: {fiber.type}")
         # Clear the watcher that triggered the update
         fiber.watcher = None
+        fiber.component_watcher = None
 
         # Request an update to start building/update the wip fiber tree
         self._wip_root = (
