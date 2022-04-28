@@ -120,7 +120,7 @@ class PySideRenderer(Renderer):
         # methods.
         if QWidget not in custom_type.__mro__:
             raise TypeError(f"Specified type '{custom_type}' not a subclass of QWidget")
-        TYPE_MAPPING[type_name] = custom_type
+        TYPE_MAPPING[type_name.lower()] = custom_type
 
     def create_element(self, type_name: str) -> Any:
         """Create an element for the given type."""
