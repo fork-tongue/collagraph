@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
 )
 
-from . import attr_name_to_method_name, call_method
+from ..utils import attr_name_to_method_name, call_method
 
 logger = logging.getLogger(__name__)
 

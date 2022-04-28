@@ -21,21 +21,23 @@ from PySide6.QtWidgets import (
 )
 
 from . import Renderer
-from .pyside import (
+from .pyside.objects import (
     action,
-    camel_case,
-    DEFAULT_ARGS,
     dialog,
     itemmodel,
     listview,
     menu,
     menubar,
-    name_to_type,
     splitter,
     tab,
-    TYPE_MAPPING,
     widget,
     window,
+)
+from .pyside.utils import (
+    camel_case,
+    DEFAULT_ARGS,
+    name_to_type,
+    TYPE_MAPPING,
 )
 
 
