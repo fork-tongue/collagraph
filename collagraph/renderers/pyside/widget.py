@@ -1,3 +1,5 @@
+import logging
+
 from PySide6.QtWidgets import (
     QBoxLayout,
     QFormLayout,
@@ -6,6 +8,7 @@ from PySide6.QtWidgets import (
 
 from . import attr_name_to_method_name, call_method
 
+logger = logging.getLogger(__name__)
 
 DIRECTIONS = {
     "TopToBottom": QBoxLayout.Direction.TopToBottom,
@@ -16,8 +19,7 @@ DIRECTIONS = {
 
 
 def insert(self, el, anchor=None):
-    if hasattr(el, "setParent"):
-        el.setParent(self)
+    el.setParent(self)
 
     # Adding a widget to a widget involves getting the layout of the parent
     # and then inserting the widget into the layout. The layout might not
@@ -79,7 +81,10 @@ def set_attribute(self, attr, value):
             method_name = attr_name_to_method_name(key, setter=True)
             method = getattr(self.layout(), method_name, None)
             if method:
-                if key in ["column_stretch", "row_stretch"]:
+                if key in ["direction"]:
+                    arg = DIRECTIONS[val]
+                    call_method(method, arg)
+                elif key in ["column_stretch", "row_stretch"]:
                     for args in val:
                         call_method(method, args)
                 else:
@@ -107,12 +112,14 @@ def set_attribute(self, attr, value):
                 index = self.index()
                 if (index.row(), index.column()) != value:
                     model.setItem(*value, self)
-            # TODO: log warning?
+            else:
+                logger.warning(f"model_index should be a tuple: '{value}'")
         return
 
     method_name = attr_name_to_method_name(attr, setter=True)
     method = getattr(self, method_name, None)
     if not method:
+        logger.debug(f"Setting custom attr: {attr}")
         setattr(self, attr, value)
         return
 

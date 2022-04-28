@@ -107,6 +107,10 @@ def create_instance(pyside_type):
 class PySideRenderer(Renderer):
     """PySide6 renderer."""
 
+    def __init__(self, autoshow=True):
+        super().__init__()
+        self.autoshow = autoshow
+
     def register(self, type_name, custom_type):
         # Check that the custom type is a subclass of QWidget.
         # This ensures that the custom widget can be properly wrapped
@@ -157,7 +161,7 @@ class PySideRenderer(Renderer):
         # Update the default arguments map with the new wrapped type
         DEFAULT_ARGS[wrapped_type] = DEFAULT_ARGS.get(original_type, ((), {}))
 
-        return create_instance(wrapped_type)
+        return create_instance(WRAPPED_TYPES[type_name])
 
     def insert(self, el: Any, parent: Any, anchor: Any = None):
         """
@@ -169,7 +173,8 @@ class PySideRenderer(Renderer):
             # If the inserted element is a window, then there is
             # no real parent to add it to, so let's just show the
             # window element and be done with it.
-            el.show()
+            if self.autoshow:  # pragma: no cover
+                el.show()
             return
 
         parent.insert(el, anchor=anchor)
@@ -208,7 +213,7 @@ class PySideRenderer(Renderer):
         signal = getattr(el, event_type, None)
         if signal:
             signal.connect(slot)
-        else:
+        else:  # pragma: no cover
             logger.warning(
                 f"Could not find signal for: {type(el).__name__}:{event_type}"
             )

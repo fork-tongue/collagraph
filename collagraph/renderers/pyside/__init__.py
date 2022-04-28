@@ -2,7 +2,6 @@ from functools import lru_cache
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import (
-    QBoxLayout,
     QCheckBox,
     QComboBox,
     QDialogButtonBox,
@@ -10,6 +9,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMenu,
     QMenuBar,
     QProgressBar,
     QPushButton,
@@ -30,6 +30,7 @@ TYPE_MAPPING = {
     "ComboBox": QComboBox,
     "Label": QLabel,
     "LineEdit": QLineEdit,
+    "Menu": QMenu,
     "MenuBar": QMenuBar,
     "RadioButton": QRadioButton,
     "DialogButtonBox": QDialogButtonBox,
@@ -42,13 +43,10 @@ TYPE_MAPPING = {
     "TreeView": QTreeView,
     "Widget": QWidget,
     "Window": QMainWindow,
-    # Layout directions
-    "TopToBottom": QBoxLayout.Direction.TopToBottom,
-    "LeftToRight": QBoxLayout.Direction.LeftToRight,
-    "RightToLeft": QBoxLayout.Direction.RightToLeft,
-    "BottomToTop": QBoxLayout.Direction.BottomToTop,
 }
 
+# Default arguments for types that need
+# constructor arguments
 DEFAULT_ARGS = {
     QtGui.QAction: (("",), {}),
 }
@@ -96,15 +94,7 @@ def attr_name_to_method_name(name, setter=False):
 
 
 def call_method(method, args):
-    if isinstance(args, str):
-        try:
-            args = name_to_type(args)
-        except TypeError:
-            pass
-        method(args)
+    if isinstance(args, tuple):
+        method(*args)
     else:
-        try:
-            method(args)
-        except TypeError:
-            # TODO: Maybe also call name_to_type on all values?
-            method(*args)
+        method(args)

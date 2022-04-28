@@ -81,8 +81,11 @@ def Example(props):
                     },
                     "maximum-height": 50,
                 },
-                h("Button", {"text": "Add", "on_clicked": bump}),
-                h("Button", {"text": "Remove", "on_clicked": decr}),
+                h("Button", {"text": "Add", "on_clicked": bump, "object_name": "add"}),
+                h(
+                    "Button",
+                    {"text": "Remove", "on_clicked": decr, "object_name": "remove"},
+                ),
             ),
         ),
     )

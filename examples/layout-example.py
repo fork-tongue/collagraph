@@ -41,7 +41,7 @@ def LayoutExample(props):
         "Window",
         {},
         h(
-            "QMenuBar",
+            "MenuBar",
             {},
             h(
                 "QMenu",
