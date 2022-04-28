@@ -29,8 +29,8 @@ import random
 import pygfx as gfx
 from wgpu.gui.auto import run, WgpuCanvas
 
-from collagraph import Collagraph, create_element as h, EventLoopType
-from collagraph.renderers import PygfxRenderer
+import collagraph as cg
+from collagraph import h
 
 
 sphere_geom = gfx.sphere_geometry(radius=0.5)
@@ -100,10 +100,12 @@ if __name__ == "__main__":
     camera = gfx.PerspectiveCamera(60, 16 / 9)
     camera.position.z = 15
 
-    controls = gfx.OrbitControls(camera.position.clone())
-    controls.add_default_event_handlers(renderer, canvas, camera)
+    controls = gfx.OrbitController(camera.position.clone())
+    controls.add_default_event_handlers(renderer, camera)
 
-    gui = Collagraph(renderer=PygfxRenderer(), event_loop_type=EventLoopType.QT)
+    gui = cg.Collagraph(
+        renderer=cg.PygfxRenderer(), event_loop_type=cg.EventLoopType.QT
+    )
 
     # Should be possible to create this element
     # by rendering JSX to dict.

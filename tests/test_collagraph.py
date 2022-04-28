@@ -23,33 +23,31 @@ def test_lots_of_elements():
     stack of 1000 calls to `commit_work` which triggers a RecursionError.
     This test makes sure that `collagraph` will not trigger any RecursionError.
     """
-    renderer = DictRenderer()
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(renderer=DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
-
     element = h("app", {}, *[h("node")] * 1000)
+
     gui.render(element, container)
 
     assert len(container["children"][0]["children"]) == 1000
 
 
 def test_reactive_element():
-    renderer = DictRenderer()
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(renderer=DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
-    state = reactive({"counter": 0})
+    state = reactive({"count": 0})
     element = h("counter", state)
 
     gui.render(element, container)
 
     counter = container["children"][0]
     assert counter["type"] == "counter"
-    assert counter["attrs"]["counter"] == 0
+    assert counter["attrs"]["count"] == 0
 
     # Update state, which should trigger a re-render
-    state["counter"] += 1
+    state["count"] += 1
 
-    assert counter["attrs"]["counter"] == 1, counter
+    assert counter["attrs"]["count"] == 1, counter
 
 
 def test_reactive_element_with_events(process_events):
@@ -241,8 +239,6 @@ def test_update_element_with_event(process_events):
     assert len(container["children"][0]["handlers"]) == 1
     assert len(container["children"][0]["handlers"]["bump"]) == 1
     # And it should be the same handler as before
-    # TODO: maybe start using a MockRenderer to check whether certain
-    # methods have been called?
     assert handler is container["children"][0]["handlers"]["bump"]
 
 
@@ -258,7 +254,8 @@ def test_yield_if_time_is_up_for_lots_of_work(process_events):
     element = h("app", {}, *[h("node")] * 1000)
     gui.render(element, container)
 
-    process_events()
+    while gui._wip_root is not None:
+        process_events()
 
     assert len(container["children"][0]["children"]) == 1000
 

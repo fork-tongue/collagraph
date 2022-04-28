@@ -86,7 +86,7 @@ def test_fiber_element_deletion():
     def List(props):
         return h(
             "list",
-            props,
+            {},
             *[
                 h("item", {"index": index + props["start_index"]})
                 for index in range(props["count"])
@@ -157,7 +157,7 @@ def test_fiber_element_type_change():
     def List(props):
         return h(
             "foo" if props["foo"] else "bar",
-            props,
+            {},
         )
 
     renderer = DictRenderer()

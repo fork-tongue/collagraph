@@ -59,30 +59,28 @@ def test_component_basic_lifecycle():
 
         def __init__(self, props):
             super().__init__(props)
-            self.state["name"] = props["name"]
-            self.state["children"] = props.get("children", [])
 
         def mounted(self):
             super().mounted()
-            SpecialCounter.lifecycle.append(f"{self.state['name']}:mounted")
+            SpecialCounter.lifecycle.append(f"{self.props['name']}:mounted")
 
         def updated(self):
             super().updated()
-            SpecialCounter.lifecycle.append(f"{self.state['name']}:updated")
+            SpecialCounter.lifecycle.append(f"{self.props['name']}:updated")
 
         def before_unmount(self):
             super().before_unmount()
-            SpecialCounter.lifecycle.append(f"{self.state['name']}:before_unmount")
+            SpecialCounter.lifecycle.append(f"{self.props['name']}:before_unmount")
 
         def render(self):
             return h(
                 "counter",
-                {"count": self.state["count"], "on_bump": self.bump},
-                *[h(SpecialCounter, props) for props in self.state["children"]],
+                {**self.props, "count": self.state["count"], "on_bump": self.bump},
+                *[h(SpecialCounter, props) for props in self.props.get("subs", [])],
             )
 
         def __repr__(self):
-            return f"<SpecialCounter({self.state['name']}) {self.state['count']}>"
+            return f"<SpecialCounter({self.props['name']}) {self.state['count']}>"
 
     def Counters(props):
         props.setdefault("counters", [])
@@ -98,7 +96,7 @@ def test_component_basic_lifecycle():
             "counters": [
                 {
                     "name": "parent",
-                    "children": [
+                    "subs": [
                         {"name": "child"},
                     ],
                 },
@@ -114,8 +112,8 @@ def test_component_basic_lifecycle():
 
     parent_counter = container["children"][0]["children"][0]
     child_counter = container["children"][0]["children"][0]["children"][0]
-    assert parent_counter["type"] == "counter"
-    assert child_counter["type"] == "counter"
+    assert parent_counter["attrs"]["name"] == "parent"
+    assert child_counter["attrs"]["name"] == "child"
     assert parent_counter["attrs"]["count"] == 0
     assert child_counter["attrs"]["count"] == 0
 
@@ -136,7 +134,7 @@ def test_component_basic_lifecycle():
         assert SpecialCounter.lifecycle == ["parent:updated"]
         SpecialCounter.lifecycle = []
 
-    for i in range(1, 6):
+    for i in range(1, 8):
         # Update state by triggering all listeners, which should trigger a re-render
         for listener in child_counter["handlers"]["bump"]:
             listener()

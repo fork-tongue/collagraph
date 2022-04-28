@@ -1,11 +1,11 @@
 import pygfx as gfx
 from wgpu.gui.auto import call_later, run, WgpuCanvas
 
-from collagraph import Collagraph, Component, create_element as h, EventLoopType
-from collagraph.renderers import PygfxRenderer
+import collagraph as cg
+from collagraph import h
 
 
-class Button(Component):
+class Button(cg.Component):
     geometry = gfx.box_geometry()
     materials = {
         "default": gfx.MeshPhongMaterial(color=[1.0, 0.5, 0.0]),
@@ -42,7 +42,7 @@ class Button(Component):
         )
 
 
-class NumberPad(Component):
+class NumberPad(cg.Component):
     def __init__(self, props):
         super().__init__(props)
         self.state["columns"] = 4
@@ -72,10 +72,12 @@ if __name__ == "__main__":
     camera.position.z = 7
     camera.position.y = -2
 
-    controls = gfx.OrbitControls(camera.position.clone())
-    controls.add_default_event_handlers(renderer, canvas, camera)
+    controls = gfx.OrbitController(camera.position.clone())
+    controls.add_default_event_handlers(renderer, camera)
 
-    gui = Collagraph(renderer=PygfxRenderer(), event_loop_type=EventLoopType.QT)
+    gui = cg.Collagraph(
+        renderer=cg.PygfxRenderer(), event_loop_type=cg.EventLoopType.QT
+    )
 
     element = h(NumberPad, {})
     container = gfx.Scene()
