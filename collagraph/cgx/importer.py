@@ -1,6 +1,5 @@
 from importlib.machinery import ModuleSpec
 import pathlib
-import re
 import sys
 
 from . import cgx
@@ -34,18 +33,6 @@ class CgxImporter:
         # Add the data to the module
         module.__dict__[component.__name__] = component
         module.__file__ = str(self.cgx_path)
-
-    def __repr__(self):
-        """Nice representation of the class"""
-        return f"{self.__class__.__name__}({str(self.cgx_path)!r})"
-
-
-def _identifier(var_str):
-    """Create a valid identifier from a string
-
-    See https://stackoverflow.com/a/3305731
-    """
-    return re.sub(r"\W|^(?=\d)", "_", var_str)
 
 
 # Add the Cgx importer at the end of the list of finders
