@@ -3,23 +3,28 @@ from abc import abstractmethod
 from observ import reactive, readonly
 
 
-RENDER_FUNCTION = None
-
-
 def set_render_function(fun):
     global RENDER_FUNCTION
     RENDER_FUNCTION = fun
 
 
-class Meta(type):
+class ComponentMeta(type):
+    """
+    Meta class for inserting a render function into a class
+    from a single-file component, whenever the RENDER_FUNCTION
+    class attribute has been set.
+    """
+
+    RENDER_FUNCTION = None
+
     def __new__(cls, name, bases, attrs):
-        if RENDER_FUNCTION:
-            attrs["render"] = RENDER_FUNCTION
+        if cls.RENDER_FUNCTION:
+            attrs["render"] = cls.RENDER_FUNCTION
 
         return type.__new__(cls, name, bases, attrs)
 
 
-class Component(metaclass=Meta):
+class Component(metaclass=ComponentMeta):
     """Abstract base class for components"""
 
     def __init__(self, props=None):

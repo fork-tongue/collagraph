@@ -1,7 +1,7 @@
 from html.parser import HTMLParser
 
 from collagraph import create_element
-from collagraph.components import Component, set_render_function
+from collagraph.components import Component, ComponentMeta
 
 
 SUFFIX = "cgx"
@@ -49,9 +49,9 @@ def load(path):
     # Exec the script with a custom locals dict to capture
     # all the defined classes and methods
     local_attrs = {}
-    set_render_function(render)
+    ComponentMeta.RENDER_FUNCTION = render
     exec(script, globals(), local_attrs)
-    set_render_function(None)
+    ComponentMeta.RENDER_FUNCTION = None
 
     component_type = None
     for value in local_attrs.values():
