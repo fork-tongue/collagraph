@@ -36,7 +36,6 @@ def test_directive_if():
     assert len(node.children) == 0
 
 
-@pytest.mark.xfail
 def test_directive_else():
     from tests.data.directive_else import Label
 

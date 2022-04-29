@@ -67,16 +67,26 @@ def load(path):
     return component_type
 
 
-def convert_node(node, component):
+def convert_node(node, component, prev_node=None):
     """Converts a Node into a VNode, recursively."""
     attributes, directives = convert_attributes(node.attrs, component)
-    if "v-if" in directives and not directives["v-if"]:
-        return None
 
-    children = [convert_node(node, component) for node in node.children]
-    return create_element(
-        node.tag, attributes, *[child for child in children if child is not None]
-    )
+    if "v-if" in directives and not directives["v-if"]:
+        return "v-if"
+
+    if "v-else" in directives and prev_node:
+        return "v-else"
+
+    children = []
+    prev_node = None
+    for child in node.children:
+        converted_child = convert_node(child, component, prev_node=prev_node)
+        if converted_child in ["v-if", "v-else"]:
+            prev_node = None
+        elif converted_child:
+            children.append(converted_child)
+            prev_node = converted_child
+    return create_element(node.tag, attributes, *children)
 
 
 def query_component(component, attr):
@@ -106,6 +116,8 @@ def convert_attributes(attrs, component):
         # Check for v-if directive
         if key == "v-if":
             directives[key] = query_component(component, val)
+        elif key == "v-else":
+            directives[key] = True
 
     return attributes, directives
 
