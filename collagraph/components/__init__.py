@@ -3,11 +3,6 @@ from abc import abstractmethod
 from observ import reactive, readonly
 
 
-def set_render_function(fun):
-    global RENDER_FUNCTION
-    RENDER_FUNCTION = fun
-
-
 class ComponentMeta(type):
     """
     Meta class for inserting a render function into a class
