@@ -2,7 +2,8 @@
   <widget>
     <label v-if="foo" text="Foo" />
     <label v-else-if="bar" text="Bar" />
-    <label v-else text="Baz" />
+    <label v-else-if="baz" text="Baz" />
+    <label v-else text="Bas" />
   </widget>
 </template>
 

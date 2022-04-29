@@ -67,26 +67,57 @@ def load(path):
     return component_type
 
 
-def convert_node(node, component, prev_node=None):
+class ControlFlow:
+    """Simple class to keep track of whether a control
+    flow has already returned a result."""
+
+    result = False
+
+
+def convert_node(node, component):
     """Converts a Node into a VNode, recursively."""
+    result, _ = _convert_node(node, component)
+    return result
+
+
+def _convert_node(node, component, control_flow=None):
+    """Converts a Node into a VNode, recursively.
+
+    The `control_flow` argument carries information on the current
+    control flow (v-if/v-else-if/v-else).
+    """
     attributes, directives = convert_attributes(node.attrs, component)
 
-    if "v-if" in directives and not directives["v-if"]:
-        return "v-if"
+    if "v-if" in directives:
+        control_flow = ControlFlow()
+        control_flow.result = bool(directives["v-if"])
+        if not control_flow.result:
+            return None, control_flow
 
-    if "v-else" in directives and prev_node:
-        return "v-else"
+    elif "v-else-if" in directives:
+        # TODO: maybe check that control_flow is not None?
+        if control_flow.result:
+            return None, control_flow
+        else:
+            control_flow.result = bool(directives["v-else-if"])
+            if not control_flow.result:
+                return None, control_flow
+
+    elif "v-else" in directives:
+        # TODO: maybe check that control_flow is not None?
+        if control_flow.result:
+            # Clear the returned control_flow
+            return None, None
 
     children = []
-    prev_node = None
+    children_control_flow = None
     for child in node.children:
-        converted_child = convert_node(child, component, prev_node=prev_node)
-        if converted_child in ["v-if", "v-else"]:
-            prev_node = None
-        elif converted_child:
+        converted_child, children_control_flow = _convert_node(
+            child, component, control_flow=children_control_flow
+        )
+        if converted_child:
             children.append(converted_child)
-            prev_node = converted_child
-    return create_element(node.tag, attributes, *children)
+    return create_element(node.tag, attributes, *children), control_flow
 
 
 def query_component(component, attr):
@@ -113,8 +144,8 @@ def convert_attributes(attrs, component):
             key_parts = key.split(":")
             attributes[key_parts[1]] = query_component(component, val)
 
-        # Check for v-if directive
-        if key == "v-if":
+        # Check for v-if/else/else-if directive
+        if key in ["v-if", "v-else-if"]:
             directives[key] = query_component(component, val)
         elif key == "v-else":
             directives[key] = True

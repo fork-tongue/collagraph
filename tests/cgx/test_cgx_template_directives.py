@@ -57,11 +57,10 @@ def test_directive_else():
     node.children[0].props["text"] == "Bar"
 
 
-@pytest.mark.xfail
 def test_directive_else_if():
     from tests.data.directive_else_if import Label
 
-    state = reactive({"foo": True, "bar": True})
+    state = reactive({"foo": True, "bar": True, "baz": True})
     component = Label(state)
     node = component.render()
 
@@ -84,6 +83,13 @@ def test_directive_else_if():
     assert len(node.children) == 1
     node.children[0].type == "label"
     node.children[0].props["text"] == "Baz"
+
+    state["baz"] = False
+    node = component.render()
+
+    assert len(node.children) == 1
+    node.children[0].type == "label"
+    node.children[0].props["text"] == "Bas"
 
 
 @pytest.mark.xfail
