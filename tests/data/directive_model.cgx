@@ -1,0 +1,13 @@
+<template>
+  <line-edit v-model="text"/>
+</template>
+
+<script lang="python">
+import collagraph as cg
+
+
+class Model(cg.Component):
+    def __init__(self, props):
+        super().__init__(props)
+        self.state["text"] = "placeholder"
+</script>

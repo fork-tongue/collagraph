@@ -5,6 +5,7 @@
 <script lang="python">
 import collagraph as cg
 
+
 class Simple(cg.Component):
     pass
 </script>

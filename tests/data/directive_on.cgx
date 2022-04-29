@@ -1,0 +1,25 @@
+<template>
+  <widget>
+    <!-- Normal on -->
+    <button v-on:clicked="increase" text="Add" />
+    <!-- Shortcut on -->
+    <button @clicked="decrease" text="Sub" />
+  </widget>
+</template>
+
+<script lang="python">
+import collagraph as cg
+
+
+class Labels(cg.Component):
+    def __init__(self, props):
+        super().__init__(props)
+        self.state["show_label"] = props.get("show", True)
+        self.state["count"] = 0
+
+    def increase(self):
+        self.state["count"] += 1
+
+    def decrease(self):
+        self.state["count"] -= 1
+</script>
