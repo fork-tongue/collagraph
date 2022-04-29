@@ -1,7 +1,7 @@
 <template>
   <widget>
-    <label v-if="show_foo" text="Foo" />
-    <label v-else-if="show_bar" text="Bar" />
+    <label v-if="foo" text="Foo" />
+    <label v-else-if="bar" text="Bar" />
     <label v-else text="Baz" />
   </widget>
 </template>
@@ -10,9 +10,6 @@
 import collagraph as cg
 
 
-class Labels(cg.Component):
-    def __init__(self, props):
-        super().__init__(props)
-        self.state["show_foo"] = props.get("foo", True)
-        self.state["show_bar"] = props.get("bar", True)
+class Label(cg.Component):
+    pass
 </script>
