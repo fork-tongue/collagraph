@@ -1,0 +1,10 @@
+<template>
+	<label text="Simple"/>
+</template>
+
+<code>
+import collagraph as cg
+
+class Simple(cg.Component):
+		pass
+</code>
