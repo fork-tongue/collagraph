@@ -1,0 +1,41 @@
+<template>
+  <QMainWindow title="JSX-like syntax example">
+    <QWidget :layout_direction="QBoxLayout.Direction.TopToBottom">
+      <QLabel v-bind:text="state['title']" />
+      <QLabel v-if="content" :text="props['content']" />
+      <QLabel v-else-if="other_content" :text="other_content" />
+      <QLabel v-else text="Nothing to see here" />
+      <QLineEdit v-model="line" />
+      <QWidget :layout_direction="QBoxLayout.Direction.LeftToRight">
+        <QCheckBox v-on:state-changed="check_action" text="Click it" />
+        <QLabel text="You know you want it!" />
+      </QWidget>
+      <QPushButton text="Push me" @clicked="click_action" />
+    </QWidget>
+  </QMainWindow>
+</template>
+
+<code lang="python">
+from PySide6.QtWidgets import QBoxLayout
+from collagraph import Component
+
+
+class Example(Component):
+    def __init__(self, props):
+        super().__init__(props)
+        print("created")
+
+    def mounted(self):
+        print("mounted")
+
+
+    def check_action(self):
+        print("checked box")
+
+
+    def click_action(self):
+        print("clicked button")
+</code>
+
+<style>
+</style>

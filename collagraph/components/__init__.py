@@ -1,9 +1,25 @@
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 
 from observ import reactive, readonly
 
 
-class Component(metaclass=ABCMeta):
+RENDER_FUNCTION = None
+
+
+def set_render_function(fun):
+    global RENDER_FUNCTION
+    RENDER_FUNCTION = fun
+
+
+class Meta(type):
+    def __new__(cls, name, bases, attrs):
+        if RENDER_FUNCTION:
+            attrs["render"] = RENDER_FUNCTION
+
+        return type.__new__(cls, name, bases, attrs)
+
+
+class Component(metaclass=Meta):
     """Abstract base class for components"""
 
     def __init__(self, props=None):
