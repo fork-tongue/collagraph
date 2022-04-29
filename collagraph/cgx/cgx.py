@@ -17,7 +17,21 @@ def load(path):
     tag will be used to provide the rest of the functions of
     the component.
 
-    The <style> tag is currently unsupported.
+    For example:
+
+        <template>
+          <item foo="bar">
+            <item baz="bla"/>
+          </item>
+        </template
+
+        <code>
+        import collagraph as cg
+
+        class Foo(cg.Component):
+            pass
+        </code>
+
     """
     parser = CGXParser()
     parser.feed(path.read_text())
@@ -25,54 +39,63 @@ def load(path):
     # TODO: proper validation of parsed structure
 
     # Read the data from code block
-    code = parser.root.children[1].data
-    # Construct a render function
-    render = node_to_render_function(parser.root.children[0].children[0])
-    local_attrs = {}
+    code = parser.root.child_with_tag("code").data
+    # Construct a render function from the template
+    template_root_node = parser.root.child_with_tag("template").children[0]
+
+    def render(self):
+        return convert_node(template_root_node)
+
     # Exec the code with a custom locals dict to capture
-    # all the defined class methods
-    # TODO: look into 'compile' to create code objects from text
+    # all the defined classes and methods
+    local_attrs = {}
     set_render_function(render)
     exec(code, globals(), local_attrs)
     set_render_function(None)
 
-    wrapped_type = None
+    component_type = None
     for value in local_attrs.values():
         try:
             if issubclass(value, Component) and value is not Component:
-                wrapped_type = value
+                component_type = value
                 break
         except TypeError:
             pass
 
-    return wrapped_type
+    return component_type
 
 
-def convert_node(node, context=None):
+def convert_node(node):
+    """Converts a Node into a VNode, recursively."""
     return create_element(
         node.tag, node.attrs, *[convert_node(node) for node in node.children]
     )
 
 
-def node_to_render_function(node):
-    def render(self):
-        return convert_node(node)
-
-    return render
-
-
 class Node:
-    def __init__(self, tag, attrs):
+    """Node that represents an element from a CGX file."""
+
+    def __init__(self, tag, attrs=None):
         self.tag = tag
-        self.attrs = attrs
+        self.attrs = attrs or {}
         self.data = None
         self.children = []
 
+    def child_with_tag(self, tag):
+        for child in self.children:
+            if child.tag == tag:
+                return child
+
 
 class CGXParser(HTMLParser):
+    """Parser for CGX files.
+
+    Creates a tree of Nodes with all encountered attributes and data.
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.root = Node("root", {})
+        self.root = Node("root")
         self.stack = [self.root]
 
     def handle_starttag(self, tag, attrs):
