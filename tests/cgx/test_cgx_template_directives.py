@@ -17,7 +17,6 @@ def test_directive_bind():
     assert second_label.props["text"] == "Label"
 
 
-@pytest.mark.xfail
 def test_directive_if():
     from tests.data.directive_if import Label
 
