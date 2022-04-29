@@ -44,7 +44,7 @@ def load(path):
     template_root_node = parser.root.child_with_tag("template").children[0]
 
     def render(self):
-        return convert_node(template_root_node)
+        return convert_node(template_root_node, self)
 
     # Exec the script with a custom locals dict to capture
     # all the defined classes and methods
@@ -67,11 +67,38 @@ def load(path):
     return component_type
 
 
-def convert_node(node):
+def convert_node(node, component):
     """Converts a Node into a VNode, recursively."""
+    attributes = convert_attributes(node.attrs, component)
     return create_element(
-        node.tag, node.attrs, *[convert_node(node) for node in node.children]
+        node.tag, attributes, *[convert_node(node, component) for node in node.children]
     )
+
+
+def query_component(component, attr):
+    """Returns attr from state or prop of component.
+
+    Values from the component's state have precedence over
+    values from the component's props.
+    """
+    if attr in component.state:
+        return component.state[attr]
+    return component.props[attr]
+
+
+def convert_attributes(attributes, component):
+    result = {}
+    for key, val in attributes.items():
+        # Don't perform conversion on non-directives
+        if not (key.startswith("v-") or key.startswith(":")):
+            result[key] = val
+
+        # Check for bind directive
+        if key.startswith("v-bind:") or key.startswith(":"):
+            key_parts = key.split(":")
+            result[key_parts[1]] = query_component(component, val)
+
+    return result
 
 
 class Node:

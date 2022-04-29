@@ -2,7 +2,6 @@ from observ import reactive
 import pytest
 
 
-@pytest.mark.xfail
 def test_directive_bind():
     from tests.data.directive_bind import Labels
 
