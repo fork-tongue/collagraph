@@ -25,12 +25,12 @@ def load(path):
           </item>
         </template
 
-        <code>
+        <script>
         import collagraph as cg
 
         class Foo(cg.Component):
             pass
-        </code>
+        </script>
 
     """
     parser = CGXParser()
@@ -38,19 +38,19 @@ def load(path):
 
     # TODO: proper validation of parsed structure
 
-    # Read the data from code block
-    code = parser.root.child_with_tag("code").data
+    # Read the data from script block
+    script = parser.root.child_with_tag("script").data
     # Construct a render function from the template
     template_root_node = parser.root.child_with_tag("template").children[0]
 
     def render(self):
         return convert_node(template_root_node)
 
-    # Exec the code with a custom locals dict to capture
+    # Exec the script with a custom locals dict to capture
     # all the defined classes and methods
     local_attrs = {}
     set_render_function(render)
-    exec(code, globals(), local_attrs)
+    exec(script, globals(), local_attrs)
     set_render_function(None)
 
     component_type = None

@@ -15,7 +15,7 @@
   </QMainWindow>
 </template>
 
-<code lang="python">
+<script lang="python">
 from PySide6.QtWidgets import QBoxLayout
 from collagraph import Component
 
@@ -35,7 +35,7 @@ class Example(Component):
 
     def click_action(self):
         print("clicked button")
-</code>
+</script>
 
 <style>
 </style>
