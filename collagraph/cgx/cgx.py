@@ -50,8 +50,10 @@ def load(path):
     # all the defined classes and methods
     local_attrs = {}
     ComponentMeta.RENDER_FUNCTION = render
-    exec(script, globals(), local_attrs)
-    ComponentMeta.RENDER_FUNCTION = None
+    try:
+        exec(script, globals(), local_attrs)
+    finally:
+        ComponentMeta.RENDER_FUNCTION = None
 
     component_type = None
     for value in local_attrs.values():
