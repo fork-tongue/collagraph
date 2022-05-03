@@ -1,6 +1,7 @@
 from observ import reactive
 import pytest
 
+
 import collagraph as cg
 
 
@@ -17,6 +18,17 @@ def test_directive_bind():
 
     assert first_label.props["text"] == "Custom label"
     assert second_label.props["text"] == "Custom label"
+
+
+def test_directive_typo():
+    # Would be most excellent if the typo could already
+    # be detected at import, but that can only work if
+    # the component can define all props and state...
+    from tests.data.directive_typo import Label
+
+    component = Label({})
+    with pytest.raises(NameError):
+        component.render()
 
 
 def test_directive_bind_context():
@@ -52,6 +64,28 @@ def test_directive_if():
     node = component.render()
 
     assert len(node.children) == 0
+
+
+def test_directive_if_elaborate():
+    from tests.data.directive_if_elaborate import Label
+
+    state = reactive({"show": True})
+    component = Label(state)
+    node = component.render()
+
+    assert node.type == "widget"
+
+    assert len(node.children) == 2
+    node.children[0].type == "label"
+    node.children[0].props["text"] == "Foo"
+    node.children[1].props["text"] == "Bar"
+
+    state["show"] = False
+    node = component.render()
+
+    assert len(node.children) == 1
+
+    node.children[0].props["text"] == "Bar"
 
 
 def test_directive_else():
@@ -110,7 +144,6 @@ def test_directive_else_if():
     node.children[0].props["text"] == "Bas"
 
 
-@pytest.mark.xfail
 def test_directive_for():
     from tests.data.directive_for import Labels
 

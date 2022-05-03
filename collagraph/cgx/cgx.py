@@ -1,5 +1,6 @@
 import ast
 from html.parser import HTMLParser
+import textwrap
 
 from collagraph import create_element
 from collagraph.components import Component, ComponentMeta
@@ -99,23 +100,29 @@ class RewriteName(ast.NodeTransformer):
         return node
 
 
-def compile_expression(template_expression, component, context):
+def compile_expression(template_expression, component, context, mode=None):
+    if mode is None:
+        mode = "eval"
+
     # First, parse the expression from the template to create an AST
     tree = ast.parse(template_expression)
-    # Use an ast.Expression object to convert
-    # the compiled statement into an actual expreesion
-    expr = ast.Expression(body=tree.body[0].value)
+    if mode == "eval":
+        # Use an ast.Expression object to convert
+        # the compiled statement into an actual expreesion
+        tree = ast.Expression(body=tree.body[0].value)
 
-    # Run some automated location fixer
+    # Run some automated location fixer while
+    # rewriting the Name nodes that should get attributes
+    # from the given component
     ast.fix_missing_locations(
-        RewriteName(component=component, context=context).visit(expr)
+        RewriteName(component=component, context=context).visit(tree)
     )
 
     # Compile the expression tree into a code object
     # with the `eval` mode such that we can pass the
     # code object to the `eval` function and get some
     # results back.
-    code = compile(expr, filename="<ast>", mode="eval")
+    code = compile(tree, filename="<ast>", mode=mode)
     return code
 
 
@@ -153,22 +160,49 @@ class PreCompiledNode:
             if key in ["v-if", "v-else-if", "v-else"]:
                 continue
 
-            try:
-                result = eval(code, {}, {"component": component, **context})
-                if key.startswith(("v-on:", "@")):
-                    split_char = "@" if key.startswith("@") else ":"
-                    key = key.split(split_char)[1]
-                    key = f"on_{key}"
+            result = eval(code, {}, {"component": component, **context})
+            if key.startswith(("v-on:", "@")):
+                split_char = "@" if key.startswith("@") else ":"
+                key = key.split(split_char)[1]
+                key = f"on_{key}"
 
-                attrs[key] = result
-            except NameError:
-                raise
+            attrs[key] = result
 
         # Check all the children for v-if/else-if/else directives
         children = []
         control_flow = []
         for child in self.children:
             directive = None
+
+            if "v-for" in child.expressions:
+                output = []
+                ctx = context.copy()
+                ctx["component"] = component
+                ctx["output"] = output
+
+                compiled_expression = child.expressions["v-for"]
+
+                exec(compiled_expression, globals().copy(), ctx)
+
+                for result in output:
+                    # Create custom node for each of the results
+                    # from the v-for expression
+                    for_child = PreCompiledNode()
+                    for_child.tag = child.tag
+                    for_child.attrs = child.attrs
+                    for_child.children = child.children
+                    # Filter out the "v-for" directive
+                    for_child.expressions = {
+                        k: v for k, v in child.expressions.items() if k != "v-for"
+                    }
+
+                    # Create a special context for this custom node
+                    for_ctx = context.copy()
+                    for_ctx.update(result)
+
+                    children.append((for_child, for_ctx))
+
+                continue
 
             if directive := child.control_flow():
                 control_flow.append((directive, child))
@@ -178,25 +212,28 @@ class PreCompiledNode:
                     if control_flow_result := evaluate_control_flow(
                         control_flow, component, context
                     ):
-                        children.append(control_flow_result)
+                        children.append((control_flow_result, context))
                     control_flow = []
-                children.append(child)
+                children.append((child, context))
 
         if control_flow:
             if control_flow_result := evaluate_control_flow(
                 control_flow, component, context
             ):
-                children.append(control_flow_result)
+                children.append((control_flow_result, context))
             control_flow = []
 
         return create_element(
             self.tag,
             attrs,
-            *[child.to_vnode(component, context) for child in children],
+            *[child.to_vnode(component, ctx) for child, ctx in children],
         )
 
 
 def evaluate_control_flow(nodes, component, context):
+    # nodes is a list of tuples that consists of a directive
+    # (one of 'v-if, v-else-if' or 'v-else') paired with the
+    # compiled node
     for directive, node in nodes:
         if code := node.expressions[directive]:
             result = eval(code, {}, {"component": component, **context})
@@ -242,6 +279,29 @@ class Node:
                 node.expressions[attr] = compile_expression(val, component, context)
             elif key == "v-else":
                 node.expressions[key] = None
+            elif key == "v-for":
+                # Run the v-for loop and gather the results of the for-loop
+                # into the 'output' variable as a list of dicts where the
+                # key is the name of the loop variable.
+                # The trick here is to use the diff of the locals right before
+                # the for-loop and the locals right at the start of the for-loop
+                # to figure out over which variables is being looped.
+                expression = textwrap.dedent(
+                    f"""
+                    initial_locals = locals().copy()
+                    for {val}:
+                        for_locals = locals().copy()
+                        for_context = {{}}
+                        for key in for_locals.keys() - initial_locals:
+                            if key != "initial_locals":
+                                for_context[key] = for_locals[key]
+                        output.append(for_context)"""
+                )
+
+                # Compile the for loop
+                node.expressions[key] = compile_expression(
+                    expression, component, context, mode="exec"
+                )
             else:
                 node.expressions[key] = compile_expression(val, component, context)
 
