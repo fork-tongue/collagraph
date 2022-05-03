@@ -21,6 +21,7 @@ repos:
     name: pytest
     entry: poetry run pytest tests
     language: system
-    types: [python]
+    types: [text]
+    files: \.(py|cgx)$
     require_serial: true
     pass_filenames: false
