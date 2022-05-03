@@ -208,7 +208,16 @@ class PySideRenderer(Renderer):
         # or amount of arguments the enclosed callback needs. If the callback has
         # arguments, then those will be set to the parameter(s) of the signal when
         # it is emitted.
-        slot = QtCore.Slot()(value)
+        try:
+            # Creating a slot of a bound method on an instance (that is not
+            # a QObject?) results in a SystemError. Lambdas though _can_ function
+            # as a slot, so when creating a slot of the value fails, retry with
+            # a simple lambda.
+            slot = QtCore.Slot()(value)
+        except SystemError:
+            # TODO: with some inspection we might be able to figure out the
+            # signature of the 'value' function and adjust the lambda accordingly
+            slot = QtCore.Slot()(lambda *args: value(*args))
         el.slots[event_type].add(slot)
 
         # Try and get the signal from the object

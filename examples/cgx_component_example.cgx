@@ -7,7 +7,7 @@
       <QLabel v-else text="Nothing to see here" />
       <QLineEdit v-model="props.get('line')" />
       <QWidget :layout="state['left_to_right']">
-        <QCheckBox v-on:state-changed="check_action" text="Click it" />
+        <QCheckBox v-on:state_changed="check_action" text="Click it" />
         <QLabel text="You know you want it!" />
       </QWidget>
       <QPushButton text="Push me" @clicked="click_action" />
@@ -36,13 +36,11 @@ class Example(Component):
     def mounted(self):
         print("mounted")
 
+    def check_action(self, *args):
+        print("checked box", args)
 
-    def check_action(self):
-        print("checked box")
-
-
-    def click_action(self):
-        print("clicked button")
+    def click_action(self, *args):
+        print("clicked button", args)
 </script>
 
 <style>
