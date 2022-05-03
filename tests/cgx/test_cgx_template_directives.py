@@ -131,7 +131,6 @@ def test_directive_for():
             assert node.children[idx].props["text"] == label
 
 
-@pytest.mark.xfail
 def test_directive_on():
     from tests.data.directive_on import Buttons
 

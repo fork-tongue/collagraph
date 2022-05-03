@@ -1,9 +1,9 @@
 <template>
   <widget>
     <!-- Normal on -->
-    <button v-on:clicked="state['increase']" text="Add" />
+    <button v-on:clicked="increase" text="Add" />
     <!-- Shortcut on -->
-    <button @clicked="state['decrease']" text="Sub" />
+    <button @clicked="decrease" text="Sub" />
   </widget>
 </template>
 

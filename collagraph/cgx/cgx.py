@@ -152,8 +152,14 @@ class PreCompiledNode:
             # actual attributes, so we can skip them here
             if key in ["v-if", "v-else-if", "v-else"]:
                 continue
+
             try:
                 result = eval(code, {}, {"component": component, **context})
+                if key.startswith(("v-on:", "@")):
+                    split_char = "@" if key.startswith("@") else ":"
+                    key = key.split(split_char)[1]
+                    key = f"on_{key}"
+
                 attrs[key] = result
             except NameError:
                 raise
@@ -203,6 +209,10 @@ def evaluate_control_flow(nodes, component, context):
     return None
 
 
+def is_expression(key):
+    return key.startswith(("v-", ":", "@"))
+
+
 class Node:
     """Node that represents an element from a CGX file."""
 
@@ -220,16 +230,14 @@ class Node:
     def compile(self, component, context):
         node = PreCompiledNode()
         node.attrs = {
-            key: val
-            for key, val in self.attrs.items()
-            if "v-" not in key and ":" not in key
+            key: val for key, val in self.attrs.items() if not is_expression(key)
         }
 
         for key, val in self.attrs.items():
-            if "v-" not in key and ":" not in key:
+            if not is_expression(key):
                 continue
 
-            if key.startswith("v-bind:") or key.startswith(":"):
+            if key.startswith(("v-bind:", ":")):
                 attr = key.split(":")[1]
                 node.expressions[attr] = compile_expression(val, component, context)
             elif key == "v-else":
