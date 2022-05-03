@@ -1,3 +1,4 @@
+import ast
 from html.parser import HTMLParser
 
 from collagraph import create_element
@@ -33,124 +34,173 @@ def load(path):
         </script>
 
     """
+    # Parse the file component into a tree of Node instances
     parser = CGXParser()
     parser.feed(path.read_text())
 
-    # TODO: proper validation of parsed structure
-
     # Read the data from script block
     script = parser.root.child_with_tag("script").data
-    # Construct a render function from the template
+    # Compile for the first time to get a handle on the
+    # context that is defined in the components' script
+    preliminary_component_type, context = load_code(script)
+
+    # Construct a render function from the template block
     template_root_node = parser.root.child_with_tag("template").children[0]
+    compiled_tree = template_root_node.compile(preliminary_component_type, context)
 
     def render(self):
-        return convert_node(template_root_node, self)
+        return compiled_tree.to_vnode(self, context)
 
-    # Exec the script with a custom locals dict to capture
-    # all the defined classes and methods
-    local_attrs = {}
-    ComponentMeta.RENDER_FUNCTION = render
+    return load_code(script, render_function=render)
+
+
+def load_code(script, render_function=None):
+    """
+    Exec the script with a custom (globals) dict to capture
+    all the defined classes and methods.
+    """
+    context = {}
+    attrs = {}
+    ComponentMeta.RENDER_FUNCTION = render_function
     try:
-        exec(script, globals(), local_attrs)
+        exec(script, attrs)
     finally:
         ComponentMeta.RENDER_FUNCTION = None
 
     component_type = None
-    for value in local_attrs.values():
+    for key, value in attrs.items():
+        if key in ["__builtins__"]:
+            continue
+
         try:
             if issubclass(value, Component) and value is not Component:
                 component_type = value
-                break
+                continue
         except TypeError:
             pass
 
-    return component_type
+        context[key] = value
+    return component_type, context
 
 
-class ControlFlow:
-    """Simple class to keep track of whether a control
-    flow has already returned a result."""
+# https://docs.python.org/3/library/ast.html#ast.NodeTransformer
+class RewriteName(ast.NodeTransformer):
+    def __init__(self, component, context):
+        self.component = component
+        self.context = context
 
-    result = False
+    def visit_Name(self, node):
+        if node.id in dir(self.component):
+            return ast.Attribute(
+                value=ast.Name(id="component", ctx=ast.Load()),
+                attr=node.id,
+                ctx=node.ctx,
+            )
+        return node
 
 
-def convert_node(node, component):
-    """Converts a Node into a VNode, recursively."""
-    result, _ = _convert_node(node, component)
-    return result
+def compile_expression(template_expression, component, context):
+    # First, parse the expression from the template to create an AST
+    tree = ast.parse(template_expression)
+    # Use an ast.Expression object to convert
+    # the compiled statement into an actual expreesion
+    expr = ast.Expression(body=tree.body[0].value)
+
+    # Run some automated location fixer
+    ast.fix_missing_locations(
+        RewriteName(component=component, context=context).visit(expr)
+    )
+
+    # Compile the expression tree into a code object
+    # with the `eval` mode such that we can pass the
+    # code object to the `eval` function and get some
+    # results back.
+    code = compile(expr, filename="<ast>", mode="eval")
+    return code
 
 
-def _convert_node(node, component, control_flow=None):
-    """Converts a Node into a VNode, recursively.
-
-    The `control_flow` argument carries information on the current
-    control flow (v-if/v-else-if/v-else).
+class PreCompiledNode:
     """
-    attributes, directives = convert_attributes(node.attrs, component)
+    Pre-Compiled Node that has pre-compiled all its expressions.
+    """
 
-    if "v-if" in directives:
-        control_flow = ControlFlow()
-        control_flow.result = bool(directives["v-if"])
-        if not control_flow.result:
-            return None, control_flow
+    def __init__(self):
+        # Type of the VNode. Can be a function (component) as well!
+        # Example for tag as function can be the result from a v-if
+        # or v-for directive
+        self.tag = None
+        # Plain attributes that don't have any directives / expressions
+        self.attrs = {}
+        # Non-standard attributes as expressions from directives
+        self.expressions = {}
+        # List of children for this node
+        self.children = []
 
-    elif "v-else-if" in directives:
-        # TODO: maybe check that control_flow is not None?
-        if control_flow.result:
-            return None, control_flow
-        else:
-            control_flow.result = bool(directives["v-else-if"])
-            if not control_flow.result:
-                return None, control_flow
+    def control_flow(self):
+        for attr in self.expressions:
+            if attr in ["v-if", "v-else-if", "v-else"]:
+                return attr
 
-    elif "v-else" in directives:
-        # TODO: maybe check that control_flow is not None?
-        if control_flow.result:
-            # Clear the returned control_flow
-            return None, None
+    def to_vnode(self, component, context):
+        # First copy the static attributes
+        attrs = self.attrs.copy()
 
-    children = []
-    children_control_flow = None
-    for child in node.children:
-        converted_child, children_control_flow = _convert_node(
-            child, component, control_flow=children_control_flow
+        # Then compute all the expressions and add the results
+        for key, code in self.expressions.items():
+            # The parent has already processed these directives for
+            # its children, and they don't need to end up in the
+            # actual attributes, so we can skip them here
+            if key in ["v-if", "v-else-if", "v-else"]:
+                continue
+            try:
+                result = eval(code, {}, {"component": component, **context})
+                attrs[key] = result
+            except NameError:
+                raise
+
+        # Check all the children for v-if/else-if/else directives
+        children = []
+        control_flow = []
+        for child in self.children:
+            directive = None
+
+            if directive := child.control_flow():
+                control_flow.append((directive, child))
+
+            if not directive:
+                if control_flow:
+                    if control_flow_result := evaluate_control_flow(
+                        control_flow, component, context
+                    ):
+                        children.append(control_flow_result)
+                    control_flow = []
+                children.append(child)
+
+        if control_flow:
+            if control_flow_result := evaluate_control_flow(
+                control_flow, component, context
+            ):
+                children.append(control_flow_result)
+            control_flow = []
+
+        return create_element(
+            self.tag,
+            attrs,
+            *[child.to_vnode(component, context) for child in children],
         )
-        if converted_child:
-            children.append(converted_child)
-    return create_element(node.tag, attributes, *children), control_flow
 
 
-def query_component(component, attr):
-    """Returns attr from state or prop of component.
+def evaluate_control_flow(nodes, component, context):
+    for directive, node in nodes:
+        if code := node.expressions[directive]:
+            result = eval(code, {}, {"component": component, **context})
+            if result:
+                return node
 
-    Values from the component's state have precedence over
-    values from the component's props.
-    """
-    if attr in component.state:
-        return component.state[attr]
-    return component.props[attr]
+        if directive == "v-else":
+            return node
 
-
-def convert_attributes(attrs, component):
-    attributes = {}
-    directives = {}
-    for key, val in attrs.items():
-        # Don't perform conversion on non-directives
-        if not (key.startswith("v-") or key.startswith(":")):
-            attributes[key] = val
-
-        # Check for bind directive
-        if key.startswith("v-bind:") or key.startswith(":"):
-            key_parts = key.split(":")
-            attributes[key_parts[1]] = query_component(component, val)
-
-        # Check for v-if/else/else-if directive
-        if key in ["v-if", "v-else-if"]:
-            directives[key] = query_component(component, val)
-        elif key == "v-else":
-            directives[key] = True
-
-    return attributes, directives
+    return None
 
 
 class Node:
@@ -166,6 +216,31 @@ class Node:
         for child in self.children:
             if child.tag == tag:
                 return child
+
+    def compile(self, component, context):
+        node = PreCompiledNode()
+        node.attrs = {
+            key: val
+            for key, val in self.attrs.items()
+            if "v-" not in key and ":" not in key
+        }
+
+        for key, val in self.attrs.items():
+            if "v-" not in key and ":" not in key:
+                continue
+
+            if key.startswith("v-bind:") or key.startswith(":"):
+                attr = key.split(":")[1]
+                node.expressions[attr] = compile_expression(val, component, context)
+            elif key == "v-else":
+                node.expressions[key] = None
+            else:
+                node.expressions[key] = compile_expression(val, component, context)
+
+        node.tag = self.tag
+
+        node.children = [child.compile(component, context) for child in self.children]
+        return node
 
 
 class CGXParser(HTMLParser):

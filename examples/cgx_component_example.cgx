@@ -1,12 +1,12 @@
 <template>
   <QMainWindow title="JSX-like syntax example">
-    <QWidget :layout_direction="QBoxLayout.Direction.TopToBottom">
-      <QLabel v-bind:text="state['title']" />
-      <QLabel v-if="content" :text="props['content']" />
-      <QLabel v-else-if="other_content" :text="other_content" />
+    <QWidget :layout="state['top_to_bottom']">
+      <QLabel v-bind:text="props.get('title')" />
+      <QLabel v-if="props.get('content')" :text="props['content']" />
+      <QLabel v-else-if="props.get('other_content')" :text="props['other_content']" />
       <QLabel v-else text="Nothing to see here" />
-      <QLineEdit v-model="line" />
-      <QWidget :layout_direction="QBoxLayout.Direction.LeftToRight">
+      <QLineEdit v-model="props.get('line')" />
+      <QWidget :layout="state['left_to_right']">
         <QCheckBox v-on:state-changed="check_action" text="Click it" />
         <QLabel text="You know you want it!" />
       </QWidget>
@@ -23,6 +23,14 @@ from collagraph import Component
 class Example(Component):
     def __init__(self, props):
         super().__init__(props)
+        self.state["top_to_bottom"] = {
+            "type": "box",
+            "direction": QBoxLayout.Direction.TopToBottom,
+        }
+        self.state["left_to_right"] = {
+            "type": "box",
+            "direction": QBoxLayout.Direction.LeftToRight,
+        }
         print("created")
 
     def mounted(self):

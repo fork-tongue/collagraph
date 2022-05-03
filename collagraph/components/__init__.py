@@ -22,6 +22,8 @@ class ComponentMeta(type):
 class Component(metaclass=ComponentMeta):
     """Abstract base class for components"""
 
+    __slots__ = ["state", "props"]
+
     def __init__(self, props=None):
         self.props = readonly({} if props is None else props)
         self.state = reactive({})

@@ -28,9 +28,10 @@ class CgxImporter:
 
     def exec_module(self, module):
         """Executing the module means reading the cgx file"""
-        component = cgx.load(self.cgx_path)
+        component, context = cgx.load(self.cgx_path)
 
         # Add the data to the module
+        module.__dict__.update(context)
         module.__dict__[component.__name__] = component
         module.__file__ = str(self.cgx_path)
 

@@ -1,9 +1,9 @@
 <template>
   <widget>
     <!-- Normal bind -->
-    <label v-bind:text="label_text"/>
+    <label v-bind:text="state['label_text']"/>
     <!-- Shortcut for bind -->
-    <label :text="label_text"/>
+    <label :text="props['text']"/>
   </widget>
 </template>
 

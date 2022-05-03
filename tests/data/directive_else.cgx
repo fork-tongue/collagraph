@@ -1,6 +1,6 @@
 <template>
   <widget>
-    <label v-if="show" text="Foo" />
+    <label v-if="props['show']" text="Foo" />
     <label v-else text="Bar" />
   </widget>
 </template>

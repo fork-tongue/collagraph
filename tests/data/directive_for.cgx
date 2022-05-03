@@ -1,6 +1,6 @@
 <template>
   <widget>
-    <label v-for="idx, label in labels" :key="idx" :text="label" />
+    <label v-for="idx, label in props['labels']" :key="idx" :text="label" />
   </widget>
 </template>
 

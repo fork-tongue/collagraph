@@ -1,11 +1,13 @@
 from observ import reactive
 import pytest
 
+import collagraph as cg
+
 
 def test_directive_bind():
     from tests.data.directive_bind import Labels
 
-    component = Labels({})
+    component = Labels({"text": "Custom label"})
     node = component.render()
 
     assert node.type == "widget"
@@ -13,8 +15,24 @@ def test_directive_bind():
     first_label = node.children[0]
     second_label = node.children[1]
 
+    assert first_label.props["text"] == "Custom label"
+    assert second_label.props["text"] == "Custom label"
+
+
+def test_directive_bind_context():
+    from tests.data.directive_bind_context import Labels
+
+    component = Labels({})
+    node = component.render()
+
+    assert node.type == "widget"
+    assert node.props["layout"]
+
+    first_label = node.children[0]
+    second_label = node.children[1]
+
     assert first_label.props["text"] == "Label"
-    assert second_label.props["text"] == "Label"
+    assert second_label.props["text"] == cg.__version__
 
 
 def test_directive_if():
