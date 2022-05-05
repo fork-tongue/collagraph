@@ -1,9 +1,10 @@
 <template>
   <widget>
     <!-- Normal on -->
-    <button v-on:clicked="increase" text="Add" />
+    <button v-on:clicked="increase" text="Add" object_name="add" />
     <!-- Shortcut on -->
-    <button @clicked="decrease" text="Sub" />
+    <button @clicked="decrease" text="Sub" object_name="dec" />
+    <label :text="counter_text()" />
   </widget>
 </template>
 
@@ -17,8 +18,13 @@ class Buttons(cg.Component):
         self.state["count"] = 0
 
     def increase(self):
+        print('increase')
         self.state["count"] += 1
 
     def decrease(self):
+        print('decrease')
         self.state["count"] -= 1
+
+    def counter_text(self):
+        return str(self.state["count"])
 </script>
