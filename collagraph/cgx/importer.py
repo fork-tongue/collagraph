@@ -13,6 +13,10 @@ class CgxImporter:
     @classmethod
     def find_spec(cls, name, path, target=None):
         """Look for cgx files"""
+        if target is not None:
+            # Target is set when module is being reloaded.
+            # In our case we can just return the existing spec.
+            return target.__spec__
 
         package, _, module_name = name.rpartition(".")
         cgx_file_name = f"{module_name}.{cgx.SUFFIX}"
@@ -20,11 +24,13 @@ class CgxImporter:
         for directory in directories:
             cgx_path = pathlib.Path(directory) / cgx_file_name
             if cgx_path.exists():
-                return ModuleSpec(name, cls(cgx_path))
+                spec = ModuleSpec(name, cls(cgx_path), origin=str(cgx_path))
+                spec.has_location = True
+                return spec
 
     def create_module(self, spec):
         """Returning None uses the standard machinery for creating modules"""
-        return None
+        return
 
     def exec_module(self, module):
         """Executing the module means reading the cgx file"""
@@ -33,7 +39,6 @@ class CgxImporter:
         # Add the data to the module
         module.__dict__.update(context)
         module.__dict__[component.__name__] = component
-        module.__file__ = str(self.cgx_path)
 
 
 # Add the Cgx importer at the end of the list of finders
