@@ -7,6 +7,15 @@ from collagraph.components import Component, ComponentMeta
 
 
 SUFFIX = "cgx"
+DIRECTIVE_PREFIX = "v-"
+DIRECTIVE_BIND = f"{DIRECTIVE_PREFIX}bind"
+DIRECTIVE_IF = f"{DIRECTIVE_PREFIX}if"
+DIRECTIVE_ELSE_IF = f"{DIRECTIVE_PREFIX}else-if"
+DIRECTIVE_ELSE = f"{DIRECTIVE_PREFIX}else"
+CONTROL_FLOW_DIRECTIVES = (DIRECTIVE_IF, DIRECTIVE_ELSE_IF, DIRECTIVE_ELSE)
+DIRECTIVE_FOR = f"{DIRECTIVE_PREFIX}for"
+DIRECTIVE_ON = f"{DIRECTIVE_PREFIX}on"
+FOR_LOOP_OUTPUT = "for_loop_output"
 
 
 def load(path):
@@ -145,7 +154,7 @@ class PreCompiledNode:
 
     def control_flow(self):
         for attr in self.expressions:
-            if attr in ["v-if", "v-else-if", "v-else"]:
+            if attr in CONTROL_FLOW_DIRECTIVES:
                 return attr
 
     def to_vnode(self, component, context):
@@ -157,11 +166,11 @@ class PreCompiledNode:
             # The parent has already processed these directives for
             # its children, and they don't need to end up in the
             # actual attributes, so we can skip them here
-            if key in ["v-if", "v-else-if", "v-else"]:
+            if key in CONTROL_FLOW_DIRECTIVES:
                 continue
 
-            result = eval(code, {}, {"component": component, **context})
-            if key.startswith(("v-on:", "@")):
+            result = eval(code, {"component": component, **context})
+            if key.startswith((DIRECTIVE_ON, "@")):
                 split_char = "@" if key.startswith("@") else ":"
                 key = key.split(split_char)[1]
                 key = f"on_{key}"
@@ -174,15 +183,13 @@ class PreCompiledNode:
         for child in self.children:
             directive = None
 
-            if "v-for" in child.expressions:
+            if for_expression := child.expressions.get(DIRECTIVE_FOR):
                 output = []
                 ctx = context.copy()
                 ctx["component"] = component
-                ctx["output"] = output
+                ctx[FOR_LOOP_OUTPUT] = output
 
-                compiled_expression = child.expressions["v-for"]
-
-                exec(compiled_expression, globals().copy(), ctx)
+                exec(for_expression, ctx)
 
                 for result in output:
                     # Create custom node for each of the results
@@ -193,7 +200,7 @@ class PreCompiledNode:
                     for_child.children = child.children
                     # Filter out the "v-for" directive
                     for_child.expressions = {
-                        k: v for k, v in child.expressions.items() if k != "v-for"
+                        k: v for k, v in child.expressions.items() if k != DIRECTIVE_FOR
                     }
 
                     # Create a special context for this custom node
@@ -236,18 +243,18 @@ def evaluate_control_flow(nodes, component, context):
     # compiled node
     for directive, node in nodes:
         if code := node.expressions[directive]:
-            result = eval(code, {}, {"component": component, **context})
+            result = eval(code, {"component": component, **context})
             if result:
                 return node
 
-        if directive == "v-else":
+        if directive == DIRECTIVE_ELSE:
             return node
 
     return None
 
 
-def is_expression(key):
-    return key.startswith(("v-", ":", "@"))
+def is_directive(key):
+    return key.startswith((DIRECTIVE_PREFIX, ":", "@"))
 
 
 class Node:
@@ -267,19 +274,19 @@ class Node:
     def compile(self, component, context):
         node = PreCompiledNode()
         node.attrs = {
-            key: val for key, val in self.attrs.items() if not is_expression(key)
+            key: val for key, val in self.attrs.items() if not is_directive(key)
         }
 
         for key, val in self.attrs.items():
-            if not is_expression(key):
+            if not is_directive(key):
                 continue
 
-            if key.startswith(("v-bind:", ":")):
+            if key.startswith((DIRECTIVE_BIND, ":")):
                 attr = key.split(":")[1]
                 node.expressions[attr] = compile_expression(val, component, context)
-            elif key == "v-else":
+            elif key == DIRECTIVE_ELSE:
                 node.expressions[key] = None
-            elif key == "v-for":
+            elif key == DIRECTIVE_FOR:
                 # Run the v-for loop and gather the results of the for-loop
                 # into the 'output' variable as a list of dicts where the
                 # key is the name of the loop variable.
@@ -295,7 +302,7 @@ class Node:
                         for key in for_locals.keys() - initial_locals:
                             if key != "initial_locals":
                                 for_context[key] = for_locals[key]
-                        output.append(for_context)"""
+                        {FOR_LOOP_OUTPUT}.append(for_context)"""
                 )
 
                 # Compile the for loop
