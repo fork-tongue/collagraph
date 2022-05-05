@@ -18,7 +18,7 @@ DIRECTIVE_FOR = f"{DIRECTIVE_PREFIX}for"
 DIRECTIVE_ON = f"{DIRECTIVE_PREFIX}on"
 FOR_LOOP_OUTPUT = "for_loop_output"
 
-COMPONENT_CLASS_DEFINITION = re.compile(r"class\s*(.*?)\s*\(.*Component\s*\)\s*:")
+COMPONENT_CLASS_DEFINITION = re.compile(r"class\s*(.*?)\s*\(.*?\)\s*:")
 
 
 def load(path):
@@ -86,18 +86,20 @@ def load_code(script, render_function=None):
 
     results = re.search(COMPONENT_CLASS_DEFINITION, script)
     if not results:
-        raise ValueError(f"Could not find a component class definition in:\n{script}")
+        raise ValueError(f"Could not find a class definition in:\n{script}")
 
-    if len(results.groups()) > 1:
-        raise ValueError(f"Found multiple component class definitions in:\n{script}")
+    component_type = None
+    for class_name in results.groups():
+        if class_definition := context.get(class_name):
+            if issubclass(class_definition, Component):
+                if component_type is not None:
+                    raise ValueError(
+                        f"Multiple component class definitions found:\n{script}"
+                    )
+                component_type = class_definition
 
-    component_class_name = results.groups()[0]
-    component_type = context.pop(component_class_name)
-
-    # The regex search should take care of this most of the times, but let's
-    # make sure that the Component superclass is *our* component class.
-    if not issubclass(component_type, Component):
-        raise ValueError(f"Invalid component class definition: {component_type}")
+    if not component_type:
+        raise ValueError(f"No subclass of Component found:\n{script}")
 
     return component_type, context
 
