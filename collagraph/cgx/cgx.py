@@ -1,5 +1,6 @@
 import ast
 from html.parser import HTMLParser
+import re
 import textwrap
 
 from collagraph import create_element
@@ -16,6 +17,8 @@ CONTROL_FLOW_DIRECTIVES = (DIRECTIVE_IF, DIRECTIVE_ELSE_IF, DIRECTIVE_ELSE)
 DIRECTIVE_FOR = f"{DIRECTIVE_PREFIX}for"
 DIRECTIVE_ON = f"{DIRECTIVE_PREFIX}on"
 FOR_LOOP_OUTPUT = "for_loop_output"
+
+COMPONENT_CLASS_DEFINITION = re.compile(r"class\s*(.*?)\s*\(.*Component\s*\)\s*:")
 
 
 def load(path):
@@ -50,6 +53,7 @@ def load(path):
 
     # Read the data from script block
     script = parser.root.child_with_tag("script").data
+
     # Compile for the first time to get a handle on the
     # context that is defined in the components' script
     preliminary_component_type, context = load_code(script)
@@ -61,6 +65,10 @@ def load(path):
     def render(self):
         return compiled_tree.to_vnode(self, context)
 
+    # NOTE: load_code is called multiple times, to people need
+    # to be aware that module-level side-effects will be executed
+    # multiple times. Please put any side-effects in your compontent.mounted()
+    # and don't forget to clean-up in component.before_unmount() if needed.
     return load_code(script, render_function=render)
 
 
@@ -70,26 +78,27 @@ def load_code(script, render_function=None):
     all the defined classes and methods.
     """
     context = {}
-    attrs = {}
     ComponentMeta.RENDER_FUNCTION = render_function
     try:
-        exec(script, attrs)
+        exec(script, context)
     finally:
         ComponentMeta.RENDER_FUNCTION = None
 
-    component_type = None
-    for key, value in attrs.items():
-        if key in ["__builtins__"]:
-            continue
+    results = re.search(COMPONENT_CLASS_DEFINITION, script)
+    if not results:
+        raise ValueError(f"Could not find a component class definition in:\n{script}")
 
-        try:
-            if issubclass(value, Component) and value is not Component:
-                component_type = value
-                continue
-        except TypeError:
-            pass
+    if len(results.groups()) > 1:
+        raise ValueError(f"Found multiple component class definitions in:\n{script}")
 
-        context[key] = value
+    component_class_name = results.groups()[0]
+    component_type = context.pop(component_class_name)
+
+    # The regex search should take care of this most of the times, but let's
+    # make sure that the Component superclass is *our* component class.
+    if not issubclass(component_type, Component):
+        raise ValueError(f"Invalid component class definition: {component_type}")
+
     return component_type, context
 
 
@@ -177,7 +186,7 @@ class PreCompiledNode:
 
             attrs[key] = result
 
-        # Check all the children for v-if/else-if/else directives
+        # Check all the children for if/else-if/else/for directives
         children = []
         control_flow = []
         for child in self.children:
@@ -273,6 +282,7 @@ class Node:
 
     def compile(self, component, context):
         node = PreCompiledNode()
+        node.tag = self.tag
         node.attrs = {
             key: val for key, val in self.attrs.items() if not is_directive(key)
         }
@@ -282,8 +292,11 @@ class Node:
                 continue
 
             if key.startswith((DIRECTIVE_BIND, ":")):
-                attr = key.split(":")[1]
-                node.expressions[attr] = compile_expression(val, component, context)
+                key_parts = key.split(":")
+                if len(key_parts) != 2:
+                    raise ValueError(f"Invalid bind directive: {key}")
+                key = key_parts[1]
+                node.expressions[key] = compile_expression(val, component, context)
             elif key == DIRECTIVE_ELSE:
                 node.expressions[key] = None
             elif key == DIRECTIVE_FOR:
@@ -298,10 +311,10 @@ class Node:
                     initial_locals = locals().copy()
                     for {val}:
                         for_locals = locals().copy()
+                        for_locals.pop("initial_locals")
                         for_context = {{}}
                         for key in for_locals.keys() - initial_locals:
-                            if key != "initial_locals":
-                                for_context[key] = for_locals[key]
+                            for_context[key] = for_locals[key]
                         {FOR_LOOP_OUTPUT}.append(for_context)"""
                 )
 
@@ -311,8 +324,6 @@ class Node:
                 )
             else:
                 node.expressions[key] = compile_expression(val, component, context)
-
-        node.tag = self.tag
 
         node.children = [child.compile(component, context) for child in self.children]
         return node
@@ -330,7 +341,7 @@ class CGXParser(HTMLParser):
         self.stack = [self.root]
 
     def handle_starttag(self, tag, attrs):
-        node = Node(tag, {attr[0]: attr[1] for attr in attrs})
+        node = Node(tag, dict(attrs))
 
         # Add item as child to the last on the stack
         self.stack[-1].children.append(node)
