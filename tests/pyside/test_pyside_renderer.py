@@ -12,7 +12,7 @@ from collagraph import Collagraph, create_element as h, EventLoopType
 from collagraph.renderers import PySideRenderer
 
 
-def test_simple_widget(qt_app):
+def test_simple_widget():
     renderer = PySideRenderer(autoshow=False)
     gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
 
@@ -27,7 +27,7 @@ def test_simple_widget(qt_app):
     assert el.layout().direction() == QtWidgets.QBoxLayout.Direction.RightToLeft
 
 
-def test_label(qt_app, qtbot):
+def test_label(qtbot):
     renderer = PySideRenderer(autoshow=False)
     gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
 
@@ -43,7 +43,7 @@ def test_label(qt_app, qtbot):
     qtbot.waitUntil(check_label, timeout=500)
 
 
-def test_register_custom_type(qt_app):
+def test_register_custom_type():
     class CustomWidget(QtWidgets.QWidget):
         pass
 
@@ -63,7 +63,7 @@ def test_register_custom_type(qt_app):
         renderer.create_element("Bar")
 
 
-def test_widget_add_remove(qt_app, qtbot):
+def test_widget_add_remove(qtbot):
     def Example(props):
         children = []
         if props["label"]:
@@ -110,7 +110,7 @@ def test_removing_attribute_not_supported():
         renderer.remove_attribute(None, None, None)
 
 
-def test_pyside_event_listeners(qt_app, qtbot):
+def test_pyside_event_listeners(qapp, qtbot):
     clicked = 0
 
     def Example(props):

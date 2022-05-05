@@ -25,24 +25,24 @@ from PySide6.QtWidgets import (
 
 # Pre-populated cache for types
 TYPE_MAPPING = {
-    "Button": QPushButton,
-    "CheckBox": QCheckBox,
-    "ComboBox": QComboBox,
-    "Label": QLabel,
-    "LineEdit": QLineEdit,
-    "Menu": QMenu,
-    "MenuBar": QMenuBar,
-    "RadioButton": QRadioButton,
-    "DialogButtonBox": QDialogButtonBox,
-    "GroupBox": QGroupBox,
-    "ProgessBar": QProgressBar,
-    "Slider": QSlider,
-    "SpinBox": QSpinBox,
-    "StatusBar": QStatusBar,
-    "TextEdit": QTextEdit,
-    "TreeView": QTreeView,
-    "Widget": QWidget,
-    "Window": QMainWindow,
+    "button": QPushButton,
+    "checkbox": QCheckBox,
+    "combobox": QComboBox,
+    "label": QLabel,
+    "lineedit": QLineEdit,
+    "menu": QMenu,
+    "menubar": QMenuBar,
+    "radiobutton": QRadioButton,
+    "dialogbuttonbox": QDialogButtonBox,
+    "groupbox": QGroupBox,
+    "progessbar": QProgressBar,
+    "slider": QSlider,
+    "spinbox": QSpinBox,
+    "statusbar": QStatusBar,
+    "textedit": QTextEdit,
+    "treeview": QTreeView,
+    "widget": QWidget,
+    "window": QMainWindow,
 }
 
 # Default arguments for types that need
@@ -62,13 +62,24 @@ def name_to_type(name, modules=None, orig=None):
     'QBoxLayout.Direction.TopToBottom'. As long as the name can
     be found in teh QtWidget, QtGui, QtCore or QtCore.Qt module.
     """
-    if name in TYPE_MAPPING:
-        return TYPE_MAPPING[name]
+    if name.lower() in TYPE_MAPPING:
+        return TYPE_MAPPING[name.lower()]
     if modules is None:
         modules = [QtWidgets, QtGui, QtCore, QtCore.Qt]
     parts = name.split(".")
     for module in modules:
-        if (element_class := getattr(module, parts[0], None)) is not None:
+        # Try the get the attribute as-is from the module
+        element_class = getattr(module, parts[0], None)
+        if element_class is None:
+            # If that fails, try to do a case insensitive search
+            # through the `dir` of the module
+            part = parts[0].lower()
+            for attribute in dir(module):
+                if part == attribute.lower():
+                    element_class = getattr(module, attribute)
+                    break
+
+        if element_class is not None:
             if len(parts) > 1:
                 return name_to_type(
                     ".".join(parts[1:]), modules=[element_class], orig=name
