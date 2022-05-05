@@ -1,10 +1,28 @@
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 
 from observ import reactive, readonly
 
 
-class Component(metaclass=ABCMeta):
+class ComponentMeta(type):
+    """
+    Meta class for inserting a render function into a class
+    from a single-file component, whenever the RENDER_FUNCTION
+    class attribute has been set.
+    """
+
+    RENDER_FUNCTION = None
+
+    def __new__(cls, name, bases, attrs):
+        if cls.RENDER_FUNCTION:
+            attrs["render"] = cls.RENDER_FUNCTION
+
+        return type.__new__(cls, name, bases, attrs)
+
+
+class Component(metaclass=ComponentMeta):
     """Abstract base class for components"""
+
+    __slots__ = ["state", "props"]
 
     def __init__(self, props=None):
         self.props = readonly({} if props is None else props)
