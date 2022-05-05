@@ -183,10 +183,6 @@ class Collagraph:
         # Attach the component instance to the fiber
         fiber.component = component
         fiber.component_watcher = watch(
-            # FIXME: sometimes fiber.component is None
-            # Seems to happen after a while after generating lots of changes.
-            # Could be that it is only when updates are coming in faster than
-            # they are rendered...
             lambda: fiber.component.state,
             lambda: self.state_updated(fiber),
             deep=True,
