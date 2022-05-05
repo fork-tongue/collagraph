@@ -1,3 +1,12 @@
+"""
+Example with which an exception could be triggered
+by dragging the slider frantically for a while.
+
+Fixed by setting fiber.component_watcher to None
+in the `Collagraph.state_updated(self, fiber)` method.
+
+Please excuse the barely working slider ;)
+"""
 import pygfx as gfx
 from wgpu.gui.auto import run, WgpuCanvas
 
@@ -48,15 +57,8 @@ class Scrubber(cg.Component):
             pos[1] - self._mouse_pos[1],
         )
 
-        new_pos = [
-            self.state["position"][0],
-            self.state["position"][1],
-            self.state["position"][2] - diff[0] / 40,
-        ]
-
+        self.state["position"][2] -= diff[0] / 40
         self._mouse_pos = pos
-        # FIXME: updating one element of self.state["position"] doesn't update component
-        self.state["position"] = new_pos
 
     def mouse_up(self, event):
         self._captured = False
@@ -79,15 +81,7 @@ class Scrubber(cg.Component):
 class Slider(cg.Component):
     def render(self):
         return h(
-            "Group",
-            self.state,
-            h(
-                Track,
-                {
-                    "scale": [0.5, 0.5, 10],
-                },
-            ),
-            h(Scrubber, {}),
+            "Group", self.state, h(Track, {"scale": [0.5, 0.5, 10]}), h(Scrubber, {})
         )
 
 
@@ -98,6 +92,7 @@ if __name__ == "__main__":
     camera = gfx.PerspectiveCamera(60, 16 / 9)
     camera.position.x = 15
 
+    # Controls are only used to 'reset' the camera
     controls = gfx.OrbitController(camera.position.clone())
     controls.add_default_event_handlers(renderer, camera)
 
@@ -105,14 +100,10 @@ if __name__ == "__main__":
         renderer=cg.PygfxRenderer(), event_loop_type=cg.EventLoopType.QT
     )
 
-    # Should be possible to create this element
-    # by rendering JSX to dict.
-    # Jinja supports rendering templates to Python objects
-    # so could be an interesting starting place.
     element = h(Slider, {})
-
     container = gfx.Scene()
 
+    # Make sure the camera points to the slider
     controls.update_camera(camera)
 
     def animate():
