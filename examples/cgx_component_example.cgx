@@ -2,13 +2,14 @@
   <QMainWindow title="JSX-like syntax example">
     <QWidget :layout="state['top_to_bottom']">
       <QLabel v-bind:text="props.get('title')" />
-      <QLabel v-if="props.get('content')" :text="props['content']" />
-      <QLabel v-else-if="props.get('other_content')" :text="props['other_content']" />
+      <QLabel v-if="state.get('content')" :text="state['content']" />
+      <QLabel v-else-if="state.get('other_content')" :text="state['other_content']" />
       <QLabel v-else text="Nothing to see here" />
-      <QLineEdit v-model="props.get('line')" />
+      <!-- <QLineEdit v-model="props.get('line')" /> -->
       <QWidget :layout="state['left_to_right']">
         <QCheckBox v-on:state_changed="check_action" text="Click it" />
-        <QLabel text="You know you want it!" />
+        <QLabel v-if="not state['clicked']" text="You know you want it!" />
+        <QLabel v-if="state['clicked']" text="You did it!" />
       </QWidget>
       <QPushButton text="Push me" @clicked="click_action" />
     </QWidget>
@@ -17,6 +18,7 @@
 
 <script lang="python">
 from PySide6.QtWidgets import QBoxLayout
+
 from collagraph import Component
 
 
@@ -31,17 +33,20 @@ class Example(Component):
             "type": "box",
             "direction": QBoxLayout.Direction.LeftToRight,
         }
+        self.state["clicked"] = False
         print("created")
 
     def mounted(self):
         print("mounted")
 
-    def check_action(self, *args):
-        print("checked box", args)
+    def check_action(self, state):
+        print("checked box", state)
+        self.state["clicked"] = state
 
     def click_action(self, *args):
         print("clicked button", args)
+        if "other_content" not in self.state:
+            self.state["other_content"] = "Something to see here"
+        elif "content" not in self.state:
+            self.state["content"] = "Definitely something to see here!"
 </script>
-
-<style>
-</style>
