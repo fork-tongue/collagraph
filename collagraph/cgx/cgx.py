@@ -14,7 +14,7 @@ CONTROL_FLOW_DIRECTIVES = (DIRECTIVE_IF, DIRECTIVE_ELSE_IF, DIRECTIVE_ELSE)
 DIRECTIVE_FOR = f"{DIRECTIVE_PREFIX}for"
 DIRECTIVE_ON = f"{DIRECTIVE_PREFIX}on"
 FOR_LOOP_OUTPUT = "for_loop_output"
-AST_GEN_VARIABLE_PREFIX = "__"
+AST_GEN_VARIABLE_PREFIX = "_ast_"
 
 COMPONENT_CLASS_DEFINITION = re.compile(r"class\s*(.*?)\s*\(.*?\)\s*:")
 
@@ -84,11 +84,14 @@ def convert_node_to_args(node, names=None):
     for child in node.children:
         directive = None
 
+        # Handle for-directives
         if for_expression := child.attrs.get(DIRECTIVE_FOR):
             for_expression = f"[None for {for_expression}]"
             for_tree = ast.parse(for_expression, mode="eval").body
 
             # Find the names that are defined as part of the comprehension(s)
+            # E.g: 'i, (a, b) in enumerate(some_collection)' defines the names
+            # i, a and b, so we don't want to wrap those names with `_lookup()`
             name_collector = NameCollector()
             for generator in for_tree.generators:
                 name_collector.generic_visit(generator.target)
@@ -101,8 +104,8 @@ def convert_node_to_args(node, names=None):
             result = ast.Starred(value=for_tree, ctx=ast.Load())
             children_args.append(result)
             continue
-        # if
 
+        # Handle control flow directives
         if directive := child.control_flow():
             control_flow.append((directive, child))
 
@@ -116,6 +119,8 @@ def convert_node_to_args(node, names=None):
         children_args.append(create_control_flow_ast(control_flow, names))
         control_flow = []
 
+    # Create a starred list comprehension that when called, will generate
+    # all child elements
     starred_expr = ast.Starred(
         value=ast.ListComp(
             elt=ast.Name(
@@ -259,11 +264,28 @@ def load(path):
             # TODO: caching of lookup source
             textwrap.dedent(
                 """
-                def _lookup(self, name):
-                    if hasattr(self, name):
+                def _lookup(self, name, cache={}):
+                    # Note that the default value of cache is using the fact
+                    # that defaults are created at function definition, so
+                    # the cache is actually a 'global' object that is shared
+                    # between method calls and thus is suited to serve as
+                    # a cache for storing the method used for looking up the
+                    # value
+                    if method := cache.get(name):
+                        return method(self, name)
+
+                    def self_lookup(self, name):
                         return getattr(self, name)
-                    if name in globals():
+
+                    def global_lookup(self, name):
                         return globals()[name]
+
+                    if hasattr(self, name):
+                        cache[name] = self_lookup
+                        return _lookup(self, name)
+                    if name in globals():
+                        cache[name] = global_lookup
+                        return _lookup(self, name)
                     raise NameError(f"name '{name}' is not defined")
                 """
             ),
@@ -284,13 +306,6 @@ def load(path):
     component_def.body.append(render_tree.body[0])
 
     ast.fix_missing_locations(script_tree)
-
-    lineno = 0
-
-    for node in ast.walk(script_tree):
-        if hasattr(node, "lineno"):
-            node.lineno = lineno
-            lineno += 1
 
     # TODO: figure out which ClassDef is subclass of Component
 
@@ -323,7 +338,6 @@ class NameCollector(ast.NodeVisitor):
         self.names.add(node.id)
 
 
-# https://docs.python.org/3/library/ast.html#ast.NodeTransformer
 class RewriteName(ast.NodeTransformer):
     def __init__(self, skip):
         self.skip = skip
