@@ -47,6 +47,21 @@ def test_directive_bind_context():
     assert second_label.props["text"] == cg.__version__
 
 
+def test_directive_bind_state_and_props():
+    from tests.data.directive_bind_state_and_props import Labels
+
+    component = Labels({"text": "Custom label"})
+    node = component.render()
+
+    assert node.type == "widget"
+
+    first_label = node.children[0]
+    second_label = node.children[1]
+
+    assert first_label.props["text"] == "Custom label"
+    assert second_label.props["text"] == "Custom label"
+
+
 def test_directive_if():
     from tests.data.directive_if import Label
 

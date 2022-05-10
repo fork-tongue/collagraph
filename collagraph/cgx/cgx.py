@@ -73,7 +73,6 @@ def load(path):
     script_tree.body.insert(
         1,
         ast.parse(
-            # TODO: add self.state and self.props as searchable namespaces
             textwrap.dedent(
                 """
                 def _lookup(self, name, cache={}):
@@ -82,9 +81,15 @@ def load(path):
                     # the cache is actually a 'global' object that is shared
                     # between method calls and thus is suited to serve as
                     # a cache for storing the method used for looking up the
-                    # value
+                    # value.
                     if method := cache.get(name):
                         return method(self, name)
+
+                    def props_lookup(self, name):
+                        return self.props[name]
+
+                    def state_lookup(self, name):
+                        return self.state[name]
 
                     def self_lookup(self, name):
                         return getattr(self, name)
@@ -92,13 +97,17 @@ def load(path):
                     def global_lookup(self, name):
                         return globals()[name]
 
-                    if hasattr(self, name):
+                    if name in self.props:
+                        cache[name] = props_lookup
+                    elif name in self.state:
+                        cache[name] = state_lookup
+                    elif hasattr(self, name):
                         cache[name] = self_lookup
-                        return _lookup(self, name)
-                    if name in globals():
+                    elif name in globals():
                         cache[name] = global_lookup
-                        return _lookup(self, name)
-                    raise NameError(f"name '{name}' is not defined")
+                    else:
+                        raise NameError(f"name '{name}' is not defined")
+                    return _lookup(self, name)
                 """
             ),
             mode="exec",
