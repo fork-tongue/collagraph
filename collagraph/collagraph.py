@@ -183,11 +183,7 @@ class Collagraph:
         # Attach the component instance to the fiber
         fiber.component = component
         fiber.component_watcher = watch(
-            # FIXME: sometimes fiber.component is None
-            # Seems to happen after a while after generating lots of changes.
-            # Could be that it is only when updates are coming in faster than
-            # they are rendered...
-            lambda: fiber.component and fiber.component.state,
+            lambda: fiber.component.state,
             lambda: self.state_updated(fiber),
             deep=True,
             sync=self.event_loop_type is EventLoopType.SYNC,
@@ -221,6 +217,7 @@ class Collagraph:
         logger.debug(f"state update: {fiber.type}")
         # Clear the watcher that triggered the update
         fiber.watcher = None
+        fiber.component_watcher = None
 
         # Request an update to start building/update the wip fiber tree
         self._wip_root = (
