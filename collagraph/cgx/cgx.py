@@ -19,6 +19,46 @@ FOR_LOOP_OUTPUT = "for_loop_output"
 AST_GEN_VARIABLE_PREFIX = "_ast_"
 
 COMPONENT_CLASS_DEFINITION = re.compile(r"class\s*(.*?)\s*\(.*?\)\s*:")
+AST_LOOKUP_FUNCTION = ast.parse(
+    textwrap.dedent(
+        """
+        def _lookup(self, name, cache={}):
+            # Note that the default value of cache is using the fact
+            # that defaults are created at function definition, so
+            # the cache is actually a 'global' object that is shared
+            # between method calls and thus is suited to serve as
+            # a cache for storing the method used for looking up the
+            # value.
+            if method := cache.get(name):
+                return method(self, name)
+
+            def props_lookup(self, name):
+                return self.props[name]
+
+            def state_lookup(self, name):
+                return self.state[name]
+
+            def self_lookup(self, name):
+                return getattr(self, name)
+
+            def global_lookup(self, name):
+                return globals()[name]
+
+            if name in self.props:
+                cache[name] = props_lookup
+            elif name in self.state:
+                cache[name] = state_lookup
+            elif hasattr(self, name):
+                cache[name] = self_lookup
+            elif name in globals():
+                cache[name] = global_lookup
+            else:
+                raise NameError(f"name '{name}' is not defined")
+            return _lookup(self, name)
+        """
+    ),
+    mode="exec",
+)
 
 
 def load(path):
@@ -70,49 +110,7 @@ def load(path):
     # Inject a method into the script for looking up variables that are mentioned
     # in the template. This provides some syntactic sugar so that people can leave
     # out `self`.
-    script_tree.body.insert(
-        1,
-        ast.parse(
-            textwrap.dedent(
-                """
-                def _lookup(self, name, cache={}):
-                    # Note that the default value of cache is using the fact
-                    # that defaults are created at function definition, so
-                    # the cache is actually a 'global' object that is shared
-                    # between method calls and thus is suited to serve as
-                    # a cache for storing the method used for looking up the
-                    # value.
-                    if method := cache.get(name):
-                        return method(self, name)
-
-                    def props_lookup(self, name):
-                        return self.props[name]
-
-                    def state_lookup(self, name):
-                        return self.state[name]
-
-                    def self_lookup(self, name):
-                        return getattr(self, name)
-
-                    def global_lookup(self, name):
-                        return globals()[name]
-
-                    if name in self.props:
-                        cache[name] = props_lookup
-                    elif name in self.state:
-                        cache[name] = state_lookup
-                    elif hasattr(self, name):
-                        cache[name] = self_lookup
-                    elif name in globals():
-                        cache[name] = global_lookup
-                    else:
-                        raise NameError(f"name '{name}' is not defined")
-                    return _lookup(self, name)
-                """
-            ),
-            mode="exec",
-        ).body[0],
-    )
+    script_tree.body.insert(1, AST_LOOKUP_FUNCTION.body[0])
 
     # Find the first ClassDef and assume that it is the
     # component that is defined in the SFC
