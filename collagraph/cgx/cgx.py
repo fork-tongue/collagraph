@@ -201,10 +201,7 @@ def convert_node_to_args(node, names=None):
             continue
 
         if key.startswith((DIRECTIVE_BIND, ":")):
-            key_parts = key.split(":")
-            if len(key_parts) != 2:
-                raise ValueError(f"Invalid bind directive: {key}")
-            key = key_parts[1]
+            _, key = key.split(":")
             props_keys.append(ast.Constant(value=key))
             props_values.append(
                 RewriteName(skip=names).visit(ast.parse(val, mode="eval")).body
@@ -214,7 +211,7 @@ def convert_node_to_args(node, names=None):
         # breakpoint()
         if key.startswith((DIRECTIVE_ON, "@")):
             split_char = "@" if key.startswith("@") else ":"
-            key = key.split(split_char)[1]
+            _, key = key.split(split_char)
             key = f"on_{key}"
             props_keys.append(ast.Constant(value=key))
             props_values.append(
