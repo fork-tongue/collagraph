@@ -112,10 +112,10 @@ def load(path):
     # out `self`.
     script_tree.body.insert(1, AST_LOOKUP_FUNCTION.body[0])
 
-    # Find the first ClassDef and assume that it is the
+    # Find the last ClassDef and assume that it is the
     # component that is defined in the SFC
     component_def = None
-    for node in script_tree.body:
+    for node in reversed(script_tree.body):
         if isinstance(node, ast.ClassDef):
             component_def = node
             break
@@ -141,7 +141,8 @@ def load(path):
     component_class = module_namespace[component_def.name]
     if not issubclass(component_class, Component):
         raise ValueError(
-            f"Class defined in {path} is not a subclass of Component: {component_class}"
+            f"The last class defined in {path} is not a subclass of "
+            f"Component: {component_class}"
         )
     return component_class, module_namespace
 

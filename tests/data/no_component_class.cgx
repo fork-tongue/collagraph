@@ -1,0 +1,8 @@
+<template>
+    <label />
+</template>
+
+<script lang="python">
+class NoComponentSubClass:
+    pass
+</script>

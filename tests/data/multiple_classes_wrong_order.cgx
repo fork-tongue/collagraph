@@ -1,0 +1,18 @@
+<template>
+    <label />
+</template>
+
+<script lang="python">
+from collagraph import Component
+
+# The component class is wrongly defined
+# as the first class definition within
+# this module
+class Label(Component):
+    pass
+
+# This non-component class should have been
+# defined above the Component subclass
+class SomeOtherClass:
+    pass
+</script>
