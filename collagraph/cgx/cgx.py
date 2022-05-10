@@ -371,10 +371,6 @@ class RewriteName(ast.NodeTransformer):
         if node.id in self.skip:
             return node
 
-        # Don't replace any name that starts with the reserved prefix
-        if node.id.startswith(AST_GEN_VARIABLE_PREFIX):
-            return node
-
         return ast.Call(
             func=ast.Name(id="_lookup", ctx=ast.Load()),
             args=[
