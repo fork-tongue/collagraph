@@ -3,8 +3,7 @@ from html.parser import HTMLParser
 import re
 import textwrap
 
-from collagraph import create_element
-from collagraph.components import Component, ComponentMeta
+from collagraph import Component
 
 
 SUFFIX = "cgx"
@@ -17,8 +16,49 @@ CONTROL_FLOW_DIRECTIVES = (DIRECTIVE_IF, DIRECTIVE_ELSE_IF, DIRECTIVE_ELSE)
 DIRECTIVE_FOR = f"{DIRECTIVE_PREFIX}for"
 DIRECTIVE_ON = f"{DIRECTIVE_PREFIX}on"
 FOR_LOOP_OUTPUT = "for_loop_output"
+AST_GEN_VARIABLE_PREFIX = "_ast_"
 
 COMPONENT_CLASS_DEFINITION = re.compile(r"class\s*(.*?)\s*\(.*?\)\s*:")
+AST_LOOKUP_FUNCTION = ast.parse(
+    textwrap.dedent(
+        """
+        def _lookup(self, name, cache={}):
+            # Note that the default value of cache is using the fact
+            # that defaults are created at function definition, so
+            # the cache is actually a 'global' object that is shared
+            # between method calls and thus is suited to serve as
+            # a cache for storing the method used for looking up the
+            # value.
+            if method := cache.get(name):
+                return method(self, name)
+
+            def props_lookup(self, name):
+                return self.props[name]
+
+            def state_lookup(self, name):
+                return self.state[name]
+
+            def self_lookup(self, name):
+                return getattr(self, name)
+
+            def global_lookup(self, name):
+                return globals()[name]
+
+            if name in self.props:
+                cache[name] = props_lookup
+            elif name in self.state:
+                cache[name] = state_lookup
+            elif hasattr(self, name):
+                cache[name] = self_lookup
+            elif name in globals():
+                cache[name] = global_lookup
+            else:
+                raise NameError(f"name '{name}' is not defined")
+            return _lookup(self, name)
+        """
+    ),
+    mode="exec",
+)
 
 
 def load(path):
@@ -54,218 +94,291 @@ def load(path):
     # Read the data from script block
     script = parser.root.child_with_tag("script").data
 
-    # Compile for the first time to get a handle on the
-    # context that is defined in the components' script
-    preliminary_component_type, context = load_code(script)
+    # Create an AST from the script
+    script_tree = ast.parse(script, filename=str(path), mode="exec")
 
-    # Construct a render function from the template block
-    template_root_node = parser.root.child_with_tag("template").children[0]
-    compiled_tree = template_root_node.compile(preliminary_component_type, context)
-
-    def render(self):
-        return compiled_tree.to_vnode(self, context)
-
-    # NOTE: load_code is called multiple times, to people need
-    # to be aware that module-level side-effects will be executed
-    # multiple times. Please put any side-effects in your compontent.mounted()
-    # and don't forget to clean-up in component.before_unmount() if needed.
-    return load_code(script, render_function=render)
-
-
-def load_code(script, render_function=None):
-    """
-    Exec the script with a custom (globals) dict to capture
-    all the defined classes and methods.
-    """
-    context = {}
-    ComponentMeta.RENDER_FUNCTION = render_function
-    try:
-        exec(script, context)
-    finally:
-        ComponentMeta.RENDER_FUNCTION = None
-
-    results = re.search(COMPONENT_CLASS_DEFINITION, script)
-    if not results:
-        raise ValueError(f"Could not find a class definition in:\n{script}")
-
-    component_type = None
-    for class_name in results.groups():
-        if class_definition := context.get(class_name):
-            if issubclass(class_definition, Component):
-                if component_type is not None:
-                    raise ValueError(
-                        f"Multiple component class definitions found:\n{script}"
-                    )
-                component_type = class_definition
-
-    if not component_type:
-        raise ValueError(f"No subclass of Component found:\n{script}")
-
-    return component_type, context
-
-
-# https://docs.python.org/3/library/ast.html#ast.NodeTransformer
-class RewriteName(ast.NodeTransformer):
-    def __init__(self, component, context):
-        self.component = component
-        self.context = context
-
-    def visit_Name(self, node):
-        if node.id in dir(self.component):
-            return ast.Attribute(
-                value=ast.Name(id="component", ctx=ast.Load()),
-                attr=node.id,
-                ctx=node.ctx,
-            )
-        return node
-
-
-def compile_expression(template_expression, component, context, mode=None):
-    if mode is None:
-        mode = "eval"
-
-    # First, parse the expression from the template to create an AST
-    tree = ast.parse(template_expression)
-    if mode == "eval":
-        # Use an ast.Expression object to convert
-        # the compiled statement into an actual expreesion
-        tree = ast.Expression(body=tree.body[0].value)
-
-    # Run some automated location fixer while
-    # rewriting the Name nodes that should get attributes
-    # from the given component
-    ast.fix_missing_locations(
-        RewriteName(component=component, context=context).visit(tree)
+    # Inject 'create_element' into imports so that the (generated) render
+    # method can call this function
+    script_tree.body.insert(
+        0,
+        ast.ImportFrom(
+            module="collagraph",
+            names=[ast.alias(name="create_element", asname="_create_element")],
+        ),
     )
 
-    # Compile the expression tree into a code object
-    # with the `eval` mode such that we can pass the
-    # code object to the `eval` function and get some
-    # results back.
-    code = compile(tree, filename="<ast>", mode=mode)
-    return code
+    # Inject a method into the script for looking up variables that are mentioned
+    # in the template. This provides some syntactic sugar so that people can leave
+    # out `self`.
+    script_tree.body.insert(1, AST_LOOKUP_FUNCTION.body[0])
 
+    # Find the last ClassDef and assume that it is the
+    # component that is defined in the SFC
+    component_def = None
+    for node in reversed(script_tree.body):
+        if isinstance(node, ast.ClassDef):
+            component_def = node
+            break
 
-class PreCompiledNode:
-    """
-    Pre-Compiled Node that has pre-compiled all its expressions.
-    """
+    # Create render function as AST and inject into the ClassDef
+    render_tree = create_ast_render_function(
+        parser.root.child_with_tag("template").children[0]
+    )
+    component_def.body.append(render_tree)
 
-    def __init__(self):
-        # Type of the VNode. Can be a function (component) as well!
-        # Example for tag as function can be the result from a v-if
-        # or v-for directive
-        self.tag = None
-        # Plain attributes that don't have any directives / expressions
-        self.attrs = {}
-        # Non-standard attributes as expressions from directives
-        self.expressions = {}
-        # List of children for this node
-        self.children = []
+    # Because we modified the AST significantly we need to call an AST
+    # method to fix any `lineno` and `col_offset` attributes of the nodes
+    ast.fix_missing_locations(script_tree)
 
-    def control_flow(self):
-        for attr in self.expressions:
-            if attr in CONTROL_FLOW_DIRECTIVES:
-                return attr
+    # Compile the tree into a code object (module)
+    code = compile(script_tree, filename="<ast>", mode="exec")
+    # Execute the code as module and pass a dictionary that will capture
+    # the global and local scope of the module
+    module_namespace = {}
+    exec(code, module_namespace)
 
-    def to_vnode(self, component, context):
-        # First copy the static attributes
-        attrs = self.attrs.copy()
-
-        # Then compute all the expressions and add the results
-        for key, code in self.expressions.items():
-            # The parent has already processed these directives for
-            # its children, and they don't need to end up in the
-            # actual attributes, so we can skip them here
-            if key in CONTROL_FLOW_DIRECTIVES:
-                continue
-
-            result = eval(code, {"component": component, **context})
-            if key.startswith((DIRECTIVE_ON, "@")):
-                split_char = "@" if key.startswith("@") else ":"
-                key = key.split(split_char)[1]
-                key = f"on_{key}"
-
-            attrs[key] = result
-
-        # Check all the children for if/else-if/else/for directives
-        children = []
-        control_flow = []
-        for child in self.children:
-            directive = None
-
-            if for_expression := child.expressions.get(DIRECTIVE_FOR):
-                output = []
-                ctx = context.copy()
-                ctx["component"] = component
-                ctx[FOR_LOOP_OUTPUT] = output
-
-                exec(for_expression, ctx)
-
-                for result in output:
-                    # Create custom node for each of the results
-                    # from the v-for expression
-                    for_child = PreCompiledNode()
-                    for_child.tag = child.tag
-                    for_child.attrs = child.attrs
-                    for_child.children = child.children
-                    # Filter out the "v-for" directive
-                    for_child.expressions = {
-                        k: v for k, v in child.expressions.items() if k != DIRECTIVE_FOR
-                    }
-
-                    # Create a special context for this custom node
-                    for_ctx = context.copy()
-                    for_ctx.update(result)
-
-                    children.append((for_child, for_ctx))
-
-                continue
-
-            if directive := child.control_flow():
-                control_flow.append((directive, child))
-
-            if not directive:
-                if control_flow:
-                    if control_flow_result := evaluate_control_flow(
-                        control_flow, component, context
-                    ):
-                        children.append((control_flow_result, context))
-                    control_flow = []
-                children.append((child, context))
-
-        if control_flow:
-            if control_flow_result := evaluate_control_flow(
-                control_flow, component, context
-            ):
-                children.append((control_flow_result, context))
-            control_flow = []
-
-        return create_element(
-            self.tag,
-            attrs,
-            *[child.to_vnode(component, ctx) for child, ctx in children],
+    # Check that the class definition is an actual subclass of Component
+    component_class = module_namespace[component_def.name]
+    if not issubclass(component_class, Component):
+        raise ValueError(
+            f"The last class defined in {path} is not a subclass of "
+            f"Component: {component_class}"
         )
+    return component_class, module_namespace
 
 
-def evaluate_control_flow(nodes, component, context):
-    # nodes is a list of tuples that consists of a directive
-    # (one of 'v-if, v-else-if' or 'v-else') paired with the
-    # compiled node
-    for directive, node in nodes:
-        if code := node.expressions[directive]:
-            result = eval(code, {"component": component, **context})
-            if result:
-                return node
+def create_ast_render_function(node):
+    """
+    Create render function as AST.
+    """
+    return ast.FunctionDef(
+        name="render",
+        args=ast.arguments(
+            posonlyargs=[],
+            args=[ast.arg("self")],
+            kwonlyargs=[],
+            kw_defaults=[],
+            defaults=[],
+        ),
+        body=[ast.Return(value=call_create_element(node))],
+        decorator_list=[],
+    )
 
-        if directive == DIRECTIVE_ELSE:
-            return node
 
-    return None
+def call_create_element(node, names=None):
+    """
+    Returns an ast.Call of `collagraph.create_element()` with the right args
+    for the given node.
+
+    Names is a set of variable names that should not be wrapped in
+    the _lookup method.
+    """
+    if names is None:
+        names = set()
+    return ast.Call(
+        func=ast.Name(id="_create_element", ctx=ast.Load()),
+        args=convert_node_to_args(node, names),
+        keywords=[],
+    )
+
+
+def convert_node_to_args(node, names=None):
+    """
+    Converts the node to args that can be passed to `collagraph.create_element()`.
+    """
+    # Construct the first argument: type of node
+    type_arg = ast.Constant(value=node.tag)
+
+    # Construct the second argument: the props (dict) for the node
+    props_keys = []
+    props_values = []
+
+    for key, val in node.attrs.items():
+        # All non-directive attributes can be constructed easily
+        if not is_directive(key):
+            props_keys.append(ast.Constant(value=key))
+            props_values.append(ast.Constant(value=val))
+            continue
+
+        if key.startswith((DIRECTIVE_BIND, ":")):
+            _, key = key.split(":")
+            props_keys.append(ast.Constant(value=key))
+            props_values.append(
+                RewriteName(skip=names).visit(ast.parse(val, mode="eval")).body
+            )
+            continue
+
+        # breakpoint()
+        if key.startswith((DIRECTIVE_ON, "@")):
+            split_char = "@" if key.startswith("@") else ":"
+            _, key = key.split(split_char)
+            key = f"on_{key}"
+            props_keys.append(ast.Constant(value=key))
+            props_values.append(
+                RewriteName(skip=names).visit(ast.parse(val, mode="eval")).body
+            )
+            continue
+
+        if key.startswith((DIRECTIVE_FOR)):
+            # Skip right away, parent should've already handled this
+            continue
+
+    # Construct the other arguments: the children of the node
+    children_args = []
+
+    control_flow = []
+    for child in node.children:
+        directive = None
+
+        # Handle for-directives
+        if for_expression := child.attrs.get(DIRECTIVE_FOR):
+            for_expression = f"[None for {for_expression}]"
+            for_tree = ast.parse(for_expression, mode="eval").body
+
+            # Find the names that are defined as part of the comprehension(s)
+            # E.g: 'i, (a, b) in enumerate(some_collection)' defines the names
+            # i, a and b, so we don't want to wrap those names with `_lookup()`
+            name_collector = NameCollector()
+            for generator in for_tree.generators:
+                name_collector.generic_visit(generator.target)
+
+            local_names = names.union(name_collector.names)
+            RewriteName(skip=local_names).visit(for_tree)
+
+            for_tree.elt = call_create_element(child, local_names)
+
+            result = ast.Starred(value=for_tree, ctx=ast.Load())
+            children_args.append(result)
+            continue
+
+        # Handle control flow directives
+        if directive := child.control_flow():
+            control_flow.append((directive, child))
+
+        if not directive:
+            if control_flow:
+                children_args.append(create_control_flow_ast(control_flow, names))
+                control_flow = []
+            children_args.append(call_create_element(child))
+
+    if control_flow:
+        children_args.append(create_control_flow_ast(control_flow, names))
+        control_flow = []
+
+    # Create a starred list comprehension that when called, will generate
+    # all child elements
+    starred_expr = ast.Starred(
+        value=ast.ListComp(
+            elt=ast.Name(
+                id=f"{AST_GEN_VARIABLE_PREFIX}child",
+                ctx=ast.Load(),
+            ),
+            generators=[
+                ast.comprehension(
+                    target=ast.Name(
+                        id=f"{AST_GEN_VARIABLE_PREFIX}child",
+                        ctx=ast.Store(),
+                    ),
+                    iter=ast.List(
+                        elts=children_args,
+                        ctx=ast.Load(),
+                    ),
+                    ifs=[
+                        ast.Compare(
+                            left=ast.Name(
+                                id=f"{AST_GEN_VARIABLE_PREFIX}child",
+                                ctx=ast.Load(),
+                            ),
+                            ops=[ast.IsNot()],
+                            comparators=[ast.Constant(value=None)],
+                        )
+                    ],
+                    is_async=0,
+                )
+            ],
+        ),
+        ctx=ast.Load(),
+    )
+    # Return all the arguments
+    return [type_arg, ast.Dict(keys=props_keys, values=props_values), starred_expr]
+
+
+def create_control_flow_ast(control_flow, names):
+    """
+    Create an AST of control flow nodes (if/else-if/else)
+    """
+    (if_directive, if_node), *if_else_statements = control_flow
+    else_statement = (
+        if_else_statements.pop()
+        if if_else_statements and if_else_statements[-1][0] == "v-else"
+        else None
+    )
+
+    rewrite_name = RewriteName(skip=names)
+
+    current_statement = ast.IfExp(
+        test=ast.parse(if_node.attrs[if_directive], mode="eval").body,
+        body=call_create_element(if_node),
+        orelse=ast.Constant(value=None),
+    )
+    rewrite_name.visit(current_statement.test)
+    root_statement = current_statement
+
+    for directive, node in if_else_statements:
+        if_else_tree = ast.IfExp(
+            test=ast.parse(node.attrs[directive], mode="eval").body,
+            body=call_create_element(node),
+            orelse=ast.Constant(value=None),
+        )
+        rewrite_name.visit(if_else_tree.test)
+        current_statement.orelse = if_else_tree
+        current_statement = if_else_tree
+
+    if else_statement:
+        current_statement.orelse = call_create_element(else_statement[1])
+
+    return root_statement
 
 
 def is_directive(key):
     return key.startswith((DIRECTIVE_PREFIX, ":", "@"))
+
+
+class NameCollector(ast.NodeVisitor):
+    """AST node visitor that will create a set of the ids of every Name node
+    it encounters."""
+
+    def __init__(self):
+        self.names = set()
+
+    def visit_Name(self, node):
+        self.names.add(node.id)
+
+
+class RewriteName(ast.NodeTransformer):
+    """AST node transformer that will try to replace static Name nodes with
+    a call to `_lookup` with the name of the node."""
+
+    def __init__(self, skip):
+        self.skip = skip
+
+    def visit_Name(self, node):
+        # Don't try and replace any item from the __builtins__
+        if node.id in __builtins__:
+            return node
+
+        # Don't replace any name that should be explicitely skipped
+        if node.id in self.skip:
+            return node
+
+        return ast.Call(
+            func=ast.Name(id="_lookup", ctx=ast.Load()),
+            args=[
+                ast.Name(id="self", ctx=ast.Load()),
+                ast.Constant(value=node.id),
+            ],
+            keywords=[],
+        )
 
 
 class Node:
@@ -277,58 +390,17 @@ class Node:
         self.data = None
         self.children = []
 
+    def control_flow(self):
+        """Returns the control flow string (if/else-if/else), if present in the
+        attrs of the node."""
+        for attr in self.attrs:
+            if attr in CONTROL_FLOW_DIRECTIVES:
+                return attr
+
     def child_with_tag(self, tag):
         for child in self.children:
             if child.tag == tag:
                 return child
-
-    def compile(self, component, context):
-        node = PreCompiledNode()
-        node.tag = self.tag
-        node.attrs = {
-            key: val for key, val in self.attrs.items() if not is_directive(key)
-        }
-
-        for key, val in self.attrs.items():
-            if not is_directive(key):
-                continue
-
-            if key.startswith((DIRECTIVE_BIND, ":")):
-                key_parts = key.split(":")
-                if len(key_parts) != 2:
-                    raise ValueError(f"Invalid bind directive: {key}")
-                key = key_parts[1]
-                node.expressions[key] = compile_expression(val, component, context)
-            elif key == DIRECTIVE_ELSE:
-                node.expressions[key] = None
-            elif key == DIRECTIVE_FOR:
-                # Run the v-for loop and gather the results of the for-loop
-                # into the 'output' variable as a list of dicts where the
-                # key is the name of the loop variable.
-                # The trick here is to use the diff of the locals right before
-                # the for-loop and the locals right at the start of the for-loop
-                # to figure out over which variables is being looped.
-                expression = textwrap.dedent(
-                    f"""
-                    initial_locals = locals().copy()
-                    for {val}:
-                        for_locals = locals().copy()
-                        for_locals.pop("initial_locals")
-                        for_context = {{}}
-                        for key in for_locals.keys() - initial_locals:
-                            for_context[key] = for_locals[key]
-                        {FOR_LOOP_OUTPUT}.append(for_context)"""
-                )
-
-                # Compile the for loop
-                node.expressions[key] = compile_expression(
-                    expression, component, context, mode="exec"
-                )
-            else:
-                node.expressions[key] = compile_expression(val, component, context)
-
-        node.children = [child.compile(component, context) for child in self.children]
-        return node
 
 
 class CGXParser(HTMLParser):

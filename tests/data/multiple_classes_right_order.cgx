@@ -1,0 +1,18 @@
+<template>
+    <label />
+</template>
+
+<script lang="python">
+from collagraph import Component
+
+# Any non-compnonent subclass should come
+# before the Component subclass, which should
+# come as last class definition
+class SomeOtherClass:
+    pass
+
+# The component class is defined as last class
+# within this module
+class Label(Component):
+    pass
+</script>

@@ -11,5 +11,5 @@ if __name__ == "__main__":
         renderer=cg.PySideRenderer(),
         event_loop_type=cg.EventLoopType.QT,
     )
-    gui.render(cg.h(Example), app)
+    gui.render(cg.h(Example, {"title": "SFC example"}), app)
     app.exec()
