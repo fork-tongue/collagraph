@@ -369,19 +369,24 @@ class Collagraph:
         # the parent node have been processed, hence we can call the component
         # hooks on the way up.
         component_hooks = SimpleQueue()
-        component_hooks.put((self._wip_root, True))
+        component_hooks.put((self._wip_root, True, None))
 
+        # parent_component = None
         while not component_hooks.empty():
             # `down` is whether the tree is walked down toward the leaves
             # or up, back towards the root. On the way back, all the children
             # for the current fiber have been processed
-            fiber, down = component_hooks.get()
+            fiber, down, parent_component = component_hooks.get()
             if not fiber:
                 continue
 
+            if down and fiber.component:
+                fiber.component._parent = parent_component
+
             # Process children first
             if down and fiber.child:
-                component_hooks.put((fiber.child, True))
+                parent = fiber.component or parent_component
+                component_hooks.put((fiber.child, True, parent))
                 continue
 
             if fiber.mounted:
@@ -396,11 +401,11 @@ class Collagraph:
                 fiber.updated = False
 
             if fiber.sibling:
-                component_hooks.put((fiber.sibling, True))
+                component_hooks.put((fiber.sibling, True, parent_component))
             else:
                 # The last of the siblings signals the
                 # parent that we're walking back
-                component_hooks.put((fiber.parent, False))
+                component_hooks.put((fiber.parent, False, parent_component))
 
         self._current_root = self._wip_root
         self._wip_root = None
@@ -474,23 +479,6 @@ class Collagraph:
         self._work.put(fiber.sibling)
 
     def update_dom(self, fiber: Fiber, dom: Any, prev_props: Dict, next_props: Dict):
-        def is_event(key):
-            return key.startswith("on_")
-
-        def key_to_event(key):
-            # Events start with `on_`
-            return key.lower()[3:]
-
-        def is_property(key):
-            return not is_event(key)
-
-        def is_new(val, other, key):
-            return val != other.get(key)
-
-        def is_equivalent_event_handler(val, other, key):
-            alt = other.get(key)
-            return equivalent_functions(val, alt)
-
         events_to_remove = {}
         # Remove old event listeners
         for name, val in prev_props.items():
@@ -560,8 +548,34 @@ class Collagraph:
                 if component:
                     # Mark the fiber as updated
                     parent.updated = True
+                    for event_type, val in events_to_remove.items():
+                        component.remove_event_handler(event_type, val)
+                    for event_type, val in events_to_add.items():
+                        component.add_event_handler(event_type, val)
                     break
                 parent = parent.parent
+
+
+def is_event(key):
+    return key.startswith("on_")
+
+
+def key_to_event(key):
+    # Events start with `on_`
+    return key[3:].lower()
+
+
+def is_property(key):
+    return not is_event(key)
+
+
+def is_new(val, other, key):
+    return val != other.get(key)
+
+
+def is_equivalent_event_handler(val, other, key):
+    alt = other.get(key)
+    return equivalent_functions(val, alt)
 
 
 def indexOf(items: Iterable, match: Callable, *args):
