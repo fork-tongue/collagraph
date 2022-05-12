@@ -115,6 +115,9 @@ def set_attribute(self, attr, value):
             else:
                 logger.warning(f"model_index should be a tuple: '{value}'")
         return
+    elif attr == "size":
+        self.resize(*value)
+        return
 
     method_name = attr_name_to_method_name(attr, setter=True)
     method = getattr(self, method_name, None)
