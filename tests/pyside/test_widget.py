@@ -8,3 +8,19 @@ def test_widget_size(qapp, qtbot):
 
     assert widget.size().width() == 600
     assert widget.size().height() == 400
+
+
+def test_widget_close(qapp):
+    closed = False
+
+    def close(event):
+        nonlocal closed
+        closed = True
+
+    renderer = cg.PySideRenderer()
+    widget = renderer.create_element("widget")
+    renderer.add_event_listener(widget, "close", close)
+
+    widget.close()
+
+    assert closed is True

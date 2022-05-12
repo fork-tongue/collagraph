@@ -89,9 +89,12 @@ def name_to_type(name, modules=None, orig=None):
     raise TypeError(f"Couldn't find type for name: '{name}' ({orig})")
 
 
-def camel_case(event, split):
-    parts = event.split(split)
-    return "".join([parts[0]] + [part.capitalize() for part in parts[1:]])
+def camel_case(event, split, upper=False):
+    prefix, *parts = event.split(split)
+    return "".join(
+        [prefix.capitalize() if upper else prefix]
+        + [part.capitalize() for part in parts]
+    )
 
 
 @lru_cache(maxsize=None)

@@ -99,11 +99,34 @@ def not_implemented(self, *args, **kwargs):
     raise NotImplementedError(type(self).__name__)
 
 
+class EventFilter(QtCore.QObject):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.event_handlers = defaultdict(set)
+
+    def add_event_handler(self, event, handler):
+        self.event_handlers[event].add(handler)
+
+    def remove_event_handler(self, event, handler):
+        self.event_handlers[event].remove(handler)
+
+    def eventFilter(self, obj, event):
+        event_name = event.type().name.decode()
+        for handler in self.event_handlers[event_name].copy():
+            handler(event)
+
+        return super().eventFilter(obj, event)
+
+
 def create_instance(pyside_type):
     """Creates an instance of the given type with the any default
     arguments (if any) passed into the constructor."""
     args, kwargs = DEFAULT_ARGS.get(pyside_type, ((), {}))
-    return pyside_type(*args, **kwargs)
+    result = pyside_type(*args, **kwargs)
+    if hasattr(result, "installEventFilter"):
+        setattr(result, "_event_filter", EventFilter())
+        result.installEventFilter(result._event_filter)
+    return result
 
 
 class PySideRenderer(Renderer):
@@ -197,45 +220,48 @@ class PySideRenderer(Renderer):
 
     def add_event_listener(self, el: Any, event_type: str, value: Callable):
         """Add event listener for `event_type` to the element `el`."""
-        event_type = camel_case(event_type, "_")
-
-        # Add a slots attribute to hold all the generated slots, keyed on event_type
-        if not hasattr(el, "slots"):
-            setattr(el, "slots", defaultdict(set))
-
-        # Create a slot with the given value
-        # Note that the slot apparently does not need arguments to specify the type
-        # or amount of arguments the enclosed callback needs. If the callback has
-        # arguments, then those will be set to the parameter(s) of the signal when
-        # it is emitted.
-        try:
-            # Creating a slot of a bound method on an instance (that is not
-            # a QObject?) results in a SystemError. Lambdas though _can_ function
-            # as a slot, so when creating a slot of the value fails, retry with
-            # a simple lambda.
-            slot = QtCore.Slot()(value)
-        except SystemError:
-            # TODO: with some inspection we might be able to figure out the
-            # signature of the 'value' function and adjust the lambda accordingly
-            slot = QtCore.Slot()(lambda *args: value(*args))
-        el.slots[event_type].add(slot)
+        signal_name = camel_case(event_type, "_")
 
         # Try and get the signal from the object
-        signal = getattr(el, event_type, None)
-        if signal:
+        signal = getattr(el, signal_name, None)
+        if signal and hasattr(signal, "connect"):
+            # Add a slots attribute to hold all the generated slots, keyed on event_type
+            if not hasattr(el, "slots"):
+                setattr(el, "slots", defaultdict(set))
+
+            # Create a slot with the given value
+            # Note that the slot apparently does not need arguments to specify the type
+            # or amount of arguments the enclosed callback needs. If the callback has
+            # arguments, then those will be set to the parameter(s) of the signal when
+            # it is emitted.
+            try:
+                # Creating a slot of a bound method on an instance (that is not
+                # a QObject?) results in a SystemError. Lambdas though _can_ function
+                # as a slot, so when creating a slot of the value fails, retry with
+                # a simple lambda.
+                slot = QtCore.Slot()(value)
+            except SystemError:
+                # TODO: with some inspection we might be able to figure out the
+                # signature of the 'value' function and adjust the lambda accordingly
+                slot = QtCore.Slot()(lambda *args: value(*args))
+            el.slots[event_type].add(slot)
+
             signal.connect(slot)
-        else:  # pragma: no cover
-            logger.warning(
-                f"Could not find signal for: {type(el).__name__}:{event_type}"
-            )
+        else:
+            event_name = camel_case(event_type, "_", upper=True)
+            el._event_filter.add_event_handler(event_name, value)
 
     def remove_event_listener(self, el: Any, event_type: str, value: Callable):
         """Remove event listener for `event_type` to the element `el`."""
-        if not hasattr(el, "slots"):
+        signal_name = camel_case(event_type, "_")
+
+        signal = getattr(el, signal_name, None)
+        if not signal or not hasattr(signal, "connect"):
+            event_name = camel_case(event_type, "_", upper=True)
+            el._event_filter.remove_event_handler(event_name, value)
             return
 
-        signal = getattr(el, event_type, None)
-        if not signal:
+        if not hasattr(el, "slots"):
             return
 
         for slot in el.slots[event_type]:
