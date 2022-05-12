@@ -112,8 +112,9 @@ class EventFilter(QtCore.QObject):
 
     def eventFilter(self, obj, event):
         event_name = event.type().name.decode()
-        for handler in self.event_handlers[event_name].copy():
-            handler(event)
+        if handlers := self.event_handlers[event_name]:
+            for handler in handlers.copy():
+                handler(event)
 
         return super().eventFilter(obj, event)
 
