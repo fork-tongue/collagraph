@@ -97,6 +97,12 @@ def load(path):
     # Create an AST from the script
     script_tree = ast.parse(script, filename=str(path), mode="exec")
 
+    # Gather a list of imported names (and aliases)
+    # These will be used to figure out if a tag name from the template
+    # references a component or not
+    imported_names = ImportedNamesCollector()
+    imported_names.visit(script_tree)
+
     # Inject 'create_element' into imports so that the (generated) render
     # method can call this function
     script_tree.body.insert(
@@ -121,8 +127,14 @@ def load(path):
             break
 
     # Create render function as AST and inject into the ClassDef
+    template_node = parser.root.child_with_tag("template")
+    if len(template_node.children) != 1:
+        raise ValueError(
+            "There should be precisely one root element defined in "
+            f"the template. Found {len(template_node.children)}."
+        )
     render_tree = create_ast_render_function(
-        parser.root.child_with_tag("template").children[0]
+        template_node.children[0], imported_names=imported_names.names
     )
     component_def.body.append(render_tree)
 
@@ -147,7 +159,7 @@ def load(path):
     return component_class, module_namespace
 
 
-def create_ast_render_function(node):
+def create_ast_render_function(node, imported_names):
     """
     Create render function as AST.
     """
@@ -160,12 +172,14 @@ def create_ast_render_function(node):
             kw_defaults=[],
             defaults=[],
         ),
-        body=[ast.Return(value=call_create_element(node))],
+        body=[
+            ast.Return(value=call_create_element(node, imported_names=imported_names))
+        ],
         decorator_list=[],
     )
 
 
-def call_create_element(node, names=None):
+def call_create_element(node, *, imported_names, names=None):
     """
     Returns an ast.Call of `collagraph.create_element()` with the right args
     for the given node.
@@ -177,17 +191,24 @@ def call_create_element(node, names=None):
         names = set()
     return ast.Call(
         func=ast.Name(id="_create_element", ctx=ast.Load()),
-        args=convert_node_to_args(node, names),
+        args=convert_node_to_args(node, imported_names=imported_names, names=names),
         keywords=[],
     )
 
 
-def convert_node_to_args(node, names=None):
+def convert_node_to_args(node, *, imported_names, names=None):
     """
     Converts the node to args that can be passed to `collagraph.create_element()`.
     """
     # Construct the first argument: type of node
-    type_arg = ast.Constant(value=node.tag)
+    if node.tag in imported_names:
+        # If the tag matches exactly with a name from an ImportFrom statement
+        # then we use this instead of a string.
+        # Note that this requires the use of `from ... import ...` in components
+        # in order to import component classes/functions.
+        type_arg = ast.Name(id=node.tag, ctx=ast.Load())
+    else:
+        type_arg = ast.Constant(value=node.tag)
 
     # Construct the second argument: the props (dict) for the node
     props_keys = []
@@ -245,7 +266,9 @@ def convert_node_to_args(node, names=None):
             local_names = names.union(name_collector.names)
             RewriteName(skip=local_names).visit(for_tree)
 
-            for_tree.elt = call_create_element(child, local_names)
+            for_tree.elt = call_create_element(
+                child, imported_names=imported_names, names=local_names
+            )
 
             result = ast.Starred(value=for_tree, ctx=ast.Load())
             children_args.append(result)
@@ -257,12 +280,22 @@ def convert_node_to_args(node, names=None):
 
         if not directive:
             if control_flow:
-                children_args.append(create_control_flow_ast(control_flow, names))
+                children_args.append(
+                    create_control_flow_ast(
+                        control_flow, imported_names=imported_names, names=names
+                    )
+                )
                 control_flow = []
-            children_args.append(call_create_element(child))
+            children_args.append(
+                call_create_element(child, imported_names=imported_names)
+            )
 
     if control_flow:
-        children_args.append(create_control_flow_ast(control_flow, names))
+        children_args.append(
+            create_control_flow_ast(
+                control_flow, imported_names=imported_names, names=names
+            )
+        )
         control_flow = []
 
     # Create a starred list comprehension that when called, will generate
@@ -303,7 +336,7 @@ def convert_node_to_args(node, names=None):
     return [type_arg, ast.Dict(keys=props_keys, values=props_values), starred_expr]
 
 
-def create_control_flow_ast(control_flow, names):
+def create_control_flow_ast(control_flow, *, imported_names, names):
     """
     Create an AST of control flow nodes (if/else-if/else)
     """
@@ -318,7 +351,7 @@ def create_control_flow_ast(control_flow, names):
 
     current_statement = ast.IfExp(
         test=ast.parse(if_node.attrs[if_directive], mode="eval").body,
-        body=call_create_element(if_node),
+        body=call_create_element(if_node, imported_names=imported_names),
         orelse=ast.Constant(value=None),
     )
     rewrite_name.visit(current_statement.test)
@@ -327,7 +360,7 @@ def create_control_flow_ast(control_flow, names):
     for directive, node in if_else_statements:
         if_else_tree = ast.IfExp(
             test=ast.parse(node.attrs[directive], mode="eval").body,
-            body=call_create_element(node),
+            body=call_create_element(node, imported_names=imported_names),
             orelse=ast.Constant(value=None),
         )
         rewrite_name.visit(if_else_tree.test)
@@ -335,7 +368,9 @@ def create_control_flow_ast(control_flow, names):
         current_statement = if_else_tree
 
     if else_statement:
-        current_statement.orelse = call_create_element(else_statement[1])
+        current_statement.orelse = call_create_element(
+            else_statement[1], imported_names=imported_names
+        )
 
     return root_statement
 
@@ -353,6 +388,15 @@ class NameCollector(ast.NodeVisitor):
 
     def visit_Name(self, node):
         self.names.add(node.id)
+
+
+class ImportedNamesCollector(ast.NodeVisitor):
+    def __init__(self):
+        self.names = set()
+
+    def visit_ImportFrom(self, node):
+        for name_or_alias in node.names:
+            self.names.add(name_or_alias.asname or name_or_alias.name)
 
 
 class RewriteName(ast.NodeTransformer):
@@ -415,7 +459,17 @@ class CGXParser(HTMLParser):
         self.stack = [self.root]
 
     def handle_starttag(self, tag, attrs):
-        node = Node(tag, dict(attrs))
+        # The tag parameter is lower-cased by the HTMLParser.
+        # In order to figure out whether the tag indicates
+        # an imported class, we need the original casing for
+        # the tag.
+        # Using the original start tag, we can figure out where
+        # the tag is located using a lower-cased version. And then
+        # use the index to extract the original casing for the tag.
+        complete_tag = self.get_starttag_text()
+        index = complete_tag.lower().index(tag)
+        original_tag = complete_tag[index : index + len(tag)]
+        node = Node(original_tag, dict(attrs))
 
         # Add item as child to the last on the stack
         self.stack[-1].children.append(node)

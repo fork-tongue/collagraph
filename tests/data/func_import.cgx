@@ -1,0 +1,18 @@
+<template>
+  <list>
+    <example_func_component />
+    <efc />
+  </list>
+</template>
+
+<script lang="python">
+import collagraph as cg
+# Import once with normal name
+from tests.data.example import example_func_component
+# Import again but with an alias
+from tests.data.example import example_func_component as efc
+
+
+class FuncImport(cg.Component):
+    pass
+</script>

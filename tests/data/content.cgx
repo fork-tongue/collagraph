@@ -1,0 +1,11 @@
+<template>
+  <content-example :text="content" />
+</template>
+
+<script lang="python">
+import collagraph as cg
+
+
+class Content(cg.Component):
+    pass
+</script>
