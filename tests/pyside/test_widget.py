@@ -1,7 +1,7 @@
 import collagraph as cg
 
 
-def test_widget_size(qapp, qtbot):
+def test_widget_size():
     renderer = cg.PySideRenderer()
     widget = renderer.create_element("widget")
     renderer.set_attribute(widget, "size", (600, 400))
@@ -10,7 +10,7 @@ def test_widget_size(qapp, qtbot):
     assert widget.size().height() == 400
 
 
-def test_widget_close(qapp):
+def test_widget_close():
     closed = False
 
     def close(event):
