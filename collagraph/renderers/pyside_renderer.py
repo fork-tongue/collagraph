@@ -110,7 +110,7 @@ class EventFilter(QtCore.QObject):
     def remove_event_handler(self, event, handler):
         self.event_handlers[event].remove(handler)
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj, event):  # noqa: N802
         event_name = event.type().name.decode()
         if handlers := self.event_handlers[event_name]:
             for handler in handlers.copy():
@@ -123,11 +123,7 @@ def create_instance(pyside_type):
     """Creates an instance of the given type with the any default
     arguments (if any) passed into the constructor."""
     args, kwargs = DEFAULT_ARGS.get(pyside_type, ((), {}))
-    result = pyside_type(*args, **kwargs)
-    if hasattr(result, "installEventFilter"):
-        setattr(result, "_event_filter", EventFilter())
-        result.installEventFilter(result._event_filter)
-    return result
+    return pyside_type(*args, **kwargs)
 
 
 class PySideRenderer(Renderer):
@@ -249,6 +245,9 @@ class PySideRenderer(Renderer):
 
             signal.connect(slot)
         else:
+            if not hasattr(el, "_event_filter"):
+                el._event_filter = EventFilter()
+                el.installEventFilter(el._event_filter)
             event_name = camel_case(event_type, "_", upper=True)
             el._event_filter.add_event_handler(event_name, value)
 
@@ -260,9 +259,6 @@ class PySideRenderer(Renderer):
         if not signal or not hasattr(signal, "connect"):
             event_name = camel_case(event_type, "_", upper=True)
             el._event_filter.remove_event_handler(event_name, value)
-            return
-
-        if not hasattr(el, "slots"):
             return
 
         for slot in el.slots[event_type]:
