@@ -5,8 +5,9 @@
     <EFC />
     <CFE />
     <FooBar />
-    <!-- ... or have a dot in their tag (which indicates a function from a module) -->
+    <!-- ... or have a dot in their tag (which indicates a function/class from a module) -->
     <example.example_func_component />
+    <tests.data.example.example_func_component />
   </list>
 </template>
 
@@ -17,6 +18,7 @@ from tests.data.example import example_func_component as Example_func_component
 # Import again but with an alias
 from tests.data.example import example_func_component as EFC
 from tests.data import example
+import tests
 
 
 CFE = EFC
