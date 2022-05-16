@@ -13,9 +13,7 @@
 
 <script lang="python">
 import collagraph as cg
-# Import once with normal name
 from tests.data.example import example_func_component as Example_func_component
-# Import again but with an alias
 from tests.data.example import example_func_component as EFC
 from tests.data import example
 import tests
