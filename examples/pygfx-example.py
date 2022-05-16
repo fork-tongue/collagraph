@@ -104,13 +104,10 @@ if __name__ == "__main__":
     controls.add_default_event_handlers(renderer, camera)
 
     gui = cg.Collagraph(
-        renderer=cg.PygfxRenderer(), event_loop_type=cg.EventLoopType.QT
+        renderer=cg.PygfxRenderer(),
+        event_loop_type=cg.EventLoopType.QT,
     )
 
-    # Should be possible to create this element
-    # by rendering JSX to dict.
-    # Jinja supports rendering templates to Python objects
-    # so could be an interesting starting place.
     element = h(
         "Group",
         {
