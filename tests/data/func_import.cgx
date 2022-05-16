@@ -1,16 +1,26 @@
 <template>
   <list>
-    <example_func_component />
-    <efc />
+    <!-- Functional or class component should start with upper case ... -->
+    <Example_func_component />
+    <EFC />
+    <CFE />
+    <FooBar />
+    <!-- ... or have a dot in their tag (which indicates a function from a module) -->
+    <example.example_func_component />
   </list>
 </template>
 
 <script lang="python">
 import collagraph as cg
 # Import once with normal name
-from tests.data.example import example_func_component
+from tests.data.example import example_func_component as Example_func_component
 # Import again but with an alias
-from tests.data.example import example_func_component as efc
+from tests.data.example import example_func_component as EFC
+from tests.data import example
+
+
+CFE = EFC
+FooBar = example.example_func_component
 
 
 class FuncImport(cg.Component):

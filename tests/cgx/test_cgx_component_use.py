@@ -23,5 +23,6 @@ def test_cgx_use_imported_func_component():
     gui.render(cg.h(FuncImport), container)
 
     content = container["children"][0]
-    assert content["children"][1]["type"] == "example-func-component"
-    assert content["children"][0]["type"] == "example-func-component"
+    assert len(content["children"]) == 5
+    for idx, child in enumerate(content["children"]):
+        assert child["type"] == "example-func-component", f"Child at {idx}: {child}"
