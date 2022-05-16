@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 from . import Renderer
 from .pyside.objects import (
     action,
-    dialog,
+    dialogbuttonbox,
     itemmodel,
     listview,
     menu,
@@ -55,7 +55,7 @@ INSERT_MAPPING = sorted_on_class_hierarchy(
     {
         QWidget: widget.insert,
         QMainWindow: window.insert,
-        QDialogButtonBox: dialog.insert,
+        QDialogButtonBox: dialogbuttonbox.insert,
         QTabWidget: tab.insert,
         QMenuBar: menubar.insert,
         QMenu: menu.insert,
