@@ -2,16 +2,24 @@ import pygfx as gfx
 
 from . import Renderer
 
+ELEMENT_TYPE_CACHE = {}
+
 
 class PygfxRenderer(Renderer):
     """Renderer for Pygfx objects"""
 
     def create_element(self, type: str) -> gfx.WorldObject:
         """Create pygfx element for the given type"""
+        type = type.lower()
+        if element_type := ELEMENT_TYPE_CACHE.get(type):
+            return element_type()
+
         attrs = dir(gfx)
         for attr in attrs:
-            if attr.lower() == type.lower():
-                return getattr(gfx, attr)()
+            if attr.lower() == type:
+                element_type = getattr(gfx, attr)
+                ELEMENT_TYPE_CACHE[type] = element_type
+                return element_type()
 
         raise ValueError(f"Can't create element of type: {type}")
 
