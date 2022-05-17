@@ -8,11 +8,12 @@ class PygfxRenderer(Renderer):
 
     def create_element(self, type: str) -> gfx.WorldObject:
         """Create pygfx element for the given type"""
-        obj_type = getattr(gfx, type, None)
-        if not obj_type:
-            raise ValueError(f"Can't create element of type: {type}")
+        attrs = dir(gfx)
+        for attr in attrs:
+            if attr.lower() == type.lower():
+                return getattr(gfx, attr)()
 
-        return obj_type()
+        raise ValueError(f"Can't create element of type: {type}")
 
     def insert(
         self,
