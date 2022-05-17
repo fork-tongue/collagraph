@@ -1,8 +1,12 @@
+from observ import reactive
+from PySide6 import QtWidgets
+import pytest
+
 import collagraph as cg
 
 
 def test_widget_size():
-    renderer = cg.PySideRenderer()
+    renderer = cg.PySideRenderer(autoshow=False)
     widget = renderer.create_element("widget")
     renderer.set_attribute(widget, "size", (600, 400))
 
@@ -17,10 +21,72 @@ def test_widget_close():
         nonlocal closed
         closed = True
 
-    renderer = cg.PySideRenderer()
+    renderer = cg.PySideRenderer(autoshow=False)
     widget = renderer.create_element("widget")
     renderer.add_event_listener(widget, "close", close)
 
     widget.close()
 
     assert closed is True
+
+
+def test_widget_as_window(qapp, qtbot):
+    renderer = cg.PySideRenderer(autoshow=False)
+    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
+    gui.render(cg.h("widget", {}), qapp)
+
+    def check_widget_as_window():
+        windows = qapp.topLevelWidgets()
+        assert len(windows) == 1
+
+    qtbot.waitUntil(check_widget_as_window, timeout=500)
+
+
+@pytest.mark.xfail(message="Changing layout not supported (yet)")
+def test_widget_switch_layouts(qapp, qtbot):
+    def SwitchLayouts(props):
+        return cg.h("widget", {"layout": props["layout"]})
+
+    state = reactive({"layout": {"type": "box"}})
+
+    renderer = cg.PySideRenderer(autoshow=False)
+    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
+    gui.render(cg.h(SwitchLayouts, state), qapp)
+
+    widget = None
+
+    def check_widget():
+        nonlocal widget
+        windows = qapp.topLevelWidgets()
+        assert len(windows) == 1
+        widget = windows[0]
+
+    qtbot.waitUntil(check_widget, timeout=1500)
+
+    qtbot.waitUntil(
+        lambda: isinstance(widget.layout(), QtWidgets.QBoxLayout), timeout=500
+    )
+
+    state["layout"]["type"] = "grid"
+
+    # FIXME: In order to install a new layout manager, the old one
+    # needs to be deleted, but I don't know yet how that is supposed
+    # to be done with the Python bindings :/
+    # Simply calling deleteLater() on the layout doesn't seem to work.
+    # For more detail, see:
+    # https://doc.qt.io/qtforpython-6/PySide6/QtWidgets/QWidget.html#PySide6.QtWidgets.PySide6.QtWidgets.QWidget.setLayout
+    qtbot.waitUntil(
+        lambda: isinstance(widget.layout(), QtWidgets.QGridLayout), timeout=500
+    )
+
+    state["layout"]["type"] = "form"
+
+    qtbot.waitUntil(
+        lambda: isinstance(widget.layout(), QtWidgets.QFormLayout), timeout=500
+    )
+
+    state["layout"]["type"] = "box"
+
+    qtbot.waitUntil(
+        lambda: isinstance(widget.layout(), QtWidgets.QBoxLayout), timeout=500
+    )

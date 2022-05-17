@@ -190,11 +190,15 @@ class PySideRenderer(Renderer):
         Add element `el` as a child to the element `parent`.
         If an anchor is specified, it inserts `el` before the `anchor`
         element.
+        When the parent is a QApplication, then the element will be treated
+        as a top-level widget with no parent and shown immediately.
+        Use the `autoshow` attribute on the renderer to configure whether to
+        show these wdigets automatically.
         """
-        if isinstance(el, QtWidgets.QMainWindow):
-            # If the inserted element is a window, then there is
+        if isinstance(parent, QtWidgets.QApplication):
+            # If the parent is a QApplication, then there is
             # no real parent to add it to, so let's just show the
-            # window element and be done with it.
+            # widget (or window) element and be done with it.
             if self.autoshow:  # pragma: no cover
                 el.show()
             return
