@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
     QBoxLayout,
     QFormLayout,
     QGridLayout,
+    QWidget,
 )
 
 from ..utils import attr_name_to_method_name, call_method
@@ -64,27 +65,23 @@ def set_attribute(self, attr, value):
                 self.layout().setDirection(direction)
             else:
                 if layout := self.layout():
-                    raise NotImplementedError(
-                        "Changing layout type is not supported (yet)"
-                    )
+                    # In order to change the layout, move the layout to a new
+                    # widget that is immediately discarded.
+                    QWidget().setLayout(layout)
                 self.setLayout(QBoxLayout(direction))
         elif value["type"].lower() == "grid":
             if isinstance(self.layout(), QGridLayout):
                 pass
             else:
                 if layout := self.layout():
-                    raise NotImplementedError(
-                        "Changing layout type is not supported (yet)"
-                    )
+                    QWidget().setLayout(layout)
                 self.setLayout(QGridLayout())
         elif value["type"].lower() == "form":
             if isinstance(self.layout(), QFormLayout):
                 pass
             else:
                 if layout := self.layout():
-                    raise NotImplementedError(
-                        "Changing layout type is not supported (yet)"
-                    )
+                    QWidget().setLayout(layout)
                 self.setLayout(QFormLayout())
 
         for key, val in value.items():

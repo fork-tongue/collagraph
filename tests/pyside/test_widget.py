@@ -1,6 +1,5 @@
 from observ import reactive
 from PySide6 import QtWidgets
-import pytest
 
 import collagraph as cg
 
@@ -42,7 +41,6 @@ def test_widget_as_window(qapp, qtbot):
     qtbot.waitUntil(check_widget_as_window, timeout=500)
 
 
-@pytest.mark.xfail(message="Changing layout not supported (yet)")
 def test_widget_switch_layouts(qapp, qtbot):
     def SwitchLayouts(props):
         return cg.h("widget", {"layout": props["layout"]})
@@ -62,19 +60,12 @@ def test_widget_switch_layouts(qapp, qtbot):
         widget = windows[0]
 
     qtbot.waitUntil(check_widget, timeout=1500)
-
     qtbot.waitUntil(
         lambda: isinstance(widget.layout(), QtWidgets.QBoxLayout), timeout=500
     )
 
     state["layout"]["type"] = "grid"
 
-    # FIXME: In order to install a new layout manager, the old one
-    # needs to be deleted, but I don't know yet how that is supposed
-    # to be done with the Python bindings :/
-    # Simply calling deleteLater() on the layout doesn't seem to work.
-    # For more detail, see:
-    # https://doc.qt.io/qtforpython-6/PySide6/QtWidgets/QWidget.html#PySide6.QtWidgets.PySide6.QtWidgets.QWidget.setLayout
     qtbot.waitUntil(
         lambda: isinstance(widget.layout(), QtWidgets.QGridLayout), timeout=500
     )
