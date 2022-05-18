@@ -1,0 +1,22 @@
+<template>
+  <window>
+    <widget>
+      <label :text="get_value()" />
+      <button text="click" @clicked="clicked" />
+    </widget>
+  </window>
+</template>
+
+<script lang="python">
+import collagraph as cg
+
+
+class DebugExample(cg.Component):
+    def get_value(self):
+        breakpoint()
+        return "foo"
+
+    def clicked(self, *args):
+        breakpoint()
+        print("clicked")  # noqa: T001
+</script>
