@@ -192,18 +192,19 @@ def convert_node_to_args(node, *, names=None):
     """
     # Construct the first argument: type of node
     if not node.tag[0].islower():
-        # If the tag matches exactly with a name from an ImportFrom statement
-        # then we use this instead of a string.
-        # Note that this requires the use of `from ... import ...` in components
-        # in order to import component classes/functions.
+        # If the tag does not start with a capital, then it is assumed to be
+        # a class or function, so a Name node is inserted in the ast tree
         type_arg = ast.Name(id=node.tag, ctx=ast.Load())
     elif "." in node.tag:
+        # If a dot is found in the tag, then it is assumed that the tag represents
+        # a package/module attribute lookup
         name, *attributes = node.tag.split(".")
         result = ast.Name(id=name, ctx=ast.Load())
         for attr in attributes:
             result = ast.Attribute(value=result, attr=attr, ctx=ast.Load())
         type_arg = result
     else:
+        # Otherwise it is just a constant string
         type_arg = ast.Constant(value=node.tag)
 
     # Construct the second argument: the props (dict) for the node
