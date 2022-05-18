@@ -373,15 +373,6 @@ class NameCollector(ast.NodeVisitor):
         self.names.add(node.id)
 
 
-class ImportedNamesCollector(ast.NodeVisitor):
-    def __init__(self):
-        self.names = set()
-
-    def visit_ImportFrom(self, node):
-        for name_or_alias in node.names:
-            self.names.add(name_or_alias.asname or name_or_alias.name)
-
-
 class RewriteName(ast.NodeTransformer):
     """AST node transformer that will try to replace static Name nodes with
     a call to `_lookup` with the name of the node."""
