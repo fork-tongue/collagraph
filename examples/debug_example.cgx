@@ -1,0 +1,13 @@
+<template>
+  <example :value="get_value()" />
+</template>
+
+<script lang="python">
+import collagraph as cg
+
+
+class DebugExample(cg.Component):
+    def get_value(self):
+        breakpoint()
+        return "foo"
+</script>
