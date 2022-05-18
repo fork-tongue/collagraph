@@ -1,11 +1,17 @@
+from PySide6 import QtWidgets
+
 import collagraph as cg
 
 from debug_example import DebugExample  # noqa: I100
 
 
 if __name__ == "__main__":
-    container = {"type": "root"}
-    gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
-    gui.render(cg.h(DebugExample), container)
+    app = QtWidgets.QApplication()
 
-    print(container)  # noqa: T001
+    gui = cg.Collagraph(
+        renderer=cg.PySideRenderer(),
+        event_loop_type=cg.EventLoopType.QT,
+    )
+    gui.render(cg.h(DebugExample), app)
+
+    app.exec()
