@@ -92,15 +92,17 @@ def load(path):
     parser.feed(path.read_text())
 
     # Read the data from script block
-    script = parser.root.child_with_tag("script").data
+    script_node = parser.root.child_with_tag("script")
+    script = script_node.data
+    line, _ = script_node.location
 
     # Create an AST from the script
     script_tree = ast.parse(script, filename=str(path), mode="exec")
+    ast.increment_lineno(script_tree, n=line)
 
     # Inject 'create_element' into imports so that the (generated) render
     # method can call this function
-    script_tree.body.insert(
-        0,
+    script_tree.body.append(
         ast.ImportFrom(
             module="collagraph",
             names=[ast.alias(name="create_element", asname="_create_element")],
@@ -110,7 +112,7 @@ def load(path):
     # Inject a method into the script for looking up variables that are mentioned
     # in the template. This provides some syntactic sugar so that people can leave
     # out `self`.
-    script_tree.body.insert(1, AST_LOOKUP_FUNCTION.body[0])
+    script_tree.body.append(AST_LOOKUP_FUNCTION.body[0])
 
     # Find the last ClassDef and assume that it is the
     # component that is defined in the SFC
@@ -131,7 +133,7 @@ def load(path):
     ast.fix_missing_locations(script_tree)
 
     # Compile the tree into a code object (module)
-    code = compile(script_tree, filename="<ast>", mode="exec")
+    code = compile(script_tree, filename=str(path), mode="exec")
     # Execute the code as module and pass a dictionary that will capture
     # the global and local scope of the module
     module_namespace = {}
@@ -384,9 +386,10 @@ class RewriteName(ast.NodeTransformer):
 class Node:
     """Node that represents an element from a CGX file."""
 
-    def __init__(self, tag, attrs=None):
+    def __init__(self, tag, attrs=None, location=None):
         self.tag = tag
         self.attrs = attrs or {}
+        self.location = location
         self.data = None
         self.children = []
 
@@ -415,7 +418,7 @@ class CGXParser(HTMLParser):
         self.stack = [self.root]
 
     def handle_starttag(self, tag, attrs):
-        node = Node(tag, dict(attrs))
+        node = Node(tag, dict(attrs), self.getpos())
 
         # Add item as child to the last on the stack
         self.stack[-1].children.append(node)
