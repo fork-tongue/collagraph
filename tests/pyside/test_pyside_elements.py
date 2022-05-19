@@ -273,7 +273,7 @@ def test_lists(qapp, qtbot, qtmodeltester):
         assert model.findItems("ITEM", column=1)
         qtmodeltester.check(model)
 
-    qtbot.waitUntil(check_model_does_not_contain_foo)
+    qtbot.waitUntil(check_model_does_not_contain_foo, timeout=500)
 
 
 @pytest.mark.skip("QMenuBar prevents destruction of QMainWindow")
