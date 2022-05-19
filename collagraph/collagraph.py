@@ -487,14 +487,14 @@ class Collagraph:
         attrs_to_remove = {}
         attrs_to_update = {}
         events_to_add = {}
-        equavalent_event_handlers = set()
+        equivalent_event_handlers = set()
 
         for key, val in prev_props.items():
             if is_event(key):
                 if key in next_props and is_equivalent_event_handler(
                     val, next_props, key
                 ):
-                    equavalent_event_handlers.add(key)
+                    equivalent_event_handlers.add(key)
                     continue
 
                 event_type = key_to_event(key)
@@ -506,7 +506,7 @@ class Collagraph:
 
         for key, val in next_props.items():
             if is_event(key):
-                if key in equavalent_event_handlers:
+                if key in equivalent_event_handlers:
                     continue
 
                 event_type = key_to_event(key)
