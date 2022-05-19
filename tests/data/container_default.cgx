@@ -1,0 +1,16 @@
+<template>
+  <container>
+    <before />
+    <slot>
+      <default-content />
+    </slot>
+    <after />
+  </container>
+</template>
+
+<script lang="python">
+import collagraph as cg
+
+class Container(cg.Component):
+    pass
+</script>

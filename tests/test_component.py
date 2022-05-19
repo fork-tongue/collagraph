@@ -240,22 +240,3 @@ def test_component_element():
     assert component is not None
     assert isinstance(component, SpecialComponent)
     assert component.element is container["children"][0]
-
-
-def test_component_slots():
-    from tests.data.container import Container
-
-    gui = Collagraph(event_loop_type=EventLoopType.SYNC)
-    container = {"type": "root"}
-    state = reactive({})
-    element = h(Container, state, h("content"))
-
-    gui.render(element, container)
-
-    container = container["children"][0]
-    assert container["type"] == "container"
-
-    before, content, after = container["children"]
-    assert before["type"] == "before"
-    assert after["type"] == "after"
-    assert content["type"] == "content"

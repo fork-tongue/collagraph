@@ -214,7 +214,8 @@ class Collagraph:
             while parent:
                 component = parent.component
                 if component:
-                    self.reconcile_children(fiber, parent.children)
+                    # Render the component children or the default slot content
+                    self.reconcile_children(fiber, parent.children or fiber.children)
                     return
                 parent = parent.parent
 
