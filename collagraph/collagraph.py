@@ -538,10 +538,6 @@ class Collagraph:
                     if component:
                         # Mark the fiber as updated
                         parent.updated = True
-                        for event_type, val in events_to_remove.items():
-                            component.remove_event_handler(event_type, val)
-                        for event_type, val in events_to_add.items():
-                            component.add_event_handler(event_type, val)
                         break
                     parent = parent.parent
 
