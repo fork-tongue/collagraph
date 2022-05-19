@@ -15,20 +15,22 @@ def test_components_events():
         def bump(self):
             nonlocal counter
             counter += 1
+            self.state["bumped"] = True
 
         def bump_with_arg(self, step):
             nonlocal counter
             counter += step
+            self.state["bumped"] = False
 
         def render(self):
-            return cg.h(
-                "parent",
-                {
-                    "on_bump": self.bump,
-                    "on_bump_step": self.bump_with_arg,
-                },
-                cg.h(Child),
-            )
+            nonlocal counter
+            props = {
+                "on_bump": self.bump,
+                "value": "foo",
+            }
+            if self.state.get("bumped", False):
+                props["on_bump_step"] = self.bump_with_arg
+            return cg.h("parent", {}, cg.h(Child, props))
 
     class Child(cg.Component):
         def __init__(self, props):
@@ -48,15 +50,13 @@ def test_components_events():
                 {
                     "on_simple_event": self.simple_event,
                     "on_event_with_arg": self.event_with_arg,
+                    "value": self.props["value"],
                 },
             )
 
     gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
     container = {"type": "root"}
     gui.render(cg.h(Parent), container)
-
-    assert parent._parent is None
-    assert child._parent is parent
 
     parent_dom = container["children"][0]
     child_dom = parent_dom["children"][0]

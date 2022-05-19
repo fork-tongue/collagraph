@@ -210,7 +210,7 @@ class Collagraph:
 
     def create_dom(self, fiber: Fiber) -> Any:
         dom = self.renderer.create_element(fiber.type)
-        self.update_dom(fiber, dom, prev_props={}, next_props=fiber.props)
+        self.update_dom_or_component(fiber, dom, prev_props={}, next_props=fiber.props)
         return dom
 
     def state_updated(self, fiber: Fiber):
@@ -369,24 +369,20 @@ class Collagraph:
         # the parent node have been processed, hence we can call the component
         # hooks on the way up.
         component_hooks = SimpleQueue()
-        component_hooks.put((self._wip_root, True, None))
+        component_hooks.put((self._wip_root, True))
 
         # parent_component = None
         while not component_hooks.empty():
             # `down` is whether the tree is walked down toward the leaves
             # or up, back towards the root. On the way back, all the children
             # for the current fiber have been processed
-            fiber, down, parent_component = component_hooks.get()
+            fiber, down = component_hooks.get()
             if not fiber:
                 continue
 
-            if down and fiber.component:
-                fiber.component._parent = parent_component
-
             # Process children first
             if down and fiber.child:
-                parent = fiber.component or parent_component
-                component_hooks.put((fiber.child, True, parent))
+                component_hooks.put((fiber.child, True))
                 continue
 
             if fiber.mounted:
@@ -401,11 +397,11 @@ class Collagraph:
                 fiber.updated = False
 
             if fiber.sibling:
-                component_hooks.put((fiber.sibling, True, parent_component))
+                component_hooks.put((fiber.sibling, True))
             else:
                 # The last of the siblings signals the
                 # parent that we're walking back
-                component_hooks.put((fiber.parent, False, parent_component))
+                component_hooks.put((fiber.parent, False))
 
         self._current_root = self._wip_root
         self._wip_root = None
@@ -454,6 +450,9 @@ class Collagraph:
 
         if fiber.effect_tag == EffectTag.PLACEMENT:
             if fiber.component:
+                self.update_dom_or_component(
+                    fiber, None, prev_props={}, next_props=fiber.props
+                )
                 fiber.mounted = True
             if fiber.dom:
                 self.renderer.insert(fiber.dom, dom_parent, anchor=fiber.anchor)
@@ -466,7 +465,7 @@ class Collagraph:
                         dom_parent,
                         anchor=fiber.anchor,
                     )
-            self.update_dom(
+            self.update_dom_or_component(
                 fiber,
                 fiber.dom,
                 prev_props=fiber.alternate.props_snapshot,
@@ -478,53 +477,44 @@ class Collagraph:
         self._work.put(fiber.child)
         self._work.put(fiber.sibling)
 
-    def update_dom(self, fiber: Fiber, dom: Any, prev_props: Dict, next_props: Dict):
+    def update_dom_or_component(
+        self, fiber: Fiber, dom: Any, prev_props: Dict, next_props: Dict
+    ):
+        if not dom and not fiber.component:
+            return
+
         events_to_remove = {}
-        # Remove old event listeners
-        for name, val in prev_props.items():
-            if not is_event(name):
-                continue
-            if name in next_props and is_equivalent_event_handler(
-                val, next_props, name
-            ):
-                continue
-
-            event_type = key_to_event(name)
-            events_to_remove[event_type] = val
-
-        # Remove old properties
         attrs_to_remove = {}
-        for key in prev_props:
-            # Is key an actual property?
-            if not is_property(key):
-                continue
-            # Is key gone?
-            if key in next_props:
-                continue
-
-            attrs_to_remove[key] = prev_props[key]
-
         attrs_to_update = {}
-        # Set new or changed properties
-        for key, val in next_props.items():
-            if not is_property(key):
-                continue
-            # Is key new or changed?
-            if not is_new(val, prev_props, key):
-                continue
-
-            attrs_to_update[key] = val
-
         events_to_add = {}
-        # Add new event listeners
-        for name in next_props:
-            if not is_event(name):
-                continue
-            if is_equivalent_event_handler(prev_props.get(name), next_props, name):
-                continue
+        equavalent_event_handlers = set()
 
-            event_type = key_to_event(name)
-            events_to_add[event_type] = next_props[name]
+        for key, val in prev_props.items():
+            if is_event(key):
+                if key in next_props and is_equivalent_event_handler(
+                    val, next_props, key
+                ):
+                    equavalent_event_handlers.add(key)
+                    continue
+
+                event_type = key_to_event(key)
+                events_to_remove[event_type] = val
+            elif dom:  # Don't track prop changes for non-dom fibers
+                # Is key gone?
+                if key not in next_props:
+                    attrs_to_remove[key] = prev_props[key]
+
+        for key, val in next_props.items():
+            if is_event(key):
+                if key in equavalent_event_handlers:
+                    continue
+
+                event_type = key_to_event(key)
+                events_to_add[event_type] = next_props[key]
+            elif dom:  # Don't track prop changes for non-dom fibers
+                # Is key new or changed?
+                if is_new(val, prev_props, key):
+                    attrs_to_update[key] = val
 
         if dom:
             for event_type, val in events_to_remove.items():
@@ -539,21 +529,28 @@ class Collagraph:
             for event_type, val in events_to_add.items():
                 self.renderer.add_event_listener(dom, event_type, val)
 
-        # Climb up the tree to find first component to mark as updated
-        if events_to_remove or events_to_add or attrs_to_remove or attrs_to_update:
-            parent = fiber.parent
-            component = None
-            while parent:
-                component = parent.component
-                if component:
-                    # Mark the fiber as updated
-                    parent.updated = True
-                    for event_type, val in events_to_remove.items():
-                        component.remove_event_handler(event_type, val)
-                    for event_type, val in events_to_add.items():
-                        component.add_event_handler(event_type, val)
-                    break
-                parent = parent.parent
+            # Climb up the tree to find first component to mark as updated
+            if events_to_remove or events_to_add or attrs_to_remove or attrs_to_update:
+                parent = fiber.parent
+                component = None
+                while parent:
+                    component = parent.component
+                    if component:
+                        # Mark the fiber as updated
+                        parent.updated = True
+                        for event_type, val in events_to_remove.items():
+                            component.remove_event_handler(event_type, val)
+                        for event_type, val in events_to_add.items():
+                            component.add_event_handler(event_type, val)
+                        break
+                    parent = parent.parent
+
+        if fiber.component:
+            for event_type, val in events_to_remove.items():
+                fiber.component.remove_event_handler(event_type, val)
+
+            for event_type, val in events_to_add.items():
+                fiber.component.add_event_handler(event_type, val)
 
 
 def is_event(key):
@@ -563,10 +560,6 @@ def is_event(key):
 def key_to_event(key):
     # Events start with `on_`
     return key[3:].lower()
-
-
-def is_property(key):
-    return not is_event(key)
 
 
 def is_new(val, other, key):

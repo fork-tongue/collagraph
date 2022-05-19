@@ -13,7 +13,6 @@ class Component:
         self.props = readonly({} if props is None else props)
         self.state = reactive({})
         self._element = None
-        self._parent = None
         self._event_handlers = defaultdict(set)
 
     @property
@@ -61,8 +60,7 @@ class Component:
         pass
 
     def emit(self, event, *args, **kwargs):
-        if self._parent:
-            self._parent.handle_event(event, *args, **kwargs)
+        self.handle_event(event, *args, **kwargs)
 
     def add_event_handler(self, event, handler):
         self._event_handlers[event].add(handler)
