@@ -1,19 +1,19 @@
 <template>
-  <QMainWindow title="JSX-like syntax example">
-    <QWidget :layout="state['top_to_bottom']">
-      <QLabel v-bind:text="props.get('title')" />
-      <QLabel v-if="state.get('content')" :text="state['content']" />
-      <QLabel v-else-if="state.get('other_content')" :text="state['other_content']" />
-      <QLabel v-else text="Nothing to see here" />
+  <qmainwindow title="JSX-like syntax example">
+    <qwidget :layout="state['top_to_bottom']">
+      <qlabel v-bind:text="props.get('title')" />
+      <qlabel v-if="state.get('content')" :text="state['content']" />
+      <qlabel v-else-if="state.get('other_content')" :text="state['other_content']" />
+      <qlabel v-else text="Nothing to see here" />
       <!-- <QLineEdit v-model="props.get('line')" /> -->
-      <QWidget :layout="state['left_to_right']">
-        <QCheckBox v-on:state_changed="check_action" text="Click it" />
-        <QLabel v-if="not state['clicked']" text="You know you want it!" />
-        <QLabel v-if="state['clicked']" text="You did it!" />
-      </QWidget>
-      <QPushButton text="Push me" @clicked="click_action" />
-    </QWidget>
-  </QMainWindow>
+      <qwidget :layout="state['left_to_right']">
+        <qcheckbox v-on:state_changed="check_action" text="Click it" />
+        <qlabel v-if="not state['clicked']" text="You know you want it!" />
+        <qlabel v-if="state['clicked']" text="You did it!" />
+      </qwidget>
+      <qpushbutton text="Push me" @clicked="click_action" />
+    </qwidget>
+  </qmainwindow>
 </template>
 
 <script lang="python">

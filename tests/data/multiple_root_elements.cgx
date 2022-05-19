@@ -1,0 +1,11 @@
+<template>
+  <item />
+  <item />
+</template>
+
+<script lang="python">
+import collagraph as cg
+
+class Example(cg.Component):
+    pass
+</script>

@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
     QBoxLayout,
     QFormLayout,
     QGridLayout,
+    QWidget,
 )
 
 from ..utils import attr_name_to_method_name, call_method
@@ -58,21 +59,29 @@ def remove(self, el):
 
 def set_attribute(self, attr, value):
     if attr == "layout":
-        if value["type"] == "Box":
+        if value["type"].lower() == "box":
             direction = DIRECTIONS[value.get("direction", "TopToBottom")]
             if isinstance(self.layout(), QBoxLayout):
                 self.layout().setDirection(direction)
             else:
+                if layout := self.layout():
+                    # In order to change the layout, move the layout to a new
+                    # widget that is immediately discarded.
+                    QWidget().setLayout(layout)
                 self.setLayout(QBoxLayout(direction))
-        elif value["type"] == "Grid":
+        elif value["type"].lower() == "grid":
             if isinstance(self.layout(), QGridLayout):
                 pass
             else:
+                if layout := self.layout():
+                    QWidget().setLayout(layout)
                 self.setLayout(QGridLayout())
-        elif value["type"] == "Form":
+        elif value["type"].lower() == "form":
             if isinstance(self.layout(), QFormLayout):
                 pass
             else:
+                if layout := self.layout():
+                    QWidget().setLayout(layout)
                 self.setLayout(QFormLayout())
 
         for key, val in value.items():
@@ -108,12 +117,12 @@ def set_attribute(self, attr, value):
     elif attr in ["model_index"]:
         setattr(self, attr, value)
         if model := self.model():
-            if len(value):
-                index = self.index()
-                if (index.row(), index.column()) != value:
-                    model.setItem(*value, self)
-            else:
-                logger.warning(f"model_index should be a tuple: '{value}'")
+            index = self.index()
+            if (index.row(), index.column()) != value:
+                model.setItem(*value, self)
+        return
+    elif attr == "size":
+        self.resize(*value)
         return
 
     method_name = attr_name_to_method_name(attr, setter=True)

@@ -25,3 +25,8 @@ def test_cgx_multiple_classes():
 def test_cgx_no_component_class():
     with pytest.raises(ValueError):
         import tests.data.no_component_class  # noqa: F401
+
+
+def test_cgx_multiple_root_elements():
+    with pytest.raises(ValueError):
+        import tests.data.multiple_root_elements  # noqa: F401

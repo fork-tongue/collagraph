@@ -16,6 +16,9 @@ def test_pygfx_create_element():
     obj = renderer.create_element("Scene")
     assert isinstance(obj, gfx.Scene)
 
+    obj = renderer.create_element("scene")
+    assert isinstance(obj, gfx.Scene)
+
     obj = renderer.create_element("Mesh")
     assert isinstance(obj, gfx.Mesh)
 

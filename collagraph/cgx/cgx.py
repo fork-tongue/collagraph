@@ -123,9 +123,13 @@ def load(path):
             break
 
     # Create render function as AST and inject into the ClassDef
-    render_tree = create_ast_render_function(
-        parser.root.child_with_tag("template").children[0]
-    )
+    template_node = parser.root.child_with_tag("template")
+    if len(template_node.children) != 1:
+        raise ValueError(
+            "There should be precisely one root element defined in "
+            f"the template. Found {len(template_node.children)}."
+        )
+    render_tree = create_ast_render_function(template_node.children[0])
     component_def.body.append(render_tree)
 
     # Because we modified the AST significantly we need to call an AST
@@ -167,7 +171,7 @@ def create_ast_render_function(node):
     )
 
 
-def call_create_element(node, names=None):
+def call_create_element(node, *, names=None):
     """
     Returns an ast.Call of `collagraph.create_element()` with the right args
     for the given node.
@@ -179,17 +183,31 @@ def call_create_element(node, names=None):
         names = set()
     return ast.Call(
         func=ast.Name(id="_create_element", ctx=ast.Load()),
-        args=convert_node_to_args(node, names),
+        args=convert_node_to_args(node, names=names),
         keywords=[],
     )
 
 
-def convert_node_to_args(node, names=None):
+def convert_node_to_args(node, *, names=None):
     """
     Converts the node to args that can be passed to `collagraph.create_element()`.
     """
     # Construct the first argument: type of node
-    type_arg = ast.Constant(value=node.tag)
+    if not node.tag[0].islower():
+        # If the tag does not start with a capital, then it is assumed to be
+        # a class or function, so a Name node is inserted in the ast tree
+        type_arg = ast.Name(id=node.tag, ctx=ast.Load())
+    elif "." in node.tag:
+        # If a dot is found in the tag, then it is assumed that the tag represents
+        # a package/module attribute lookup
+        name, *attributes = node.tag.split(".")
+        result = ast.Name(id=name, ctx=ast.Load())
+        for attr in attributes:
+            result = ast.Attribute(value=result, attr=attr, ctx=ast.Load())
+        type_arg = result
+    else:
+        # Otherwise it is just a constant string
+        type_arg = ast.Constant(value=node.tag)
 
     # Construct the second argument: the props (dict) for the node
     props_keys = []
@@ -247,7 +265,7 @@ def convert_node_to_args(node, names=None):
             local_names = names.union(name_collector.names)
             RewriteName(skip=local_names).visit(for_tree)
 
-            for_tree.elt = call_create_element(child, local_names)
+            for_tree.elt = call_create_element(child, names=local_names)
 
             result = ast.Starred(value=for_tree, ctx=ast.Load())
             children_args.append(result)
@@ -259,12 +277,12 @@ def convert_node_to_args(node, names=None):
 
         if not directive:
             if control_flow:
-                children_args.append(create_control_flow_ast(control_flow, names))
+                children_args.append(create_control_flow_ast(control_flow, names=names))
                 control_flow = []
             children_args.append(call_create_element(child))
 
     if control_flow:
-        children_args.append(create_control_flow_ast(control_flow, names))
+        children_args.append(create_control_flow_ast(control_flow, names=names))
         control_flow = []
 
     # Create a starred list comprehension that when called, will generate
@@ -305,7 +323,7 @@ def convert_node_to_args(node, names=None):
     return [type_arg, ast.Dict(keys=props_keys, values=props_values), starred_expr]
 
 
-def create_control_flow_ast(control_flow, names):
+def create_control_flow_ast(control_flow, *, names):
     """
     Create an AST of control flow nodes (if/else-if/else)
     """
@@ -418,7 +436,17 @@ class CGXParser(HTMLParser):
         self.stack = [self.root]
 
     def handle_starttag(self, tag, attrs):
-        node = Node(tag, dict(attrs), self.getpos())
+        # The tag parameter is lower-cased by the HTMLParser.
+        # In order to figure out whether the tag indicates
+        # an imported class, we need the original casing for
+        # the tag.
+        # Using the original start tag, we can figure out where
+        # the tag is located using a lower-cased version. And then
+        # use the index to extract the original casing for the tag.
+        complete_tag = self.get_starttag_text()
+        index = complete_tag.lower().index(tag)
+        original_tag = complete_tag[index : index + len(tag)]
+        node = Node(original_tag, dict(attrs), self.getpos())
 
         # Add item as child to the last on the stack
         self.stack[-1].children.append(node)
