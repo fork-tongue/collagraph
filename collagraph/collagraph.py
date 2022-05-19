@@ -201,6 +201,23 @@ class Collagraph:
         self.reconcile_children(fiber, children)
 
     def update_host_component(self, fiber: Fiber):
+        # Treat slots differently:
+        # Don't create a dom, instead: look for the closest fiber parent
+        # in the hierarchy which holds the component in which this slot
+        # is defined.
+        # Then reconcile the children of the component fiber as the children
+        # of the slot fiber.
+        # TODO: cache the parent component lookup
+        if fiber.type == "slot":
+            parent = fiber
+            component = None
+            while parent:
+                component = parent.component
+                if component:
+                    self.reconcile_children(fiber, parent.children)
+                    return
+                parent = parent.parent
+
         # Add dom node
         if not fiber.dom:
             fiber.dom = self.create_dom(fiber)

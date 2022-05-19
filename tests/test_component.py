@@ -242,7 +242,6 @@ def test_component_element():
     assert component.element is container["children"][0]
 
 
-@pytest.mark.xfail(message="Not implemented yet")
 def test_component_slots():
     from tests.data.container import Container
 
