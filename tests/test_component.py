@@ -86,7 +86,7 @@ def test_component_basic_lifecycle():
         props.setdefault("counters", [])
 
         return h(
-            "counters", props, *[h(SpecialCounter, prop) for prop in props["counters"]]
+            "counters", {}, *[h(SpecialCounter, prop) for prop in props["counters"]]
         )
 
     gui = Collagraph(event_loop_type=EventLoopType.SYNC)
