@@ -2,7 +2,7 @@ import collagraph as cg
 
 
 def test_cgx_use_imported_component():
-    from tests.data.container import Container
+    from tests.data.component_import import Container
 
     container = {"type": "root"}
     gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
