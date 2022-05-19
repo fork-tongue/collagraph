@@ -219,8 +219,8 @@ class Collagraph:
                     return
                 parent = parent.parent
 
-        # Add dom node
-        if not fiber.dom:
+        # Add dom node, but not for template tags
+        if not fiber.dom and fiber.type != "template":
             fiber.dom = self.create_dom(fiber)
 
         # Create new fibers
