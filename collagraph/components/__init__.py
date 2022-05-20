@@ -2,6 +2,8 @@ from abc import abstractmethod
 
 from observ import reactive, readonly
 
+from collagraph.types import VNode
+
 
 class Component:
     """Abstract base class for components"""
@@ -12,6 +14,7 @@ class Component:
         self.props = readonly({} if props is None else props)
         self.state = reactive({})
         self._element = None
+        self._slots = {}
 
     @property
     def element(self):
@@ -22,6 +25,16 @@ class Component:
     def element(self, value):
         """Setter that is used by the internals of Collagraph. Please don't use this."""
         self._element = value
+
+    def render_slot(self, name, props=None):
+        if name in self._slots:
+            result = self._slots[name](props)
+            if isinstance(result, VNode):
+                return [result]
+            return result
+        return ()
+
+    s = render_slot
 
     def mounted(self):
         """Called after the component has been mounted.

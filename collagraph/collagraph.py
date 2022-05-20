@@ -23,6 +23,12 @@ logger = logging.getLogger(__name__)
 def create_element(type, props=None, *children) -> VNode:
     """Create an element description, based on type, props and (optionally) children"""
     key = props.pop("key") if props and "key" in props else None
+    if len(children) == 1:
+        # Check if childrenis 1 callable item: => default slot
+        if callable(children[0]):
+            children = {"default": children[0]}
+        elif isinstance(children[0], dict):
+            children = children[0]
     return VNode(type, reactive(props or {}), children or tuple(), key)
 
 
@@ -193,6 +199,10 @@ class Collagraph:
             fiber.alternate.component = None
             fiber.alternate.component_watcher = None
 
+        if isinstance(fiber.children, dict):
+            component._slots = fiber.children
+
+        # List of VNodes
         children = [component.render()]
         self.reconcile_children(fiber, children)
 
@@ -201,31 +211,6 @@ class Collagraph:
         self.reconcile_children(fiber, children)
 
     def update_host_component(self, fiber: Fiber):
-        # Treat slots differently:
-        # Don't create a dom, instead: look for the closest fiber parent
-        # in the hierarchy which holds the component in which this slot
-        # is defined.
-        # Then reconcile the children of the component fiber as the children
-        # of the slot fiber.
-        # TODO: cache the parent component lookup
-        if fiber.type == "slot":
-            slot_name = fiber.props.get("name", "default")
-            parent = fiber
-            component = None
-            while parent:
-                component = parent.component
-                if component:
-                    slots = [
-                        child
-                        for child in parent.children
-                        if has_slot_prop_with_name(child.props, slot_name)
-                    ]
-                    slot_content = slots if len(slots) > 0 else parent.children
-                    # Render the component children or the default slot content
-                    self.reconcile_children(fiber, slot_content or fiber.children)
-                    return
-                parent = parent.parent
-
         # Add dom node, but not for template tags
         if not fiber.dom and fiber.type != "template":
             fiber.dom = self.create_dom(fiber)
@@ -307,9 +292,7 @@ class Collagraph:
 
         # In here, all the 'new' elements are compared to the old/current fiber/state
         prev_sibling = None
-        for idx, (element, old_fiber) in enumerate(
-            zip_longest(elements, ordered_old_fibers + removals)
-        ):
+        for element, old_fiber in zip_longest(elements, ordered_old_fibers + removals):
             # Clear the watcher from the old fiber
             if old_fiber and old_fiber.props:
                 old_fiber.watcher = None
@@ -669,7 +652,7 @@ def create_ops(current, future):
     wip = current.copy()
 
     # First figure out all the deletions that need to take place
-    for idx, old in enumerate(current):
+    for old in current:
         if old not in future:
             ops.append(create_operation(OpType.DEL, value=old))
             apply_op(ops[-1], wip)
@@ -694,13 +677,3 @@ def create_ops(current, future):
             apply_op(ops[-1], wip)
 
     return ops
-
-
-def has_slot_prop_with_name(props, name):
-    for prop in props:
-        if prop.startswith("v-slot"):
-            if ":" not in prop:
-                return name == "default"
-            _, slot_name = prop.split(":")
-            return slot_name == name
-    return False
