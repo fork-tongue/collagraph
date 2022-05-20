@@ -4,7 +4,7 @@ import collagraph as cg
 
 
 def test_component_empty_slot():
-    from tests.data.container import Container
+    from tests.data.slots import Container
 
     gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
     container = {"type": "root"}
@@ -23,7 +23,7 @@ def test_component_empty_slot():
 
 
 def test_component_filled_slot():
-    from tests.data.container import Container
+    from tests.data.slots import Container
 
     gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
     container = {"type": "root"}
@@ -43,7 +43,7 @@ def test_component_filled_slot():
 
 
 def test_component_default_slot_content():
-    from tests.data.container_default import Container
+    from tests.data.slots_default import Container
 
     gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
     container = {"type": "root"}

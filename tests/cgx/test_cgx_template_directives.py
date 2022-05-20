@@ -202,3 +202,16 @@ def test_directive_on():
     sub_button.props["on_clicked"]()
 
     assert component.state["count"] == 0
+
+
+def test_directive_boolean_casting():
+    from tests.data.directive_boolean_casting import Labels
+
+    component = Labels({})
+    node = component.render()
+
+    assert node.type == "widget"
+    assert len(node.children) == 1
+
+    label = node.children[0]
+    label.props["disabled"] is True
