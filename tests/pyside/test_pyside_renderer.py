@@ -148,7 +148,7 @@ def test_pyside_event_listeners(qapp, qtbot):
         button = container.findChild(QtWidgets.QPushButton)
         assert button
 
-    qtbot.waitUntil(check_button)
+    qtbot.waitUntil(check_button, timeout=500)
 
     qtbot.mouseClick(button, QtCore.Qt.LeftButton)
     assert clicked == 1
@@ -159,7 +159,7 @@ def test_pyside_event_listeners(qapp, qtbot):
         assert label.text() == "Bar"
         button = container.findChild(QtWidgets.QPushButton)
 
-    qtbot.waitUntil(check_wait)
+    qtbot.waitUntil(check_wait, timeout=500)
 
     qtbot.mouseClick(button, QtCore.Qt.LeftButton)
     # The callback should have been removed at this point

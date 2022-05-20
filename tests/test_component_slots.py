@@ -17,13 +17,9 @@ class ContainerDefaults(cg.Component):
         return cg.h(
             "container",
             {},
-            cg.h(
-                "header", None, *self.render_slot("header") or (cg.h("header-default"),)
-            ),
-            cg.h("content", None, *self.render_slot("default") or (cg.h("default"),)),
-            cg.h(
-                "footer", None, *self.render_slot("footer") or (cg.h("footer-default"),)
-            ),
+            cg.h("header", None, *self.s("header") or (cg.h("header-default"),)),
+            cg.h("content", None, *self.s("default") or (cg.h("default"),)),
+            cg.h("footer", None, *self.s("footer") or (cg.h("footer-default"),)),
         )
 
 
