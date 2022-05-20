@@ -209,13 +209,20 @@ class Collagraph:
         # of the slot fiber.
         # TODO: cache the parent component lookup
         if fiber.type == "slot":
+            slot_name = fiber.props.get("name", "default")
             parent = fiber
             component = None
             while parent:
                 component = parent.component
                 if component:
+                    slots = [
+                        child
+                        for child in parent.children
+                        if has_slot_prop_with_name(child.props, slot_name)
+                    ]
+                    slot_content = slots if len(slots) > 0 else parent.children
                     # Render the component children or the default slot content
-                    self.reconcile_children(fiber, parent.children or fiber.children)
+                    self.reconcile_children(fiber, slot_content or fiber.children)
                     return
                 parent = parent.parent
 
@@ -687,3 +694,13 @@ def create_ops(current, future):
             apply_op(ops[-1], wip)
 
     return ops
+
+
+def has_slot_prop_with_name(props, name):
+    for prop in props:
+        if prop.startswith("v-slot"):
+            if ":" not in prop:
+                return name == "default"
+            _, slot_name = prop.split(":")
+            return slot_name == name
+    return False
