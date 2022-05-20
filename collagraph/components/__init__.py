@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from collections import defaultdict
 
 from observ import reactive, readonly
 
@@ -12,6 +13,7 @@ class Component:
         self.props = readonly({} if props is None else props)
         self.state = reactive({})
         self._element = None
+        self._event_handlers = defaultdict(set)
 
     @property
     def element(self):
@@ -56,3 +58,17 @@ class Component:
     @abstractmethod
     def render():  # pragma: no cover
         pass
+
+    def emit(self, event, *args, **kwargs):
+        """Call event handlers for the given event. Any args and kwargs will be passed
+        on to the registered handlers."""
+        for handler in self._event_handlers[event].copy():
+            handler(*args, **kwargs)
+
+    def add_event_handler(self, event, handler):
+        """Adds an event handler for the given event."""
+        self._event_handlers[event].add(handler)
+
+    def remove_event_handler(self, event, handler):
+        """Removes an event handler for the given event."""
+        self._event_handlers[event].remove(handler)
