@@ -199,8 +199,7 @@ class Collagraph:
             fiber.alternate.component = None
             fiber.alternate.component_watcher = None
 
-        if isinstance(fiber.children, dict):
-            component._slots = fiber.children
+        component._slots = fiber.children if isinstance(fiber.children, dict) else {}
 
         # List of VNodes
         children = [component.render()]
