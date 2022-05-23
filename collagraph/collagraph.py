@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 from observ import reactive, scheduler, to_raw, watch
 
 from .compare import equivalent_functions
-from .renderers import DictRenderer, Renderer
+from .renderers import Renderer
 from .types import (
     EffectTag,
     EventLoopType,
@@ -36,13 +36,12 @@ def create_element(type, props=None, *children) -> VNode:
 class Collagraph:
     def __init__(
         self,
-        renderer: Renderer = None,
+        renderer,
         *,
         event_loop_type: EventLoopType = EventLoopType.DEFAULT,
     ):
-        if renderer is None:
-            renderer = DictRenderer()
-        assert isinstance(renderer, Renderer)
+        if not isinstance(renderer, Renderer):
+            raise TypeError(f"Expected a Renderer but got a {type(renderer)}")
         self.renderer = renderer
         self.event_loop_type = event_loop_type
         if self.event_loop_type is EventLoopType.QT:

@@ -1,19 +1,22 @@
 from observ import reactive
+import pytest
 
 from collagraph import Collagraph, create_element as h, EventLoopType
 from collagraph.renderers import DictRenderer
 
 
 def test_basic_dict_renderer():
-    gui = Collagraph(event_loop_type=EventLoopType.SYNC)
-
+    gui = Collagraph(renderer=DictRenderer(), event_loop_type=EventLoopType.SYNC)
     element = h("app")
-
     container = {"type": "root"}
-
     gui.render(element, container)
 
     assert container["children"][0] == {"type": "app"}
+
+
+def test_renderer_required():
+    with pytest.raises(TypeError):
+        Collagraph(event_loop_type=EventLoopType.SYNC)
 
 
 def test_lots_of_elements():
@@ -61,8 +64,7 @@ def test_reactive_element_with_events(process_events):
             "counter", props, h("count", {"count": props["count"], "on_bump": bump})
         )
 
-    renderer = DictRenderer()
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.DEFAULT)
+    gui = Collagraph(renderer=DictRenderer(), event_loop_type=EventLoopType.DEFAULT)
     container = {"type": "root"}
     state = reactive({"count": 0})
     element = h(Counter, state)
@@ -102,8 +104,7 @@ def test_delete_item_with_children_and_siblings(process_events):
             *[h(Item, part) for part in props["items"]],
         )
 
-    renderer = DictRenderer()
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.DEFAULT)
+    gui = Collagraph(renderer=DictRenderer(), event_loop_type=EventLoopType.DEFAULT)
     container = {"type": "root"}
     state = reactive(
         {
@@ -148,8 +149,7 @@ def test_deep_reactive_element():
             h("count", props),
         )
 
-    renderer = DictRenderer()
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(renderer=DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive({"counter": {"count": 0}})
     element = h(Counter, state)
@@ -174,8 +174,7 @@ def test_remove_attribute():
             props,
         )
 
-    renderer = DictRenderer()
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(renderer=DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive({"foo": True})
     element = h("foo", state)
@@ -199,7 +198,7 @@ def test_render_callback(process_events):
         nonlocal callback_counter
         callback_counter += 1
 
-    gui = Collagraph()
+    gui = Collagraph(DictRenderer())
     element = h("app")
     container = {"type": "root"}
     gui.render(element, container, callback=bump)
@@ -219,7 +218,7 @@ def test_update_element_with_event(process_events):
 
         return h("counter", props)
 
-    gui = Collagraph()
+    gui = Collagraph(DictRenderer())
     container = {"type": "root"}
     state = reactive({"count": 0})
     gui.render(h(Counter, state), container)
@@ -248,7 +247,7 @@ def test_yield_if_time_is_up_for_lots_of_work(process_events):
     This is probably too much work to process within the deadline
     so we can test whether the _next_unit_of_work is scheduled.
     """
-    gui = Collagraph()
+    gui = Collagraph(DictRenderer())
     container = {"type": "root"}
 
     element = h("app", {}, *[h("node")] * 1000)
@@ -274,7 +273,7 @@ def test_add_remove_event_handlers(process_events):
 
         return h("counter", props)
 
-    gui = Collagraph()
+    gui = Collagraph(DictRenderer())
     container = {"type": "root"}
     state = reactive({"count": 0})
     gui.render(h(Counter, state), container)
@@ -313,7 +312,7 @@ def test_change_event_handler(process_events):
         props.setdefault("value", "...")
         return h("counter", props)
 
-    gui = Collagraph()
+    gui = Collagraph(DictRenderer())
     container = {"type": "root"}
     state = reactive({"count": 0})
     gui.render(h(Tick, state), container)

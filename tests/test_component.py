@@ -1,7 +1,13 @@
 from observ import reactive
 import pytest
 
-from collagraph import Collagraph, Component, create_element as h, EventLoopType
+from collagraph import (
+    Collagraph,
+    Component,
+    create_element as h,
+    DictRenderer,
+    EventLoopType,
+)
 
 
 class Counter(Component):
@@ -31,7 +37,7 @@ def test_component_class():
 
 
 def test_component_events():
-    gui = Collagraph(event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive({"count": 0})
     element = h(Counter, state)
@@ -89,7 +95,7 @@ def test_component_basic_lifecycle():
             "counters", {}, *[h(SpecialCounter, prop) for prop in props["counters"]]
         )
 
-    gui = Collagraph(event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive(
         {
@@ -157,7 +163,7 @@ def test_component_without_render_method():
     class Faulty(Component):
         pass
 
-    gui = Collagraph(event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive({})
 
@@ -179,7 +185,7 @@ def test_component_props_update():
 
     state = reactive({"prop": False})
 
-    gui = Collagraph(event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     element = h(Counter, state)
     gui.render(element, container)
@@ -205,7 +211,7 @@ def test_component_props_deep_update():
 
     state = reactive({"prop": [0, 1]})
 
-    gui = Collagraph(event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     element = h(Counter, state)
     gui.render(element, container)
@@ -230,7 +236,7 @@ def test_component_element():
         def render(self):
             return h("special")
 
-    gui = Collagraph(event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive({"count": 0})
     element = h(SpecialComponent, state)

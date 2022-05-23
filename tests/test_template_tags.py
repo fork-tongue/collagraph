@@ -6,7 +6,7 @@ import collagraph as cg
 def test_component_template_tag():
     from tests.data.template import Template
 
-    gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
     container = {"type": "root"}
     state = reactive({"more": False})
     element = cg.h(Template, state)

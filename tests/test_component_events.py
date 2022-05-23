@@ -54,7 +54,7 @@ def test_components_events():
                 },
             )
 
-    gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
     container = {"type": "root"}
     gui.render(cg.h(Parent), container)
 
