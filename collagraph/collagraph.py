@@ -24,11 +24,12 @@ def create_element(type, props=None, *children) -> VNode:
     """Create an element description, based on type, props and (optionally) children"""
     key = props.pop("key") if props and "key" in props else None
     if len(children) == 1:
-        # Check if childrenis 1 callable item: => default slot
-        if callable(children[0]):
-            children = {"default": children[0]}
-        elif isinstance(children[0], dict):
+        # If children is 1 dictionary, then that is the slots definition
+        if isinstance(children[0], dict):
             children = children[0]
+        # If children is 1 callable item, then it becomes the default slot
+        elif callable(children[0]):
+            children = {"default": children[0]}
     return VNode(type, reactive(props or {}), children or tuple(), key)
 
 
