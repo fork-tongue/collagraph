@@ -29,7 +29,7 @@ class VNode:
 
     type: Union[str, Callable]
     props: Dict
-    children: List["VNode"]
+    children: Union[List["VNode"], Dict[str, Callable]]
     key: str = None
 
 

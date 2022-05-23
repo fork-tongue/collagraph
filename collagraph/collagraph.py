@@ -23,6 +23,13 @@ logger = logging.getLogger(__name__)
 def create_element(type, props=None, *children) -> VNode:
     """Create an element description, based on type, props and (optionally) children"""
     key = props.pop("key") if props and "key" in props else None
+    if len(children) == 1:
+        # If children is 1 dictionary, then that is the slots definition
+        if isinstance(children[0], dict):
+            children = children[0]
+        # If children is 1 callable item, then it becomes the default slot
+        elif callable(children[0]):
+            children = {"default": children[0]}
     return VNode(type, reactive(props or {}), children or tuple(), key)
 
 
@@ -193,6 +200,9 @@ class Collagraph:
             fiber.alternate.component = None
             fiber.alternate.component_watcher = None
 
+        component._slots = fiber.children if isinstance(fiber.children, dict) else {}
+
+        # List of VNodes
         children = [component.render()]
         self.reconcile_children(fiber, children)
 
@@ -201,8 +211,8 @@ class Collagraph:
         self.reconcile_children(fiber, children)
 
     def update_host_component(self, fiber: Fiber):
-        # Add dom node
-        if not fiber.dom:
+        # Add dom node, but not for template tags
+        if not fiber.dom and fiber.type != "template":
             fiber.dom = self.create_dom(fiber)
 
         # Create new fibers
@@ -282,9 +292,7 @@ class Collagraph:
 
         # In here, all the 'new' elements are compared to the old/current fiber/state
         prev_sibling = None
-        for idx, (element, old_fiber) in enumerate(
-            zip_longest(elements, ordered_old_fibers + removals)
-        ):
+        for element, old_fiber in zip_longest(elements, ordered_old_fibers + removals):
             # Clear the watcher from the old fiber
             if old_fiber and old_fiber.props:
                 old_fiber.watcher = None
@@ -647,7 +655,7 @@ def create_ops(current, future):
     wip = current.copy()
 
     # First figure out all the deletions that need to take place
-    for idx, old in enumerate(current):
+    for old in current:
         if old not in future:
             ops.append(create_operation(OpType.DEL, value=old))
             apply_op(ops[-1], wip)
