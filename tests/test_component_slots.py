@@ -24,7 +24,7 @@ class ContainerDefaults(cg.Component):
 
 
 def test_component_named_slots_empty():
-    gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
     container = {"type": "root"}
     element = cg.h(Container)
 
@@ -41,7 +41,7 @@ def test_component_named_slots_empty():
 
 
 def test_component_named_slots_defaults():
-    gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
     container = {"type": "root"}
     element = cg.h(ContainerDefaults)
 
@@ -58,7 +58,7 @@ def test_component_named_slots_defaults():
 
 
 def test_component_named_slots_filled():
-    gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
     container = {"type": "root"}
     element = cg.h(
         Container,
@@ -83,7 +83,7 @@ def test_component_named_slots_filled():
 
 
 def test_component_named_slots_partial_filled():
-    gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
     container = {"type": "root"}
     element = cg.h(
         ContainerDefaults,
@@ -109,7 +109,7 @@ def test_component_named_slots_partial_filled():
 
 
 def test_component_default_slot():
-    gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
     container = {"type": "root"}
     element = cg.h(
         Container,
@@ -131,7 +131,7 @@ def test_component_default_slot():
 
 
 def test_component_multiple_items_as_slot_content():
-    gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
     container = {"type": "root"}
     element = cg.h(
         Container,
