@@ -3,7 +3,7 @@ from collections import defaultdict
 
 from observ import reactive, readonly
 
-from collagraph.types import VNode
+from collagraph import render_slot
 
 
 class Component:
@@ -29,12 +29,7 @@ class Component:
         self._element = value
 
     def render_slot(self, name, props=None):
-        if name in self._slots:
-            result = self._slots[name](props)
-            if isinstance(result, VNode):
-                return [result]
-            return result
-        return ()
+        return render_slot(name, props, self._slots)
 
     # Provide shortcut to render_slot method
     s = render_slot
