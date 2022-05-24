@@ -188,6 +188,44 @@ def call_create_element(node, *, names=None):
     )
 
 
+def call_render_slot(node, *, names=None):
+    slot_name = node.attrs.get("name", "default")
+
+    return ast.Starred(
+        value=ast.IfExp(
+            # Check whether the slot name is present in
+            # the _slots property of the component
+            test=ast.Compare(
+                left=ast.Constant(value=slot_name),
+                ops=[ast.In()],
+                comparators=[
+                    ast.Attribute(
+                        value=ast.Name(id="self", ctx=ast.Load()),
+                        attr="_slots",
+                        ctx=ast.Load(),
+                    )
+                ],
+            ),
+            # If so, then we'll call render_slot
+            body=ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id="self", ctx=ast.Load()),
+                    attr="render_slot",
+                    ctx=ast.Load(),
+                ),
+                args=[ast.Constant(value=slot_name)],
+                keywords=[],
+            ),
+            # Otherwise, we render the fallback content
+            orelse=ast.List(
+                elts=[call_create_element(node, names=names)],
+                ctx=ast.Load(),
+            ),
+        ),
+        ctx=ast.Load(),
+    )
+
+
 def convert_node_to_args(node, *, names=None):
     """
     Converts the node to args that can be passed to `collagraph.create_element()`.
@@ -246,6 +284,7 @@ def convert_node_to_args(node, *, names=None):
     # Construct the other arguments: the children of the node
     children_args = []
 
+    slots = {}
     control_flow = []
     for child in node.children:
         directive = None
@@ -275,11 +314,33 @@ def convert_node_to_args(node, *, names=None):
         if directive := child.control_flow():
             control_flow.append((directive, child))
 
+        # Gather all the non-template children within a component tag and
+        # treat them as the content for the default slot
+        if node.tag[0].isupper() or "." in node.tag:
+            default_slot_content = [
+                child for child in node.children if child.tag != "template"
+            ]
+
+            if default_slot_content:
+                virtual_template_node = Node("template")
+                virtual_template_node.children = default_slot_content
+                slots["default"] = virtual_template_node
+
+        for attr in child.attrs.keys():
+            if attr.startswith(("v-slot", "#")):
+                slot_name = attr.split(":")[-1].split("#")[-1]
+                if slot_name == "v-slot":
+                    slot_name = "default"
+                slots[slot_name] = child
+
         if not directive:
             if control_flow:
                 children_args.append(create_control_flow_ast(control_flow, names=names))
                 control_flow = []
-            children_args.append(call_create_element(child))
+            if child.tag == "slot":
+                children_args.append(call_render_slot(child, names=names))
+            else:
+                children_args.append(call_create_element(child, names=names))
 
     if control_flow:
         children_args.append(create_control_flow_ast(control_flow, names=names))
@@ -304,6 +365,7 @@ def convert_node_to_args(node, *, names=None):
                         ctx=ast.Load(),
                     ),
                     ifs=[
+                        # Filter out all None elements
                         ast.Compare(
                             left=ast.Name(
                                 id=f"{AST_GEN_VARIABLE_PREFIX}child",
@@ -319,6 +381,24 @@ def convert_node_to_args(node, *, names=None):
         ),
         ctx=ast.Load(),
     )
+    if slots:
+        starred_expr = ast.Dict(
+            keys=[ast.Constant(value=key) for key in slots.keys()],
+            values=[
+                ast.Lambda(
+                    args=ast.arguments(
+                        posonlyargs=[],
+                        args=[ast.arg(arg="props")],
+                        kwonlyargs=[],
+                        kw_defaults=[],
+                        defaults=[],
+                    ),
+                    body=call_create_element(val, names=names),
+                )
+                for val in slots.values()
+            ],
+        )
+
     # Return all the arguments
     return [type_arg, ast.Dict(keys=props_keys, values=props_values), starred_expr]
 
@@ -336,18 +416,18 @@ def create_control_flow_ast(control_flow, *, names):
 
     rewrite_name = RewriteName(skip=names)
 
-    current_statement = ast.IfExp(
+    root_statement = ast.IfExp(
         test=ast.parse(if_node.attrs[if_directive], mode="eval").body,
-        body=call_create_element(if_node),
+        body=call_create_element(if_node, names=names),
         orelse=ast.Constant(value=None),
     )
-    rewrite_name.visit(current_statement.test)
-    root_statement = current_statement
+    rewrite_name.visit(root_statement.test)
+    current_statement = root_statement
 
     for directive, node in if_else_statements:
         if_else_tree = ast.IfExp(
             test=ast.parse(node.attrs[directive], mode="eval").body,
-            body=call_create_element(node),
+            body=call_create_element(node, names=names),
             orelse=ast.Constant(value=None),
         )
         rewrite_name.visit(if_else_tree.test)
@@ -355,7 +435,7 @@ def create_control_flow_ast(control_flow, *, names):
         current_statement = if_else_tree
 
     if else_statement:
-        current_statement.orelse = call_create_element(else_statement[1])
+        current_statement.orelse = call_create_element(else_statement[1], names=names)
 
     return root_statement
 

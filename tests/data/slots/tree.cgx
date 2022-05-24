@@ -1,0 +1,17 @@
+<template>
+  <root>
+    <Node name="a">
+      <Node name="b" />
+    </Node>
+    <Node name="c" />
+  </root>
+</template>
+
+<script lang="python">
+import collagraph as cg
+from tests.data.slots.node import Node
+
+
+class Tree(cg.Component):
+    pass
+</script>

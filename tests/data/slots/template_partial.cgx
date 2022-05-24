@@ -1,0 +1,20 @@
+<template>
+  <Layout :fallback="False">
+    <template #header>
+      <label text="header content" />
+    </template>
+
+    <template #footer>
+      <label text="footer content" />
+    </template>
+  </Layout>
+</template>
+
+<script lang="python">
+import collagraph as cg
+from tests.data.slots.slots import Layout
+
+
+class Template(cg.Component):
+    pass
+</script>

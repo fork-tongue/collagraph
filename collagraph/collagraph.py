@@ -19,6 +19,9 @@ from .types import (
 
 logger = logging.getLogger(__name__)
 
+# Node types for which no DOM elements are made
+VIRTUAL_NODE_TYPES = {"template", "slot"}
+
 
 def create_element(type, props=None, *children) -> VNode:
     """Create an element description, based on type, props and (optionally) children"""
@@ -31,6 +34,15 @@ def create_element(type, props=None, *children) -> VNode:
         elif callable(children[0]):
             children = {"default": children[0]}
     return VNode(type, reactive(props or {}), children or tuple(), key)
+
+
+def render_slot(name, props, slots):
+    if name in slots:
+        result = slots[name](props)
+        if isinstance(result, VNode):
+            return [result]
+        return result
+    return ()
 
 
 class Collagraph:
@@ -206,12 +218,15 @@ class Collagraph:
         self.reconcile_children(fiber, children)
 
     def update_function_component(self, fiber: Fiber):
-        children = [fiber.type(fiber.props)]
+        if isinstance(fiber.children, dict):
+            children = [fiber.type(fiber.props, fiber.children)]
+        else:
+            children = [fiber.type(fiber.props)]
         self.reconcile_children(fiber, children)
 
     def update_host_component(self, fiber: Fiber):
-        # Add dom node, but not for template tags
-        if not fiber.dom and fiber.type != "template":
+        # Add dom node, but not for template/slot tags (which are virtual tags)
+        if not fiber.dom and fiber.type not in VIRTUAL_NODE_TYPES:
             fiber.dom = self.create_dom(fiber)
 
         # Create new fibers

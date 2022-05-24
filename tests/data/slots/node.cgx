@@ -1,0 +1,12 @@
+<template>
+  <node :name="props.get('name')">
+    <slot />
+  </node>
+</template>
+
+<script lang="python">
+import collagraph as cg
+
+class Node(cg.Component):
+    pass
+</script>

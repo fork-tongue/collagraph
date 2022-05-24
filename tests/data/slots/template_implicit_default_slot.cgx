@@ -1,0 +1,24 @@
+<template>
+  <Layout :fallback="True">
+    <template #header>
+      <label text="header content" />
+    </template>
+
+    <!-- Implicit default slot -->
+    <label text="content" />
+    <label text="even more content" />
+
+    <template #footer>
+      <label text="footer content" />
+    </template>
+  </Layout>
+</template>
+
+<script lang="python">
+import collagraph as cg
+from tests.data.slots.slots_implicit_default_slot import Layout
+
+
+class Template(cg.Component):
+    pass
+</script>
