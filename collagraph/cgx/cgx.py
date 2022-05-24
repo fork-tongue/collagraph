@@ -216,7 +216,7 @@ def call_render_slot(node, *, names=None):
                 args=[ast.Constant(value=slot_name)],
                 keywords=[],
             ),
-            # Otherwise, we render the default content
+            # Otherwise, we render the fallback content
             orelse=ast.List(
                 elts=[call_create_element(node, names=names)],
                 ctx=ast.Load(),

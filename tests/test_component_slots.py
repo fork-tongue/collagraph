@@ -17,9 +17,9 @@ class ContainerDefaults(cg.Component):
         return cg.h(
             "container",
             {},
-            cg.h("header", None, *self.s("header") or (cg.h("header-default"),)),
-            cg.h("content", None, *self.s("default") or (cg.h("default"),)),
-            cg.h("footer", None, *self.s("footer") or (cg.h("footer-default"),)),
+            cg.h("header", None, *self.s("header") or (cg.h("header-fallback"),)),
+            cg.h("content", None, *self.s("default") or (cg.h("content-fallback"),)),
+            cg.h("footer", None, *self.s("footer") or (cg.h("footer-fallback"),)),
         )
 
 
@@ -52,9 +52,9 @@ def test_component_named_slots_defaults():
 
     header, content, footer = container["children"]
 
-    assert header["children"][0]["type"] == "header-default"
-    assert content["children"][0]["type"] == "default"
-    assert footer["children"][0]["type"] == "footer-default"
+    assert header["children"][0]["type"] == "header-fallback"
+    assert content["children"][0]["type"] == "content-fallback"
+    assert footer["children"][0]["type"] == "footer-fallback"
 
 
 def test_component_named_slots_filled():
@@ -89,7 +89,7 @@ def test_component_named_slots_partial_filled():
         ContainerDefaults,
         {},
         {
-            # Don't provide slot content for default
+            # Don't provide slot content for default slot
             "footer": lambda props: cg.h("footer-content"),
             "header": lambda props: cg.h("header-content"),
         },
@@ -103,8 +103,8 @@ def test_component_named_slots_partial_filled():
     header, content, footer = container["children"]
 
     assert header["children"][0]["type"] == "header-content"
-    # Default slot should have default content
-    assert content["children"][0]["type"] == "default"
+    # Default slot should have fallback content
+    assert content["children"][0]["type"] == "content-fallback"
     assert footer["children"][0]["type"] == "footer-content"
 
 

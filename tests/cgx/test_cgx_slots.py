@@ -1,7 +1,7 @@
 import collagraph as cg
 
 
-def test_cgx_slots_named_default_content():
+def test_cgx_slots_named_fallback():
     from tests.data.slots.template_empty import Template
 
     gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
@@ -15,16 +15,16 @@ def test_cgx_slots_named_default_content():
 
     assert header["type"] == "header"
     assert header["children"][0]["type"] == "label"
-    assert header["children"][0]["attrs"]["text"] == "default header"
+    assert header["children"][0]["attrs"]["text"] == "header fallback"
 
     assert content["type"] == "content"
     assert content["children"][0]["type"] == "label"
-    assert content["children"][0]["attrs"]["text"] == "default content"
+    assert content["children"][0]["attrs"]["text"] == "content fallback"
     assert len(content["children"]) == 1
 
     assert footer["type"] == "footer"
     assert footer["children"][0]["type"] == "label"
-    assert footer["children"][0]["attrs"]["text"] == "default footer"
+    assert footer["children"][0]["attrs"]["text"] == "footer fallback"
 
 
 def test_cgx_slots_named():
@@ -54,7 +54,7 @@ def test_cgx_slots_named():
     assert footer["children"][0]["attrs"]["text"] == "footer content"
 
 
-def test_cgx_slots_partial():
+def test_cgx_slots_partial_no_fallback():
     from tests.data.slots.template_partial import Template
 
     gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)

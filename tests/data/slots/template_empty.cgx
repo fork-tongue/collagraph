@@ -1,5 +1,5 @@
 <template>
-  <Layout :default="True" />
+  <Layout :fallback="True" />
 </template>
 
 <script lang="python">

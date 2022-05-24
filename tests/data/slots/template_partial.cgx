@@ -1,5 +1,5 @@
 <template>
-  <Layout :default="False">
+  <Layout :fallback="False">
     <template #header>
       <label text="header content" />
     </template>

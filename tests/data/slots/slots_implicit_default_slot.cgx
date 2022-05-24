@@ -2,17 +2,17 @@
   <widget>
     <header>
       <slot name="header">
-        <label v-if="props['default']" text="default header" />
+        <label v-if="props['default']" text="header fallback" />
       </slot>
     </header>
     <content>
       <slot>
-        <label v-if="props['default']" text="default content" />
+        <label v-if="props['default']" text="content fallback" />
       </slot>
     </content>
     <footer>
       <slot name="footer">
-        <label v-if="props['default']" text="default footer" />
+        <label v-if="props['default']" text="footer fallback" />
       </slot>
     </footer>
   </widget>
