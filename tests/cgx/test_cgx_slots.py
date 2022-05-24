@@ -4,7 +4,7 @@ import collagraph as cg
 def test_cgx_slots_named_default_content():
     from tests.data.slots.template_empty import Template
 
-    gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
     container = {"type": "root"}
     gui.render(cg.h(Template), container)
 
@@ -29,7 +29,7 @@ def test_cgx_slots_named_default_content():
 def test_cgx_slots_named():
     from tests.data.slots.template import Template
 
-    gui = cg.Collagraph(event_loop_type=cg.EventLoopType.SYNC)
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
     container = {"type": "root"}
     gui.render(cg.h(Template), container)
 
