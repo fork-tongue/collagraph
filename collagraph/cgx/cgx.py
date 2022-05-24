@@ -218,10 +218,7 @@ def call_render_slot(node, *, names=None, slots=None):
             ),
             # Otherwise, we render the default content
             orelse=ast.List(
-                elts=[
-                    call_create_element(child, names=names, slots=slots)
-                    for child in node.children
-                ],
+                elts=[call_create_element(node, names=names, slots=slots)],
                 ctx=ast.Load(),
             ),
         ),

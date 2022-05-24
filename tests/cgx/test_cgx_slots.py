@@ -45,6 +45,59 @@ def test_cgx_slots_named():
     assert content["type"] == "content"
     assert content["children"][0]["type"] == "label"
     assert content["children"][0]["attrs"]["text"] == "content"
+    assert content["children"][1]["attrs"]["text"] == "even more content"
+    assert len(content["children"]) == 2
+
+    assert footer["type"] == "footer"
+    assert footer["children"][0]["type"] == "label"
+    assert footer["children"][0]["attrs"]["text"] == "footer content"
+
+
+def test_cgx_slots_partial():
+    from tests.data.slots.template_partial import Template
+
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
+    container = {"type": "root"}
+    gui.render(cg.h(Template), container)
+
+    container = container["children"][0]
+    assert container["type"] == "widget"
+
+    header, content, footer = container["children"]
+
+    assert header["type"] == "header"
+    assert header["children"][0]["type"] == "label"
+    assert header["children"][0]["attrs"]["text"] == "header content"
+
+    assert content["type"] == "content"
+    assert "children" not in content
+
+    assert footer["type"] == "footer"
+    assert footer["children"][0]["type"] == "label"
+    assert footer["children"][0]["attrs"]["text"] == "footer content"
+
+
+def test_cgx_slots_implicit_default_slot():
+    from tests.data.slots.template_implicit_default_slot import Template
+
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
+    container = {"type": "root"}
+    gui.render(cg.h(Template), container)
+
+    container = container["children"][0]
+    assert container["type"] == "widget"
+
+    header, content, footer = container["children"]
+
+    assert header["type"] == "header"
+    assert header["children"][0]["type"] == "label"
+    assert header["children"][0]["attrs"]["text"] == "header content"
+
+    assert content["type"] == "content"
+    assert content["children"][0]["type"] == "label"
+    assert content["children"][0]["attrs"]["text"] == "content"
+    assert content["children"][1]["attrs"]["text"] == "even more content"
+    assert len(content["children"]) == 2
 
     assert footer["type"] == "footer"
     assert footer["children"][0]["type"] == "label"

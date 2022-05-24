@@ -210,8 +210,8 @@ class Collagraph:
         self.reconcile_children(fiber, children)
 
     def update_host_component(self, fiber: Fiber):
-        # Add dom node, but not for template tags
-        if not fiber.dom and fiber.type != "template":
+        # Add dom node, but not for template/slot tags (which are virtual tags)
+        if not fiber.dom and fiber.type != "template" and fiber.type != "slot":
             fiber.dom = self.create_dom(fiber)
 
         # Create new fibers
