@@ -1,4 +1,3 @@
-import inspect
 from itertools import zip_longest
 import logging
 from queue import SimpleQueue
@@ -218,11 +217,10 @@ class Collagraph:
         self.reconcile_children(fiber, children)
 
     def update_function_component(self, fiber: Fiber):
-        type_signature = inspect.signature(fiber.type)
-        if len(type_signature.parameters) == 1:
-            children = [fiber.type(fiber.props)]
-        else:
+        if isinstance(fiber.children, dict):
             children = [fiber.type(fiber.props, fiber.children)]
+        else:
+            children = [fiber.type(fiber.props)]
         self.reconcile_children(fiber, children)
 
     def update_host_component(self, fiber: Fiber):

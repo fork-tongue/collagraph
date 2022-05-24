@@ -11,12 +11,11 @@
 import collagraph as cg
 
 
-def Node(props, slots):
-    return cg.h(
-        "node",
-        {"name": props['name']},
-        *cg.render_slot('default', {}, slots)
-    )
+def Node(props, slots=None):
+    slot_content = ()
+    if slots and "default" in slots:
+        slot_content = cg.render_slot("default", {}, slots)
+    return cg.h("node", {"name": props["name"]}, *slot_content)
 
 
 class Tree(cg.Component):
