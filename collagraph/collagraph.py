@@ -20,6 +20,8 @@ from .types import (
 
 logger = logging.getLogger(__name__)
 
+VIRTUAL_NODES = {"template", "slot"}
+
 
 def create_element(type, props=None, *children) -> VNode:
     """Create an element description, based on type, props and (optionally) children"""
@@ -225,7 +227,7 @@ class Collagraph:
 
     def update_host_component(self, fiber: Fiber):
         # Add dom node, but not for template/slot tags (which are virtual tags)
-        if not fiber.dom and fiber.type != "template" and fiber.type != "slot":
+        if not fiber.dom and fiber.type not in VIRTUAL_NODES:
             fiber.dom = self.create_dom(fiber)
 
         # Create new fibers
