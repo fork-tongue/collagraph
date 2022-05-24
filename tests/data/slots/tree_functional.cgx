@@ -1,0 +1,24 @@
+<template>
+  <root>
+    <Node name="a">
+      <Node name="b" />
+    </Node>
+    <Node name="c" />
+  </root>
+</template>
+
+<script lang="python">
+import collagraph as cg
+
+
+def Node(props, slots):
+    return cg.h(
+        "node",
+        {"name": props['name']},
+        *cg.render_slot('default', {}, slots)
+    )
+
+
+class Tree(cg.Component):
+    pass
+</script>

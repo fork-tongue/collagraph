@@ -1,3 +1,4 @@
+import inspect
 from itertools import zip_longest
 import logging
 from queue import SimpleQueue
@@ -31,6 +32,15 @@ def create_element(type, props=None, *children) -> VNode:
         elif callable(children[0]):
             children = {"default": children[0]}
     return VNode(type, reactive(props or {}), children or tuple(), key)
+
+
+def render_slot(name, props, slots):
+    if name in slots:
+        result = slots[name](props)
+        if isinstance(result, VNode):
+            return [result]
+        return result
+    return ()
 
 
 class Collagraph:
@@ -206,7 +216,11 @@ class Collagraph:
         self.reconcile_children(fiber, children)
 
     def update_function_component(self, fiber: Fiber):
-        children = [fiber.type(fiber.props)]
+        type_signature = inspect.signature(fiber.type)
+        if len(type_signature.parameters) == 1:
+            children = [fiber.type(fiber.props)]
+        else:
+            children = [fiber.type(fiber.props, fiber.children)]
         self.reconcile_children(fiber, children)
 
     def update_host_component(self, fiber: Fiber):

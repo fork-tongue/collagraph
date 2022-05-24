@@ -1,12 +1,14 @@
 <template>
-  <Layout :default="True">
+  <Layout>
     <template #header>
       <label text="header content" />
     </template>
 
-    <!-- Implicit default slot -->
-    <label text="content" />
-    <label text="even more content" />
+    <!-- Implicitly named default slot -->
+    <template v-slot>
+      <label text="content" />
+      <label text="even more content" />
+    </template>
 
     <template #footer>
       <label text="footer content" />
