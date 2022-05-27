@@ -1,15 +1,14 @@
 <template>
-  <qmainwindow title="JSX-like syntax example">
-    <qwidget :layout="state['top_to_bottom']">
+  <qmainwindow window_title="JSX-like syntax example">
+    <qwidget :layout="top_to_bottom">
       <qlabel v-bind:text="props.get('title')" />
-      <qlabel v-if="state.get('content')" :text="state['content']" />
-      <qlabel v-else-if="state.get('other_content')" :text="state['other_content']" />
+      <qlabel v-if="state.get('content')" :text="content" />
+      <qlabel v-else-if="state.get('other_content')" :text="other_content" />
       <qlabel v-else text="Nothing to see here" />
-      <!-- <QLineEdit v-model="props.get('line')" /> -->
-      <qwidget :layout="state['left_to_right']">
+      <qwidget :layout="left_to_right">
         <qcheckbox v-on:state_changed="check_action" text="Click it" />
-        <qlabel v-if="not state['clicked']" text="You know you want it!" />
-        <qlabel v-if="state['clicked']" text="You did it!" />
+        <qlabel v-if="not clicked" text="You know you want it!" />
+        <qlabel v-else text="You did it!" />
       </qwidget>
       <qpushbutton text="Push me" @clicked="click_action" />
     </qwidget>
@@ -17,8 +16,6 @@
 </template>
 
 <script lang="python">
-from PySide6.QtWidgets import QBoxLayout
-
 from collagraph import Component
 
 
@@ -27,11 +24,11 @@ class Example(Component):
         super().__init__(props)
         self.state["top_to_bottom"] = {
             "type": "box",
-            "direction": QBoxLayout.Direction.TopToBottom,
+            "direction": "TopToBottom",
         }
         self.state["left_to_right"] = {
             "type": "box",
-            "direction": QBoxLayout.Direction.LeftToRight,
+            "direction": "LeftToRight",
         }
         self.state["clicked"] = False
         print("created")
