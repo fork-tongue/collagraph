@@ -43,7 +43,6 @@ def Counter(props):
         cg.h("button", {"text": "Bump", "on_clicked": bump}),
     )
 
-app = QtWidgets.QApplication()
 # Create a Collagraph instance with a PySide renderer 
 # and register with the Qt event loop
 gui = cg.Collagraph(
@@ -52,6 +51,7 @@ gui = cg.Collagraph(
 )
 # Render the function component into a container 
 # (in this case the app but can be another widget)
+app = QtWidgets.QApplication()
 gui.render(cg.h(Counter, state), app)
 app.exec()
 ```
