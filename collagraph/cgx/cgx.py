@@ -528,6 +528,12 @@ class CGXParser(HTMLParser):
         original_tag = complete_tag[index : index + len(tag)]
         node = Node(original_tag, dict(attrs), self.getpos())
 
+        # Cast attributes that have no value to boolean (True)
+        # so that they function like flags
+        for key, value in node.attrs.items():
+            if value is None:
+                node.attrs[key] = True
+
         # Add item as child to the last on the stack
         self.stack[-1].children.append(node)
         # Make the new node the last on the stack
