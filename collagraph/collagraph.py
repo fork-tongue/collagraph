@@ -3,6 +3,7 @@ import logging
 from queue import SimpleQueue
 import time
 from typing import Any, Callable, Dict, Iterable, List, Optional
+from weakref import ref
 
 from observ import reactive, scheduler, to_raw, watch
 
@@ -121,7 +122,7 @@ class Collagraph:
                     loop.call_soon(self.work_loop, deadline)
 
                 self._request = start
-            if self.event_loop_type is EventLoopType.QT:  # pragma: no cover
+            if self.event_loop_type is EventLoopType.QT:
                 from PySide6 import QtCore
 
                 self._qt_timer = QtCore.QTimer()
@@ -133,9 +134,12 @@ class Collagraph:
                 def start(deadline):
                     if not self._qt_first_run:
                         self._qt_timer.timeout.disconnect()
+                    else:
                         self._qt_first_run = False
+
+                    weak_self = ref(self)
                     self._qt_timer.timeout.connect(
-                        lambda: self.work_loop(deadline=deadline)
+                        lambda: weak_self() and weak_self().work_loop(deadline=deadline)
                     )
                     self._qt_timer.start()
 
