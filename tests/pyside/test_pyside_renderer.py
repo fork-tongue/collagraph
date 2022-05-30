@@ -1,3 +1,6 @@
+import gc
+from weakref import ref
+
 from observ import reactive
 import pytest
 
@@ -164,3 +167,22 @@ def test_pyside_event_listeners(qapp, qtbot):
     qtbot.mouseClick(button, QtCore.Qt.LeftButton)
     # The callback should have been removed at this point
     assert clicked == 1
+
+
+def test_cleanup_collagraph_instance(qapp):
+    element = h("widget")
+    gui = Collagraph(
+        renderer=PySideRenderer(autoshow=False),
+        event_loop_type=EventLoopType.QT,
+    )
+    gui.render(element, qapp)
+
+    # Create a weak ref to gui
+    gui_ref = ref(gui)
+    # Set the collagraph instance to None
+    gui = None
+    # Force garbage collection
+    gc.collect()
+
+    # Now we expect the weak ref to be empty
+    assert not gui_ref()
