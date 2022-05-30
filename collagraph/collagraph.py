@@ -3,6 +3,7 @@ import logging
 from queue import SimpleQueue
 import time
 from typing import Any, Callable, Dict, Iterable, List, Optional
+from weakref import ref
 
 from observ import reactive, scheduler, to_raw, watch
 
@@ -134,8 +135,10 @@ class Collagraph:
                     if not self._qt_first_run:
                         self._qt_timer.timeout.disconnect()
                         self._qt_first_run = False
+
+                    weak_self = ref(self)
                     self._qt_timer.timeout.connect(
-                        lambda: self.work_loop(deadline=deadline)
+                        lambda: weak_self() and weak_self().work_loop(deadline=deadline)
                     )
                     self._qt_timer.start()
 
