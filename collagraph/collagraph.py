@@ -122,7 +122,7 @@ class Collagraph:
                     loop.call_soon(self.work_loop, deadline)
 
                 self._request = start
-            if self.event_loop_type is EventLoopType.QT:  # pragma: no cover
+            if self.event_loop_type is EventLoopType.QT:
                 from PySide6 import QtCore
 
                 self._qt_timer = QtCore.QTimer()
@@ -134,6 +134,7 @@ class Collagraph:
                 def start(deadline):
                     if not self._qt_first_run:
                         self._qt_timer.timeout.disconnect()
+                    else:
                         self._qt_first_run = False
 
                     weak_self = ref(self)
