@@ -91,7 +91,6 @@ def test_reconcile_by_key():
         container = CustomElement()
         container.type = "root"
         container.children = []
-        # print(f"-- {name} --")
         state = reactive({"items": before})
         element = h(Items, state)
 
@@ -101,7 +100,7 @@ def test_reconcile_by_key():
 
         for idx, val in enumerate(before):
             item = items.children[idx]
-            assert item.content == val
+            assert item.content == val, name
 
         children_refs = [ref(x) for x in items.children]
 
@@ -109,12 +108,12 @@ def test_reconcile_by_key():
 
         for idx, val in enumerate(after):
             item = items.children[idx]
-            assert item.content == val
+            assert item.content == val, name
 
             try:
                 prev_idx = before.index(val)
-                assert item is children_refs[prev_idx]()
+                assert item is children_refs[prev_idx](), name
             except ValueError:
                 pass
 
-        assert len(after) == len(items.children)
+        assert len(after) == len(items.children), name

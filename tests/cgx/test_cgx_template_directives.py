@@ -72,8 +72,8 @@ def test_directive_if():
     assert node.type == "widget"
 
     assert len(node.children) == 1
-    node.children[0].type == "label"
-    node.children[0].props["text"] == "Foo"
+    assert node.children[0].type == "label"
+    assert node.children[0].props["text"] == "Foo"
 
     state["show"] = False
     node = component.render()
@@ -91,16 +91,16 @@ def test_directive_if_elaborate():
     assert node.type == "widget"
 
     assert len(node.children) == 2
-    node.children[0].type == "label"
-    node.children[0].props["text"] == "Foo"
-    node.children[1].props["text"] == "Bar"
+    assert node.children[0].type == "label"
+    assert node.children[0].props["text"] == "Foo"
+    assert node.children[1].props["text"] == "Bar"
 
     state["show"] = False
     node = component.render()
 
     assert len(node.children) == 1
 
-    node.children[0].props["text"] == "Bar"
+    assert node.children[0].props["text"] == "Bar"
 
 
 def test_directive_else():
@@ -113,15 +113,15 @@ def test_directive_else():
     assert node.type == "widget"
 
     assert len(node.children) == 1
-    node.children[0].type == "label"
-    node.children[0].props["text"] == "Foo"
+    assert node.children[0].type == "label"
+    assert node.children[0].props["text"] == "Foo"
 
     state["show"] = False
     node = component.render()
 
     assert len(node.children) == 1
-    node.children[0].type == "label"
-    node.children[0].props["text"] == "Bar"
+    assert node.children[0].type == "label"
+    assert node.children[0].props["text"] == "Bar"
 
 
 def test_directive_else_if():
@@ -134,29 +134,29 @@ def test_directive_else_if():
     assert node.type == "widget"
 
     assert len(node.children) == 1
-    node.children[0].type == "label"
-    node.children[0].props["text"] == "Foo"
+    assert node.children[0].type == "label"
+    assert node.children[0].props["text"] == "Foo"
 
     state["foo"] = False
     node = component.render()
 
     assert len(node.children) == 1
-    node.children[0].type == "label"
-    node.children[0].props["text"] == "Bar"
+    assert node.children[0].type == "label"
+    assert node.children[0].props["text"] == "Bar"
 
     state["bar"] = False
     node = component.render()
 
     assert len(node.children) == 1
-    node.children[0].type == "label"
-    node.children[0].props["text"] == "Baz"
+    assert node.children[0].type == "label"
+    assert node.children[0].props["text"] == "Baz"
 
     state["baz"] = False
     node = component.render()
 
     assert len(node.children) == 1
-    node.children[0].type == "label"
-    node.children[0].props["text"] == "Bas"
+    assert node.children[0].type == "label"
+    assert node.children[0].props["text"] == "Bas"
 
 
 def test_directive_for():
@@ -214,4 +214,5 @@ def test_directive_boolean_casting():
     assert len(node.children) == 1
 
     label = node.children[0]
-    label.props["disabled"] is True
+    assert "disabled" in label.props
+    assert label.props["disabled"] is True
