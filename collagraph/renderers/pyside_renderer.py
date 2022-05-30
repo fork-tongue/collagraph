@@ -207,6 +207,9 @@ class PySideRenderer(Renderer):
 
     def remove(self, el: Any, parent: Any):
         """Remove the element `el` from the children of the element `parent`."""
+        if isinstance(parent, QtWidgets.QApplication):
+            el.close()
+            return
         parent.remove(el)
 
     def set_attribute(self, el: Any, attr: str, value: Any):
