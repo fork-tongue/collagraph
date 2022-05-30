@@ -148,11 +148,7 @@ class PySideRenderer(Renderer):
         # are created. Otherwise we might experience a
         # hard segfault.
         if not hasattr(self, "_app"):
-            setattr(
-                self,
-                "_app",
-                QtCore.QCoreApplication.instance() or QtWidgets.QApplication(),
-            )
+            self._app = QtCore.QCoreApplication.instance() or QtWidgets.QApplication()
 
         # Create dynamic subclasses which implement `insert`, `set_attribute`
         # and `remove` methods.
@@ -207,6 +203,9 @@ class PySideRenderer(Renderer):
 
     def remove(self, el: Any, parent: Any):
         """Remove the element `el` from the children of the element `parent`."""
+        if isinstance(parent, QtWidgets.QApplication):
+            el.close()
+            return
         parent.remove(el)
 
     def set_attribute(self, el: Any, attr: str, value: Any):
@@ -228,7 +227,7 @@ class PySideRenderer(Renderer):
         if signal and hasattr(signal, "connect"):
             # Add a slots attribute to hold all the generated slots, keyed on event_type
             if not hasattr(el, "slots"):
-                setattr(el, "slots", defaultdict(set))
+                el.slots = defaultdict(set)
 
             # Create a slot with the given value
             # Note that the slot apparently does not need arguments to specify the type

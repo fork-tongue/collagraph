@@ -100,7 +100,7 @@ def set_attribute(self, attr, value):
                     call_method(method, val)
         return
     elif attr == "grid_index":
-        setattr(self, "grid_index", value)
+        self.grid_index = value
         if parent := self.parent():
             layout = parent.layout()
             layout.addWidget(self, *value)

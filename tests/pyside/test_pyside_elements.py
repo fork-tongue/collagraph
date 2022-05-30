@@ -157,7 +157,7 @@ def test_lists(qapp, qtbot, qtmodeltester):
                 props["items"].pop(0)
 
         children = []
-        for row, (item, check_state) in enumerate(props["items"]):
+        for row, (item, _) in enumerate(props["items"]):
             for column, text in enumerate(item):
                 children.append(
                     h("QStandardItem", {"text": text, "model_index": (row, column)})
