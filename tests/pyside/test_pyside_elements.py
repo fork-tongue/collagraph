@@ -276,14 +276,7 @@ def test_lists(qapp, qtbot, qtmodeltester):
     qtbot.waitUntil(check_model_does_not_contain_foo, timeout=500)
 
 
-def test_menu(qapp):
-    """
-    Currently, adding a QMenuBar will make the QMainWindow
-    instance impossible to destroy after the test.
-    This makes the created window leak into other tests
-    hence why this test is currently skipped.
-    """
-
+def test_menu(qapp, qtbot):
     def MenuExample(props):
         return h(
             "Window",
@@ -309,3 +302,14 @@ def test_menu(qapp):
     renderer = PySideRenderer(autoshow=False)
     gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
     gui.render(h(MenuExample, {}), qapp)
+
+    def check_file_menu():
+        menus = [
+            widget
+            for widget in qapp.topLevelWidgets()
+            if isinstance(widget, QtWidgets.QMenu)
+        ]
+        assert len(menus) == 1
+        assert menus[0].title() == "File"
+
+    qtbot.waitUntil(check_file_menu, timeout=500)
