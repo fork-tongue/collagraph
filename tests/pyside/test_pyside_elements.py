@@ -276,7 +276,6 @@ def test_lists(qapp, qtbot, qtmodeltester):
     qtbot.waitUntil(check_model_does_not_contain_foo, timeout=500)
 
 
-@pytest.mark.skip("QMenuBar prevents destruction of QMainWindow")
 def test_menu(qapp):
     """
     Currently, adding a QMenuBar will make the QMainWindow
