@@ -18,4 +18,7 @@ def qt_app(qapp, qtbot):
         widget.close()
         widget.deleteLater()
 
+    # Process events to make sure that widgets will be cleaned up
+    qapp.processEvents()
+
     qtbot.waitUntil(lambda: len(qapp.topLevelWidgets()) == 0, timeout=500)
