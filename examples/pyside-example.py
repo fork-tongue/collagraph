@@ -12,12 +12,14 @@ app = QtWidgets.QApplication()
 
 
 def PushButton(props):
-    props.setdefault("text", "Push me")
-    props.setdefault("on_clicked", None)
+    text = props.get("text", "Push me")
+    on_clicked = props.get("on_clicked")
+    enabled = on_clicked is not None
 
-    props["enabled"] = props["on_clicked"] is not None
-
-    return h("Button", {**props, "enabled": props["on_clicked"] is not None})
+    return h(
+        "Button",
+        {"text": text, "on_clicked": on_clicked, "enabled": enabled},
+    )
 
 
 if __name__ == "__main__":
