@@ -2,7 +2,7 @@ from observ import reactive
 import pytest
 
 try:
-    from PySide6 import QtCore, QtWidgets
+    from PySide6 import QtCore, QtGui, QtWidgets
 except ImportError:
     pytest.skip(
         "skip test for PySide6 renderer when not available", allow_module_level=True
@@ -304,12 +304,15 @@ def test_menu(qapp, qtbot):
     gui.render(h(MenuExample, {}), qapp)
 
     def check_file_menu():
-        menus = [
+        windows = [
             widget
             for widget in qapp.topLevelWidgets()
-            if isinstance(widget, QtWidgets.QMenu)
+            if isinstance(widget, QtWidgets.QMainWindow)
         ]
-        assert len(menus) == 1
-        assert menus[0].title() == "File"
+        assert len(windows) == 1
+        menus = windows[0].findChildren(QtWidgets.QMenu)
+        assert any([menu.title() == "File" for menu in menus])
+        actions = windows[0].findChildren(QtGui.QAction)
+        assert any([action.text() == "Open" for action in actions])
 
     qtbot.waitUntil(check_file_menu, timeout=500)

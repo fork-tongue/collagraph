@@ -8,11 +8,13 @@ def insert(self, el, anchor=None):
             self.insertMenu(anchor, el)
         else:
             self.addMenu(el)
+        el.setParent(self)
     elif isinstance(el, QAction):
         if anchor:
             self.insertAction(anchor, el)
         else:
             self.addAction(el)
+        el.setParent(self)
 
 
 def remove(self, el):

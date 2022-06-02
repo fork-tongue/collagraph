@@ -46,10 +46,9 @@ def LayoutExample(props):
             h(
                 "QMenu",
                 {"title": "File"},
-                h(
-                    "QAction",
-                    {"text": "Open"},
-                ),
+                h("QAction", {"text": "Open"}),
+                h("QAction", {"separator": True}),
+                h("QMenu", {"title": "Sub"}, h("QAction", {"text": "sub"})),
             ),
         ),
         h(
