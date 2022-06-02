@@ -89,8 +89,6 @@ def test_component_basic_lifecycle():
             return f"<SpecialCounter({self.props['name']}) {self.state['count']}>"
 
     def Counters(props):
-        props.setdefault("counters", [])
-
         return h(
             "counters", {}, *[h(SpecialCounter, prop) for prop in props["counters"]]
         )
