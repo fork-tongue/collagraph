@@ -266,7 +266,6 @@ def convert_node_to_args(node, *, names=None):
             )
             continue
 
-        # breakpoint()
         if key.startswith((DIRECTIVE_ON, "@")):
             split_char = "@" if key.startswith("@") else ":"
             _, key = key.split(split_char)
@@ -312,6 +311,9 @@ def convert_node_to_args(node, *, names=None):
 
         # Handle control flow directives
         if directive := child.control_flow():
+            if directive == "v-if" and control_flow:
+                children_args.append(create_control_flow_ast(control_flow, names=names))
+                control_flow = []
             control_flow.append((directive, child))
 
         # Gather all the non-template children within a component tag and
@@ -408,34 +410,36 @@ def create_control_flow_ast(control_flow, *, names):
     Create an AST of control flow nodes (if/else-if/else)
     """
     (if_directive, if_node), *if_else_statements = control_flow
-    else_statement = (
+    # First argument should be the directive 'v-else': we're only
+    # interested in the actual ast node
+    _, else_node = (
         if_else_statements.pop()
         if if_else_statements and if_else_statements[-1][0] == "v-else"
-        else None
+        else (None, None)
     )
 
     rewrite_name = RewriteName(skip=names)
 
+    test = ast.parse(if_node.attrs[if_directive], mode="eval")
     root_statement = ast.IfExp(
-        test=ast.parse(if_node.attrs[if_directive], mode="eval").body,
+        test=rewrite_name.visit(test).body,
         body=call_create_element(if_node, names=names),
         orelse=ast.Constant(value=None),
     )
-    rewrite_name.visit(root_statement.test)
     current_statement = root_statement
 
     for directive, node in if_else_statements:
+        test = ast.parse(node.attrs[directive], mode="eval")
         if_else_tree = ast.IfExp(
-            test=ast.parse(node.attrs[directive], mode="eval").body,
+            test=rewrite_name.visit(test).body,
             body=call_create_element(node, names=names),
             orelse=ast.Constant(value=None),
         )
-        rewrite_name.visit(if_else_tree.test)
         current_statement.orelse = if_else_tree
         current_statement = if_else_tree
 
-    if else_statement:
-        current_statement.orelse = call_create_element(else_statement[1], names=names)
+    if else_node:
+        current_statement.orelse = call_create_element(else_node, names=names)
 
     return root_statement
 
