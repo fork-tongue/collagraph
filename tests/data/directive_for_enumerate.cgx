@@ -1,6 +1,10 @@
 <template>
   <widget>
-    <label v-for="label in labels" :text="label" />
+    <label
+      v-for="idx, label in enumerate(labels)"
+      :key="idx"
+      :text="label"
+    />
   </widget>
 </template>
 

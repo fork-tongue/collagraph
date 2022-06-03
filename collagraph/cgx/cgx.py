@@ -298,7 +298,12 @@ def convert_node_to_args(node, *, names=None):
             # i, a and b, so we don't want to wrap those names with `_lookup()`
             name_collector = NameCollector()
             for generator in for_tree.generators:
-                name_collector.generic_visit(generator.target)
+                # Apparently, a node visitor does _not_ visit the root node...
+                # So instead, just add the name directly if the root is an ast.Name node
+                if isinstance(generator.target, ast.Name):
+                    name_collector.names.add(generator.target.id)
+                else:
+                    name_collector.generic_visit(generator.target)
 
             local_names = names.union(name_collector.names)
             RewriteName(skip=local_names).visit(for_tree)
