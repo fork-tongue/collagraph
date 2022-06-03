@@ -1,3 +1,5 @@
+from functools import partial
+
 from observ import reactive
 import pytest
 
@@ -316,3 +318,58 @@ def test_menu(qapp, qtbot):
         assert any([action.text() == "Open" for action in actions])
 
     qtbot.waitUntil(check_file_menu, timeout=500)
+
+
+def test_menu_extensively(qapp, qtbot):
+    from tests.data.menubar import MenuBarTest
+
+    state = reactive(
+        {
+            "show_menubar": True,
+            "show_menu": True,
+            "show_item": True,
+            "show_submenu": True,
+            "show_subitem": True,
+        }
+    )
+    renderer = PySideRenderer(autoshow=False)
+    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
+    gui.render(h(MenuBarTest, state), qapp)
+
+    def check(menubar, menu, item, submenu, subitem):
+        windows = [
+            widget
+            for widget in qapp.topLevelWidgets()
+            if isinstance(widget, QtWidgets.QMainWindow)
+        ]
+        assert len(windows) == 1
+        assert menubar is bool(windows[0].findChild(QtWidgets.QMenuBar, "menubar"))
+        assert menu is bool(windows[0].findChild(QtWidgets.QMenu, "menu"))
+        assert item is bool(windows[0].findChild(QtGui.QAction, "action"))
+        assert submenu is bool(windows[0].findChildren(QtWidgets.QMenu, "submenu"))
+        assert subitem is bool(windows[0].findChildren(QtGui.QAction, "subaction"))
+
+    check_items = partial(check, True, True, True, True, True)
+    qtbot.waitUntil(check_items, timeout=500)
+
+    state["show_subitem"] = False
+
+    check_items = partial(check, True, True, True, True, False)
+    qtbot.waitUntil(check_items, timeout=500)
+
+    state["show_submenu"] = False
+    state["show_subitem"] = True
+
+    check_items = partial(check, True, True, True, False, False)
+    qtbot.waitUntil(check_items, timeout=500)
+
+    state["show_menu"] = False
+
+    check_items = partial(check, True, False, False, False, False)
+    qtbot.waitUntil(check_items, timeout=500)
+
+    state["show_menu"] = True
+    state["show_menubar"] = False
+
+    check_items = partial(check, False, False, False, False, False)
+    qtbot.waitUntil(check_items, timeout=500)

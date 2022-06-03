@@ -73,6 +73,8 @@ REMOVE_MAPPING = sorted_on_class_hierarchy(
         QListView: listview.remove,
         QTableView: listview.remove,
         QTreeView: listview.remove,
+        QMenuBar: menubar.remove,
+        QMenu: menu.remove,
         QStandardItemModel: itemmodel.remove,
     }
 )
