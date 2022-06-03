@@ -346,8 +346,8 @@ def test_menu_extensively(qapp, qtbot):
         assert menubar is bool(windows[0].findChild(QtWidgets.QMenuBar, "menubar"))
         assert menu is bool(windows[0].findChild(QtWidgets.QMenu, "menu"))
         assert item is bool(windows[0].findChild(QtGui.QAction, "action"))
-        assert submenu is bool(windows[0].findChildren(QtWidgets.QMenu, "submenu"))
-        assert subitem is bool(windows[0].findChildren(QtGui.QAction, "subaction"))
+        assert submenu is bool(windows[0].findChild(QtWidgets.QMenu, "submenu"))
+        assert subitem is bool(windows[0].findChild(QtGui.QAction, "subaction"))
 
     check_items = partial(check, True, True, True, True, True)
     qtbot.waitUntil(check_items, timeout=500)
