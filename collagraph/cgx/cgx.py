@@ -550,3 +550,20 @@ class CGXParser(HTMLParser):
     def handle_data(self, data):
         if data.strip():
             self.stack[-1].data = data.strip()
+
+
+def _print_ast_tree_as_code(tree):  # pragma: no cover
+    """Handy function for debugging an ast tree"""
+    try:
+        import black
+    except ImportError:
+        return
+
+    try:
+        plain_result = ast.unparse(tree)
+        result = black.format_file_contents(
+            plain_result, fast=False, mode=black.mode.Mode()
+        )
+        print(result)  # noqa: T001
+    except TypeError:
+        pass
