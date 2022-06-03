@@ -4,12 +4,7 @@ from observ import reactive
 def test_resolve_names():
     from tests.data.resolve_names import Example
 
-    state = reactive(
-        {
-            "prop_val": "prop_value",
-            # ""
-        }
-    )
+    state = reactive({"prop_val": "prop_value"})
 
     example = Example(state)
     root = example.render()
@@ -27,7 +22,3 @@ def test_resolve_names():
     assert item.props["value"] == "state_value", item
     item = root.children[5]
     assert item.props["value"] == "value", item
-
-    # assert item.
-    # print(nodes)
-    # assert False
