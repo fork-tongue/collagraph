@@ -179,6 +179,71 @@ def test_directive_for():
             assert node.children[idx].props["text"] == label
 
 
+def test_directive_for_with_enumerate():
+    from tests.data.directive_for_enumerate import Labels
+
+    state = reactive({"labels": []})
+    component = Labels(state)
+    node = component.render()
+
+    assert node.type == "widget"
+
+    assert len(node.children) == 0
+
+    for labels in (["Foo"], ["Foo", "Bar"], []):
+        state["labels"] = labels
+        node = component.render()
+
+        assert len(node.children) == len(labels)
+        for idx, label in enumerate(labels):
+            assert node.children[idx].props["text"] == label
+
+
+def test_directive_for_elaborate():
+    from tests.data.directive_for_elaborate import Labels
+
+    state = reactive({"labels": [], "suffixes": []})
+    component = Labels(state)
+    node = component.render()
+
+    assert node.type == "widget"
+
+    assert len(node.children) == 0
+
+    for labels, suffixes in (
+        (["Foo"], ["x"]),
+        (["Foo", "Bar"], ["x", "y"]),
+        ([], []),
+        (["a", "b", "c", "d"], ["1", "2", "3", "4"]),
+    ):
+        state["labels"] = labels
+        state["suffixes"] = suffixes
+        node = component.render()
+
+        assert len(node.children) == len(labels)
+        for idx, (label, suffix) in enumerate(zip(labels, suffixes)):
+            assert node.children[idx].props["text"] == label
+            assert node.children[idx].props["suffix"] == suffix
+
+
+def test_directive_for_nested():
+    from tests.data.directive_for_nested import Labels
+
+    state = reactive({"rows": [["a", "b", "c"], ["d", "e"]]})
+    component = Labels(state)
+    node = component.render()
+
+    assert len(node.children) == 2
+    assert len(node.children[0].children) == 3
+    assert len(node.children[1].children) == 2
+
+    assert node.children[0].children[0].children[0].props["text"] == "0,0: a"
+    assert node.children[0].children[1].children[0].props["text"] == "1,0: b"
+    assert node.children[0].children[2].children[0].props["text"] == "2,0: c"
+    assert node.children[1].children[0].children[0].props["text"] == "0,1: d"
+    assert node.children[1].children[1].children[0].props["text"] == "1,1: e"
+
+
 def test_directive_on():
     from tests.data.directive_on import Buttons
 

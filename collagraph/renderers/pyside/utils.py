@@ -1,48 +1,29 @@
 from functools import lru_cache
 
 from PySide6 import QtCore, QtGui, QtWidgets
-from PySide6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
-    QDialogButtonBox,
-    QGroupBox,
-    QLabel,
-    QLineEdit,
-    QMainWindow,
-    QMenu,
-    QMenuBar,
-    QProgressBar,
-    QPushButton,
-    QRadioButton,
-    QSlider,
-    QSpinBox,
-    QStatusBar,
-    QTextEdit,
-    QTreeView,
-    QWidget,
-)
 
 
 # Pre-populated cache for types
 TYPE_MAPPING = {
-    "button": QPushButton,
-    "checkbox": QCheckBox,
-    "combobox": QComboBox,
-    "label": QLabel,
-    "lineedit": QLineEdit,
-    "menu": QMenu,
-    "menubar": QMenuBar,
-    "radiobutton": QRadioButton,
-    "dialogbuttonbox": QDialogButtonBox,
-    "groupbox": QGroupBox,
-    "progessbar": QProgressBar,
-    "slider": QSlider,
-    "spinbox": QSpinBox,
-    "statusbar": QStatusBar,
-    "textedit": QTextEdit,
-    "treeview": QTreeView,
-    "widget": QWidget,
-    "window": QMainWindow,
+    "button": QtWidgets.QPushButton,
+    "checkbox": QtWidgets.QCheckBox,
+    "combobox": QtWidgets.QComboBox,
+    "label": QtWidgets.QLabel,
+    "lineedit": QtWidgets.QLineEdit,
+    "menu": QtWidgets.QMenu,
+    "menubar": QtWidgets.QMenuBar,
+    "radiobutton": QtWidgets.QRadioButton,
+    "dialogbuttonbox": QtWidgets.QDialogButtonBox,
+    "groupbox": QtWidgets.QGroupBox,
+    "progessbar": QtWidgets.QProgressBar,
+    "slider": QtWidgets.QSlider,
+    "spinbox": QtWidgets.QSpinBox,
+    "statusbar": QtWidgets.QStatusBar,
+    "textedit": QtWidgets.QTextEdit,
+    "treeview": QtWidgets.QTreeView,
+    "widget": QtWidgets.QWidget,
+    "window": QtWidgets.QMainWindow,
+    "action": QtGui.QAction,
 }
 
 # Default arguments for types that need

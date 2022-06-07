@@ -266,7 +266,6 @@ def convert_node_to_args(node, *, names=None):
             )
             continue
 
-        # breakpoint()
         if key.startswith((DIRECTIVE_ON, "@")):
             split_char = "@" if key.startswith("@") else ":"
             _, key = key.split(split_char)
@@ -299,7 +298,12 @@ def convert_node_to_args(node, *, names=None):
             # i, a and b, so we don't want to wrap those names with `_lookup()`
             name_collector = NameCollector()
             for generator in for_tree.generators:
-                name_collector.generic_visit(generator.target)
+                # Apparently, a node visitor does _not_ visit the root node...
+                # So instead, just add the name directly if the root is an ast.Name node
+                if isinstance(generator.target, ast.Name):
+                    name_collector.names.add(generator.target.id)
+                else:
+                    name_collector.generic_visit(generator.target)
 
             local_names = names.union(name_collector.names)
             RewriteName(skip=local_names).visit(for_tree)
@@ -312,6 +316,9 @@ def convert_node_to_args(node, *, names=None):
 
         # Handle control flow directives
         if directive := child.control_flow():
+            if directive == "v-if" and control_flow:
+                children_args.append(create_control_flow_ast(control_flow, names=names))
+                control_flow = []
             control_flow.append((directive, child))
 
         # Gather all the non-template children within a component tag and
@@ -408,34 +415,36 @@ def create_control_flow_ast(control_flow, *, names):
     Create an AST of control flow nodes (if/else-if/else)
     """
     (if_directive, if_node), *if_else_statements = control_flow
-    else_statement = (
+    # First argument should be the directive 'v-else': we're only
+    # interested in the actual ast node
+    _, else_node = (
         if_else_statements.pop()
         if if_else_statements and if_else_statements[-1][0] == "v-else"
-        else None
+        else (None, None)
     )
 
     rewrite_name = RewriteName(skip=names)
 
+    test = ast.parse(if_node.attrs[if_directive], mode="eval")
     root_statement = ast.IfExp(
-        test=ast.parse(if_node.attrs[if_directive], mode="eval").body,
+        test=rewrite_name.visit(test).body,
         body=call_create_element(if_node, names=names),
         orelse=ast.Constant(value=None),
     )
-    rewrite_name.visit(root_statement.test)
     current_statement = root_statement
 
     for directive, node in if_else_statements:
+        test = ast.parse(node.attrs[directive], mode="eval")
         if_else_tree = ast.IfExp(
-            test=ast.parse(node.attrs[directive], mode="eval").body,
+            test=rewrite_name.visit(test).body,
             body=call_create_element(node, names=names),
             orelse=ast.Constant(value=None),
         )
-        rewrite_name.visit(if_else_tree.test)
         current_statement.orelse = if_else_tree
         current_statement = if_else_tree
 
-    if else_statement:
-        current_statement.orelse = call_create_element(else_statement[1], names=names)
+    if else_node:
+        current_statement.orelse = call_create_element(else_node, names=names)
 
     return root_statement
 
@@ -546,3 +555,20 @@ class CGXParser(HTMLParser):
     def handle_data(self, data):
         if data.strip():
             self.stack[-1].data = data.strip()
+
+
+def _print_ast_tree_as_code(tree):  # pragma: no cover
+    """Handy function for debugging an ast tree"""
+    try:
+        import black
+    except ImportError:
+        return
+
+    try:
+        plain_result = ast.unparse(tree)
+        result = black.format_file_contents(
+            plain_result, fast=False, mode=black.mode.Mode()
+        )
+        print(result)  # noqa: T201
+    except TypeError:
+        pass

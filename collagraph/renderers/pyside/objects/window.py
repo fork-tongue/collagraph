@@ -14,6 +14,7 @@ def insert(self, el, anchor=None):
         self.addToolBar(el)
     elif isinstance(el, QMenuBar):
         self.setMenuBar(el)
+        el.setParent(self)
     else:
         # Let's assume any other given widget is just the
         # central widget of the QMainWindow

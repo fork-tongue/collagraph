@@ -13,6 +13,7 @@ def insert(self, el, anchor=None):
             self.insertAction(anchor, el)
         else:
             self.addAction(el)
+    el.setParent(self)
 
 
 def remove(self, el):
@@ -22,3 +23,4 @@ def remove(self, el):
         el.clear()
         menu_action = el.menuAction()
         self.removeAction(menu_action)
+    el.setParent(None)
