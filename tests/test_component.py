@@ -89,8 +89,6 @@ def test_component_basic_lifecycle():
             return f"<SpecialCounter({self.props['name']}) {self.state['count']}>"
 
     def Counters(props):
-        props.setdefault("counters", [])
-
         return h(
             "counters", {}, *[h(SpecialCounter, prop) for prop in props["counters"]]
         )
@@ -207,7 +205,12 @@ def test_component_props_deep_update():
             Counter.updates += 1
 
         def render(self):
-            return h("Counter", {**self.props})
+            # Note that the array is unpacked with a star expression
+            # into a new list, in order to make sure that any change
+            # to the array will be picked up. Because by default, the
+            # attributes are not deep watched but shallow. Unpacking
+            # explicitely adds dependencies on the unpacked values.
+            return h("Counter", {"prop": [*self.props["prop"]]})
 
     state = reactive({"prop": [0, 1]})
 
@@ -223,6 +226,40 @@ def test_component_props_deep_update():
 
     assert container["children"][0]["attrs"]["prop"] == [0, 1, 2]
     assert Counter.updates == 1
+
+
+def test_component_props_deep_update_without_unpack():
+    class Counter(Component):
+        updates = 0
+
+        def updated(self):
+            Counter.updates += 1
+
+        def render(self):
+            return h("Counter", self.props)
+
+    state = reactive({"prop": [0, 1]})
+
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    container = {"type": "root"}
+    element = h(Counter, state)
+    gui.render(element, container)
+
+    assert Counter.updates == 0
+    # Note that the DictRenderer sets the original value
+    assert container["children"][0]["attrs"]["prop"] == [0, 1]
+    assert container["children"][0]["attrs"]["prop"] is state["prop"]
+
+    # So here we are appending an extra item, but this change is not detected
+    # by Collagraph, because it watches the props shallow, not deep
+    state["prop"].append(2)
+
+    assert Counter.updates == 0
+    # But because the value is passed as reference, we see can still see the
+    # added element. If the DictRenderer would have made a copy, this value
+    # would not have been the same, so this behaviour is highly dependent
+    # on the type of renderer being used.
+    assert container["children"][0]["attrs"]["prop"] == [0, 1, 2]
 
 
 def test_component_element():

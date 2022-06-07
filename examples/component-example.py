@@ -10,11 +10,13 @@ class Button(cg.Component):
     materials = {
         "default": gfx.MeshPhongMaterial(color=[1.0, 0.5, 0.0]),
         "pressed": gfx.MeshPhongMaterial(color=[0.0, 0.5, 0.0]),
+        "hovered": gfx.MeshPhongMaterial(color=[1.0, 0.2, 0.0]),
     }
 
     def __init__(self, props):
         super().__init__(props)
         self.state["pressed"] = False
+        self.state["hovered"] = False
         self.state["scale"] = self.props.get("scale", [0.85] * 3)
 
     def pressed(self, event):
@@ -24,11 +26,18 @@ class Button(cg.Component):
         self.state["pressed"] = True
         call_later(2, release)
 
+    def hover(self, hover):
+        self.state["hovered"] = hover
+
     def render(self):
         material = (
             Button.materials["pressed"]
             if self.state["pressed"]
-            else Button.materials["default"]
+            else (
+                Button.materials["hovered"]
+                if self.state["hovered"]
+                else Button.materials["default"]
+            )
         )
         return h(
             "Mesh",
@@ -38,6 +47,8 @@ class Button(cg.Component):
                 "geometry": Button.geometry,
                 "material": material,
                 "on_click": self.pressed,
+                "on_pointer_enter": lambda ev: self.hover(True),
+                "on_pointer_leave": lambda ev: self.hover(False),
             },
         )
 

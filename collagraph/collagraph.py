@@ -5,7 +5,8 @@ import time
 from typing import Any, Callable, Dict, Iterable, List, Optional
 from weakref import ref
 
-from observ import reactive, scheduler, to_raw, watch
+from observ import reactive, scheduler, to_raw
+from observ.watcher import Watcher
 
 from .compare import equivalent_functions
 from .renderers import Renderer
@@ -24,9 +25,31 @@ logger = logging.getLogger(__name__)
 VIRTUAL_NODE_TYPES = {"template", "slot"}
 
 
+class NotifyChangeWatcher(Watcher):
+    """
+    Custom watcher that simply calls callback function without evaluating
+    the new value of the watched expression.
+    This makes it possible to just signal to Collagraph that a dependency
+    has changed and then Collagraph can decide when to actually evaluate
+    the new value.
+    """
+
+    def update(self):
+        """On update, simply run the callback."""
+        self.callback()
+
+
+def watch(fn, cb, lazy=False, deep=False, **kwargs):
+    """Create custom watcher for the given expression: fn.
+
+    Defaults lazy to False, so that value is evaluated immediately. And deep
+    defaults to True for convenience."""
+    return NotifyChangeWatcher(fn, lazy=lazy, deep=deep, callback=cb)
+
+
 def create_element(type, props=None, *children) -> VNode:
     """Create an element description, based on type, props and (optionally) children"""
-    key = props.pop("key") if props and "key" in props else None
+    key = props.get("key", None) if props is not None else None
     if len(children) == 1:
         # If children is 1 dictionary, then that is the slots definition
         if isinstance(children[0], dict):
@@ -103,8 +126,6 @@ class Collagraph:
             deadline: targetted deadline for until when work can be done. If
                 no deadline is given, then it will be set to 16ms from now.
         """
-        logger.debug("Request work")
-
         # current in ns
         if not deadline:
             deadline = time.perf_counter_ns() + 16 * 1000000
@@ -204,34 +225,53 @@ class Collagraph:
 
         # Attach the component instance to the fiber
         fiber.component = component
-        fiber.component_watcher = watch(
-            lambda: fiber.component.state,
-            lambda: self.state_updated(fiber),
-            deep=True,
-            sync=self.event_loop_type is EventLoopType.SYNC,
-        )
-
-        if fiber.alternate:
-            fiber.alternate.component = None
-            fiber.alternate.component_watcher = None
 
         component._slots = fiber.children if isinstance(fiber.children, dict) else {}
 
-        # List of VNodes
-        children = [component.render()]
-        self.reconcile_children(fiber, children)
+        if fiber.alternate:
+            fiber.alternate.component = None
+            fiber.watcher = fiber.alternate.watcher
+            fiber.alternate.watcher = None
+
+        if fiber.watcher:
+            # Re-evaluate the watcher to get the new value
+            fiber.watcher.evaluate()
+        else:
+            fiber.watcher = watch(
+                component.render,
+                lambda: self.state_updated(fiber),
+            )
+
+        self.reconcile_children(fiber, [fiber.watcher.value])
 
     def update_function_component(self, fiber: Fiber):
-        if isinstance(fiber.children, dict):
-            children = [fiber.type(fiber.props, fiber.children)]
-        else:
-            children = [fiber.type(fiber.props)]
-        self.reconcile_children(fiber, children)
+        if fiber.alternate:
+            fiber.alternate.watcher = None
+
+        def render():
+            if isinstance(fiber.children, dict):
+                return [fiber.type(fiber.props, fiber.children)]
+            return [fiber.type(fiber.props)]
+
+        fiber.watcher = watch(
+            render,
+            lambda: self.state_updated(fiber),
+        )
+
+        self.reconcile_children(fiber, fiber.watcher.value)
 
     def update_host_component(self, fiber: Fiber):
         # Add dom node, but not for template/slot tags (which are virtual tags)
         if not fiber.dom and fiber.type not in VIRTUAL_NODE_TYPES:
             fiber.dom = self.create_dom(fiber)
+
+        if fiber.alternate:
+            fiber.alternate.watcher = None
+
+        fiber.watcher = watch(
+            lambda: fiber.props.keys(),
+            lambda: self.state_updated(fiber),
+        )
 
         # Create new fibers
         self.reconcile_children(fiber, fiber.children)
@@ -242,11 +282,6 @@ class Collagraph:
         return dom
 
     def state_updated(self, fiber: Fiber):
-        logger.debug(f"state update: {fiber.type}")
-        # Clear the watcher that triggered the update
-        fiber.watcher = None
-        fiber.component_watcher = None
-
         # Request an update to start building/update the wip fiber tree
         self._wip_root = (
             self._current_root and self._current_root.alternate
@@ -271,20 +306,6 @@ class Collagraph:
             while sibling:
                 old_fibers.append(sibling)
                 sibling = sibling.sibling
-
-        # Create watcher for the wip_fiber if not already there
-        if wip_fiber.props and not wip_fiber.watcher:
-            wip_fiber.watcher = watch(
-                lambda: wip_fiber.props,
-                lambda: self.state_updated(wip_fiber),
-                deep=True,
-                sync=self.event_loop_type is EventLoopType.SYNC,
-            )
-
-        # Clear the watcher from the old fiber
-        if old_fiber and old_fiber.props:
-            old_fiber.watcher = None
-            old_fiber.component_watcher = None
 
         def matcher(x, y):
             return x.key == y.key
@@ -311,10 +332,6 @@ class Collagraph:
         # In here, all the 'new' elements are compared to the old/current fiber/state
         prev_sibling = None
         for element, old_fiber in zip_longest(elements, ordered_old_fibers + removals):
-            # Clear the watcher from the old fiber
-            if old_fiber and old_fiber.props:
-                old_fiber.watcher = None
-
             new_fiber = None
             same_type = old_fiber and element and element.type == old_fiber.type
 

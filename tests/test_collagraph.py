@@ -1,7 +1,7 @@
 from observ import reactive
 import pytest
 
-from collagraph import Collagraph, create_element as h, EventLoopType
+from collagraph import Collagraph, Component, create_element as h, EventLoopType
 from collagraph.renderers import DictRenderer
 
 
@@ -55,14 +55,10 @@ def test_reactive_element():
 
 def test_reactive_element_with_events(process_events):
     def Counter(props):
-        props.setdefault("count", 0)
-
         def bump():
             props["count"] += 1
 
-        return h(
-            "counter", props, h("count", {"count": props["count"], "on_bump": bump})
-        )
+        return h("counter", {}, h("count", {"count": props["count"], "on_bump": bump}))
 
     gui = Collagraph(renderer=DictRenderer(), event_loop_type=EventLoopType.DEFAULT)
     container = {"type": "root"}
@@ -89,18 +85,16 @@ def test_reactive_element_with_events(process_events):
 
 def test_delete_item_with_children_and_siblings(process_events):
     def Item(props):
-        props.setdefault("parts", [])
         return h(
             "item",
-            props,
+            None,
             *[h("part", {"title": part}) for part in props["parts"]],
         )
 
     def Collection(props):
-        props.setdefault("items", [])
         return h(
             "collection",
-            props,
+            None,
             *[h(Item, part) for part in props["items"]],
         )
 
@@ -213,10 +207,7 @@ def test_update_element_with_event(process_events):
         def bump():
             props["count"] += 1
 
-        props.setdefault("count", 0)
-        props.setdefault("on_bump", bump)
-
-        return h("counter", props)
+        return h("counter", {**props, "on_bump": bump})
 
     gui = Collagraph(DictRenderer())
     container = {"type": "root"}
@@ -263,15 +254,13 @@ def test_add_remove_event_handlers(process_events):
     def Counter(props):
         def reset():
             props["count"] = 0
-            # Remove reset handler
-            del props["on_reset"]
 
-        props.setdefault("count", 0)
+        counter_props = {"count": props["count"]}
         if props["count"] > 0:
             # Add reset handler
-            props["on_reset"] = reset
+            counter_props["on_reset"] = reset
 
-        return h("counter", props)
+        return h("counter", counter_props)
 
     gui = Collagraph(DictRenderer())
     container = {"type": "root"}
@@ -308,9 +297,12 @@ def test_change_event_handler(process_events):
             props["value"] = "Tock"
             props["on_toggle"] = tick
 
-        props.setdefault("on_toggle", tock)
-        props.setdefault("value", "...")
-        return h("counter", props)
+        own_props = {
+            "on_toggle": tock,
+            "value": "...",
+            **props,
+        }
+        return h("counter", own_props)
 
     gui = Collagraph(DictRenderer())
     container = {"type": "root"}
@@ -339,3 +331,60 @@ def test_change_event_handler(process_events):
 
     assert container["children"][0]["attrs"]["value"] == "Tick"
     assert len(container["children"][0]["handlers"]["toggle"]) == 1
+
+
+def test_only_render_on_relevant_change():
+    rendered = 0
+
+    def Foo(props):
+        nonlocal rendered
+        rendered += 1
+        return h("foo", {"foo": props["foo"]})
+
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    container = {"type": "root"}
+    state = reactive({"foo": "foo", "bar": "bar"})
+    gui.render(h(Foo, state), container)
+
+    assert rendered == 1
+
+    state["foo"] = "foe"
+
+    assert rendered == 2
+
+    state["bar"] = "baz"
+
+    assert rendered == 2
+
+    state["foo"] = "foo"
+
+    assert rendered == 3
+
+
+def test_only_render_on_relevant_change_component():
+    rendered = 0
+
+    class Foo(Component):
+        def render(self):
+            nonlocal rendered
+            rendered += 1
+            return h("foo", {"foo": self.props["foo"]})
+
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    container = {"type": "root"}
+    state = reactive({"foo": "foo", "bar": "bar"})
+    gui.render(h(Foo, state), container)
+
+    assert rendered == 1
+
+    state["foo"] = "foe"
+
+    assert rendered == 2
+
+    state["bar"] = "baz"
+
+    assert rendered == 2
+
+    state["foo"] = "foo"
+
+    assert rendered == 3
