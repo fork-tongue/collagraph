@@ -232,6 +232,8 @@ class Collagraph:
             fiber.alternate.component = None
             fiber.watcher = fiber.alternate.watcher
             fiber.alternate.watcher = None
+
+        if fiber.watcher:
             # Re-evaluate the watcher to get the new value
             fiber.watcher.evaluate()
         else:
