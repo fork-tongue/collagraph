@@ -43,7 +43,7 @@ def test_widget_as_window(qapp, qtbot):
 
 def test_widget_switch_layouts(qapp, qtbot):
     def SwitchLayouts(props):
-        return cg.h("widget", {"layout": props["layout"]})
+        return cg.h("widget", {"layout": {**props["layout"]}})
 
     state = reactive({"layout": {"type": "box"}})
 

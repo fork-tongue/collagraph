@@ -52,7 +52,6 @@ class Fiber:
     type: Union[str, Callable] = None
     watcher: Any = None
     component: Any = None
-    component_watcher: Any = None
     mounted: bool = False  # Flag for components whether it was mounted
     updated: bool = False  # Flag for components whether any DOM was updated
     unmounted: bool = False  # Flag for components whether it was unmounted
