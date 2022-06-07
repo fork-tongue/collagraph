@@ -569,6 +569,6 @@ def _print_ast_tree_as_code(tree):  # pragma: no cover
         result = black.format_file_contents(
             plain_result, fast=False, mode=black.mode.Mode()
         )
-        print(result)  # noqa: T001
+        print(result)  # noqa: T201
     except TypeError:
         pass
