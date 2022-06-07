@@ -210,7 +210,12 @@ def test_directive_for_elaborate():
 
     assert len(node.children) == 0
 
-    for labels, suffixes in ((["Foo"], ["x"]), (["Foo", "Bar"], ["x", "y"]), ([], [])):
+    for labels, suffixes in (
+        (["Foo"], ["x"]),
+        (["Foo", "Bar"], ["x", "y"]),
+        ([], []),
+        (["a", "b", "c", "d"], ["1", "2", "3", "4"]),
+    ):
         state["labels"] = labels
         state["suffixes"] = suffixes
         node = component.render()
@@ -219,6 +224,24 @@ def test_directive_for_elaborate():
         for idx, (label, suffix) in enumerate(zip(labels, suffixes)):
             assert node.children[idx].props["text"] == label
             assert node.children[idx].props["suffix"] == suffix
+
+
+def test_directive_for_nested():
+    from tests.data.directive_for_nested import Labels
+
+    state = reactive({"rows": [["a", "b", "c"], ["d", "e"]]})
+    component = Labels(state)
+    node = component.render()
+
+    assert len(node.children) == 2
+    assert len(node.children[0].children) == 3
+    assert len(node.children[1].children) == 2
+
+    assert node.children[0].children[0].children[0].props["text"] == "0,0: a"
+    assert node.children[0].children[1].children[0].props["text"] == "1,0: b"
+    assert node.children[0].children[2].children[0].props["text"] == "2,0: c"
+    assert node.children[1].children[0].children[0].props["text"] == "0,1: d"
+    assert node.children[1].children[1].children[0].props["text"] == "1,1: e"
 
 
 def test_directive_on():
