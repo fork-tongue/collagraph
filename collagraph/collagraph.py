@@ -39,7 +39,7 @@ class NotifyChangeWatcher(Watcher):
         self.callback()
 
 
-def watch(fn, cb, lazy=False, deep=True, **kwargs):
+def watch(fn, cb, lazy=False, deep=False, **kwargs):
     """Create custom watcher for the given expression: fn.
 
     Defaults lazy to False, so that value is evaluated immediately. And deep
@@ -269,7 +269,7 @@ class Collagraph:
             fiber.alternate.watcher = None
 
         fiber.watcher = watch(
-            lambda: fiber.props,
+            lambda: fiber.props.keys(),
             lambda: self.state_updated(fiber),
         )
 
