@@ -1,7 +1,7 @@
 from observ import reactive
 import pytest
 
-from collagraph import Collagraph, create_element as h, EventLoopType
+from collagraph import Collagraph, Component, create_element as h, EventLoopType
 from collagraph.renderers import DictRenderer
 
 
@@ -333,8 +333,6 @@ def test_change_event_handler(process_events):
     assert len(container["children"][0]["handlers"]["toggle"]) == 1
 
 
-# TODO: also add test like this for components: check that the render function
-# is not called too many times!
 def test_only_render_on_relevant_change():
     rendered = 0
 
@@ -342,6 +340,35 @@ def test_only_render_on_relevant_change():
         nonlocal rendered
         rendered += 1
         return h("foo", {"foo": props["foo"]})
+
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    container = {"type": "root"}
+    state = reactive({"foo": "foo", "bar": "bar"})
+    gui.render(h(Foo, state), container)
+
+    assert rendered == 1
+
+    state["foo"] = "foe"
+
+    assert rendered == 2
+
+    state["bar"] = "baz"
+
+    assert rendered == 2
+
+    state["foo"] = "foo"
+
+    assert rendered == 3
+
+
+def test_only_render_on_relevant_change_component():
+    rendered = 0
+
+    class Foo(Component):
+        def render(self):
+            nonlocal rendered
+            rendered += 1
+            return h("foo", {"foo": self.props["foo"]})
 
     gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
