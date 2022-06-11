@@ -87,18 +87,40 @@ def load(path):
         </script>
 
     """
+    # Construct the AST tree
+    tree, name = construct_ast(path)
+
+    # Compile the tree into a code object (module)
+    code = compile(tree, filename=str(path), mode="exec")
+    # Execute the code as module and pass a dictionary that will capture
+    # the global and local scope of the module
+    module_namespace = {}
+    exec(code, module_namespace)
+
+    # Check that the class definition is an actual subclass of Component
+    component_class = module_namespace[name]
+    if not issubclass(component_class, Component):
+        raise ValueError(
+            f"The last class defined in {path} is not a subclass of "
+            f"Component: {component_class}"
+        )
+    return component_class, module_namespace
+
+
+def construct_ast(path):
+    """
+    Returns a tuple of the constructed AST tree and name of (enhanced) component class.
+
+    Construct an AST from the CGX file by first creating an AST from the script tag,
+    and then compile the contents of the template tag and insert that into the component
+    class definition as `render` function.
+    """
     # Parse the file component into a tree of Node instances
     parser = CGXParser()
     parser.feed(path.read_text())
 
-    # Read the data from script block
-    script_node = parser.root.child_with_tag("script")
-    script = script_node.data
-    line, _ = script_node.location
-
-    # Create an AST from the script
-    script_tree = ast.parse(script, filename=str(path), mode="exec")
-    ast.increment_lineno(script_tree, n=line)
+    # Get the AST from the script tag
+    script_tree = get_script_ast(parser, path)
 
     # Inject 'create_element' into imports so that the (generated) render
     # method can call this function
@@ -110,9 +132,9 @@ def load(path):
         ),
     )
 
-    # Inject a method into the script for looking up variables that are mentioned
-    # in the template. This provides some syntactic sugar so that people can leave
-    # out `self`.
+    # Inject a method (`_lookup`) into the script for looking up variables that
+    # are mentioned in the template. This provides some syntactic sugar so that
+    # people can leave out `self`, `self.state` and `self.props`.
     script_tree.body.append(AST_LOOKUP_FUNCTION.body[0])
 
     # Find the last ClassDef and assume that it is the
@@ -136,22 +158,23 @@ def load(path):
     # Because we modified the AST significantly we need to call an AST
     # method to fix any `lineno` and `col_offset` attributes of the nodes
     ast.fix_missing_locations(script_tree)
+    return script_tree, component_def.name
 
-    # Compile the tree into a code object (module)
-    code = compile(script_tree, filename=str(path), mode="exec")
-    # Execute the code as module and pass a dictionary that will capture
-    # the global and local scope of the module
-    module_namespace = {}
-    exec(code, module_namespace)
 
-    # Check that the class definition is an actual subclass of Component
-    component_class = module_namespace[component_def.name]
-    if not issubclass(component_class, Component):
-        raise ValueError(
-            f"The last class defined in {path} is not a subclass of "
-            f"Component: {component_class}"
-        )
-    return component_class, module_namespace
+def get_script_ast(parser, path):
+    """
+    Returns the AST created from the script tag in the CGX file.
+    """
+    # Read the data from script block
+    script_node = parser.root.child_with_tag("script")
+    script = script_node.data
+    line, _ = script_node.location
+
+    # Create an AST from the script
+    script_tree = ast.parse(script, filename=str(path), mode="exec")
+    # Make sure that the lineno's match up with the lines in the CGX file
+    ast.increment_lineno(script_tree, n=line)
+    return script_tree
 
 
 def create_ast_render_function(node):
@@ -498,6 +521,7 @@ class Node:
         self.tag = tag
         self.attrs = attrs or {}
         self.location = location
+        self.end = None
         self.data = None
         self.children = []
 
@@ -550,8 +574,11 @@ class CGXParser(HTMLParser):
         self.stack.append(node)
 
     def handle_endtag(self, tag):
+        # TODO: pop it till popping the same tag in order to
+        # work around unclosed tags?
         # Pop the stack
-        self.stack.pop()
+        node = self.stack.pop()
+        node.end = self.getpos()
 
     def handle_data(self, data):
         if data.strip():
