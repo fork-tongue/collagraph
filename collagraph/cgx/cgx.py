@@ -106,6 +106,7 @@ def load(path):
         ast.ImportFrom(
             module="collagraph",
             names=[ast.alias(name="create_element", asname="_create_element")],
+            level=0,
         ),
     )
 
