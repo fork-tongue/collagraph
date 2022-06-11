@@ -122,6 +122,11 @@ def construct_ast(path):
     # Get the AST from the script tag
     script_tree = get_script_ast(parser, path)
 
+    # Find a list of imported names (or aliases, if any)
+    # Those names don't have to be wrapped by `_lookup`
+    imported_names = ImportsCollector()
+    imported_names.visit(script_tree)
+
     # Inject 'create_element' into imports so that the (generated) render
     # method can call this function
     script_tree.body.append(
@@ -152,7 +157,9 @@ def construct_ast(path):
             "There should be precisely one root element defined in "
             f"the template. Found {len(template_node.children)}."
         )
-    render_tree = create_ast_render_function(template_node.children[0])
+    render_tree = create_ast_render_function(
+        template_node.children[0], names=imported_names.names
+    )
     component_def.body.append(render_tree)
 
     # Because we modified the AST significantly we need to call an AST
@@ -177,7 +184,7 @@ def get_script_ast(parser, path):
     return script_tree
 
 
-def create_ast_render_function(node):
+def create_ast_render_function(node, names):
     """
     Create render function as AST.
     """
@@ -190,7 +197,7 @@ def create_ast_render_function(node):
             kw_defaults=[],
             defaults=[],
         ),
-        body=[ast.Return(value=call_create_element(node))],
+        body=[ast.Return(value=call_create_element(node, names=names))],
         decorator_list=[],
     )
 
@@ -512,6 +519,19 @@ class RewriteName(ast.NodeTransformer):
             ],
             keywords=[],
         )
+
+
+class ImportsCollector(ast.NodeVisitor):
+    def __init__(self):
+        self.names = set()
+
+    def visit_ImportFrom(self, node):
+        for alias in node.names:
+            self.names.add(alias.asname or alias.name)
+
+    def visit_Import(self, node):
+        for alias in node.names:
+            self.names.add(alias.asname or alias.name)
 
 
 class Node:
