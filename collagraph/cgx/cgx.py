@@ -136,6 +136,13 @@ def construct_ast(path):
             level=0,
         ),
     )
+    script_tree.body.append(
+        ast.ImportFrom(
+            module="warnings",
+            names=[ast.alias(name="warn", asname="_warn")],
+            level=0,
+        ),
+    )
 
     # Inject a method (`_lookup`) into the script for looking up variables that
     # are mentioned in the template. This provides some syntactic sugar so that
@@ -188,6 +195,19 @@ def create_ast_render_function(node, names):
     """
     Create render function as AST.
     """
+    names_str = ",".join([f"'{name}'" for name in names])
+    code = textwrap.dedent(
+        f"""
+        for name in {{{names_str}}}:
+            if name in self.state:
+                _warn(f"Found imported name ('{{name}}') "
+                f"as key in self.state: {{self}}")
+            if name in self.props:
+                _warn(f"Found imported name ('{{name}}') "
+                f"as key in self.props: {{self}}")
+        """
+    )
+    check_names = ast.parse(code)
     return ast.FunctionDef(
         name="render",
         args=ast.arguments(
@@ -197,7 +217,10 @@ def create_ast_render_function(node, names):
             kw_defaults=[],
             defaults=[],
         ),
-        body=[ast.Return(value=call_create_element(node, names=names))],
+        body=[
+            *check_names.body,
+            ast.Return(value=call_create_element(node, names=names)),
+        ],
         decorator_list=[],
     )
 
