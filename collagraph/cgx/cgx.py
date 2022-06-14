@@ -1,10 +1,15 @@
 import ast
 from html.parser import HTMLParser
 import re
+import sys
 import textwrap
 
 from collagraph import Component
 
+
+# Adjust this setting to disable some runtime checks
+# Defaults to True, except when it is part of an installed application
+CGX_RUNTIME_WARNINGS = not getattr(sys, "frozen", False)
 
 SUFFIX = "cgx"
 DIRECTIVE_PREFIX = "v-"
@@ -87,18 +92,45 @@ def load(path):
         </script>
 
     """
+    # Construct the AST tree
+    tree, name = construct_ast(path)
+
+    # Compile the tree into a code object (module)
+    code = compile(tree, filename=str(path), mode="exec")
+    # Execute the code as module and pass a dictionary that will capture
+    # the global and local scope of the module
+    module_namespace = {}
+    exec(code, module_namespace)
+
+    # Check that the class definition is an actual subclass of Component
+    component_class = module_namespace[name]
+    if not issubclass(component_class, Component):
+        raise ValueError(
+            f"The last class defined in {path} is not a subclass of "
+            f"Component: {component_class}"
+        )
+    return component_class, module_namespace
+
+
+def construct_ast(path):
+    """
+    Returns a tuple of the constructed AST tree and name of (enhanced) component class.
+
+    Construct an AST from the CGX file by first creating an AST from the script tag,
+    and then compile the contents of the template tag and insert that into the component
+    class definition as `render` function.
+    """
     # Parse the file component into a tree of Node instances
     parser = CGXParser()
     parser.feed(path.read_text())
 
-    # Read the data from script block
-    script_node = parser.root.child_with_tag("script")
-    script = script_node.data
-    line, _ = script_node.location
+    # Get the AST from the script tag
+    script_tree = get_script_ast(parser, path)
 
-    # Create an AST from the script
-    script_tree = ast.parse(script, filename=str(path), mode="exec")
-    ast.increment_lineno(script_tree, n=line)
+    # Find a list of imported names (or aliases, if any)
+    # Those names don't have to be wrapped by `_lookup`
+    imported_names = ImportsCollector()
+    imported_names.visit(script_tree)
 
     # Inject 'create_element' into imports so that the (generated) render
     # method can call this function
@@ -106,12 +138,21 @@ def load(path):
         ast.ImportFrom(
             module="collagraph",
             names=[ast.alias(name="create_element", asname="_create_element")],
+            level=0,
         ),
     )
+    if CGX_RUNTIME_WARNINGS:
+        script_tree.body.append(
+            ast.ImportFrom(
+                module="warnings",
+                names=[ast.alias(name="warn", asname="_warn")],
+                level=0,
+            ),
+        )
 
-    # Inject a method into the script for looking up variables that are mentioned
-    # in the template. This provides some syntactic sugar so that people can leave
-    # out `self`.
+    # Inject a method (`_lookup`) into the script for looking up variables that
+    # are mentioned in the template. This provides some syntactic sugar so that
+    # people can leave out `self`, `self.state` and `self.props`.
     script_tree.body.append(AST_LOOKUP_FUNCTION.body[0])
 
     # Find the last ClassDef and assume that it is the
@@ -129,34 +170,69 @@ def load(path):
             "There should be precisely one root element defined in "
             f"the template. Found {len(template_node.children)}."
         )
-    render_tree = create_ast_render_function(template_node.children[0])
+    render_tree = create_ast_render_function(
+        template_node.children[0], names=imported_names.names
+    )
     component_def.body.append(render_tree)
 
     # Because we modified the AST significantly we need to call an AST
     # method to fix any `lineno` and `col_offset` attributes of the nodes
     ast.fix_missing_locations(script_tree)
-
-    # Compile the tree into a code object (module)
-    code = compile(script_tree, filename=str(path), mode="exec")
-    # Execute the code as module and pass a dictionary that will capture
-    # the global and local scope of the module
-    module_namespace = {}
-    exec(code, module_namespace)
-
-    # Check that the class definition is an actual subclass of Component
-    component_class = module_namespace[component_def.name]
-    if not issubclass(component_class, Component):
-        raise ValueError(
-            f"The last class defined in {path} is not a subclass of "
-            f"Component: {component_class}"
-        )
-    return component_class, module_namespace
+    return script_tree, component_def.name
 
 
-def create_ast_render_function(node):
+def get_script_ast(parser, path):
+    """
+    Returns the AST created from the script tag in the CGX file.
+    """
+    # Read the data from script block
+    script_node = parser.root.child_with_tag("script")
+    script = script_node.data
+    line, _ = script_node.location
+
+    # Create an AST from the script
+    script_tree = ast.parse(script, filename=str(path), mode="exec")
+    # Make sure that the lineno's match up with the lines in the CGX file
+    ast.increment_lineno(script_tree, n=line)
+    return script_tree
+
+
+def create_ast_render_function(node, names):
     """
     Create render function as AST.
     """
+    extra_statements = []
+    if CGX_RUNTIME_WARNINGS:
+        names_str = ", ".join([f"'{name}'" for name in names])
+        code = textwrap.dedent(
+            f"""
+            for name in {{{names_str}}}:
+                if name in self.state:
+                    _warn(
+                        f"Found imported name '{{name}}' "
+                        f"as key in self.state: {{self}}.\\n"
+                        "If the value from self.state is intended, please resolve by "
+                        f"replacing '{{name}}' with 'state['{{name}}']'"
+                    )
+                if name in self.props:
+                    _warn(
+                        f"Found imported name '{{name}}' "
+                        f"as key in self.props: {{self}}.\\n"
+                        "If the value from self.props is intended, please resolve by "
+                        f"replacing '{{name}}' with 'props['{{name}}']'"
+                    )
+                if hasattr(self, name):
+                    _warn(
+                        f"Found imported name '{{name}}' "
+                        f"as attribute on self: {{self}}.\\n"
+                        "If the attribute from self is intended, please resolve by "
+                        f"replacing '{{name}}' with 'self.{{name}}'"
+                    )
+            """
+        )
+        check_names = ast.parse(code)
+        extra_statements.extend(check_names.body)
+
     return ast.FunctionDef(
         name="render",
         args=ast.arguments(
@@ -166,7 +242,10 @@ def create_ast_render_function(node):
             kw_defaults=[],
             defaults=[],
         ),
-        body=[ast.Return(value=call_create_element(node))],
+        body=[
+            *extra_statements,
+            ast.Return(value=call_create_element(node, names=names)),
+        ],
         decorator_list=[],
     )
 
@@ -490,6 +569,19 @@ class RewriteName(ast.NodeTransformer):
         )
 
 
+class ImportsCollector(ast.NodeVisitor):
+    def __init__(self):
+        self.names = set()
+
+    def visit_ImportFrom(self, node):
+        for alias in node.names:
+            self.names.add(alias.asname or alias.name)
+
+    def visit_Import(self, node):
+        for alias in node.names:
+            self.names.add(alias.asname or alias.name)
+
+
 class Node:
     """Node that represents an element from a CGX file."""
 
@@ -497,6 +589,7 @@ class Node:
         self.tag = tag
         self.attrs = attrs or {}
         self.location = location
+        self.end = None
         self.data = None
         self.children = []
 
@@ -549,8 +642,11 @@ class CGXParser(HTMLParser):
         self.stack.append(node)
 
     def handle_endtag(self, tag):
+        # TODO: pop it till popping the same tag in order to
+        # work around unclosed tags?
         # Pop the stack
-        self.stack.pop()
+        node = self.stack.pop()
+        node.end = self.getpos()
 
     def handle_data(self, data):
         if data.strip():
