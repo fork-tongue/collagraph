@@ -12,4 +12,8 @@ class Example(cg.Component):
     def __init__(self, props):
         super().__init__(props)
         self.state['tests'] = 'foo'
+
+    @property
+    def tests(self):
+        return 'bar'
 </script>

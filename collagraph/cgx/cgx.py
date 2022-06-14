@@ -205,6 +205,9 @@ def create_ast_render_function(node, names):
             if name in self.props:
                 _warn(f"Found imported name ('{{name}}') "
                 f"as key in self.props: {{self}}")
+            if hasattr(self, name):
+                _warn(f"Found imported name ('{{name}}') "
+                f"as attribute on self: {{self}}")
         """
     )
     check_names = ast.parse(code)

@@ -13,7 +13,7 @@ def test_warn_on_shadow_import():
     with pytest.warns(UserWarning) as records:
         result = example.render()
 
-    assert len(records) == 2
+    assert len(records) == 3
 
     assert result.type == "widget"
     assert result.props["data"] != "foo"
