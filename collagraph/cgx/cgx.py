@@ -203,19 +203,31 @@ def create_ast_render_function(node, names):
     """
     extra_statements = []
     if CGX_RUNTIME_WARNINGS:
-        names_str = ",".join([f"'{name}'" for name in names])
+        names_str = ", ".join([f"'{name}'" for name in names])
         code = textwrap.dedent(
             f"""
             for name in {{{names_str}}}:
                 if name in self.state:
-                    _warn(f"Found imported name ('{{name}}') "
-                    f"as key in self.state: {{self}}")
+                    _warn(
+                        f"Found imported name '{{name}}' "
+                        f"as key in self.state: {{self}}.\\n"
+                        "If the value from self.state is intended, please resolve by "
+                        f"replacing '{{name}}' with 'state['{{name}}']'"
+                    )
                 if name in self.props:
-                    _warn(f"Found imported name ('{{name}}') "
-                    f"as key in self.props: {{self}}")
+                    _warn(
+                        f"Found imported name '{{name}}' "
+                        f"as key in self.props: {{self}}.\\n"
+                        "If the value from self.props is intended, please resolve by "
+                        f"replacing '{{name}}' with 'props['{{name}}']'"
+                    )
                 if hasattr(self, name):
-                    _warn(f"Found imported name ('{{name}}') "
-                    f"as attribute on self: {{self}}")
+                    _warn(
+                        f"Found imported name '{{name}}' "
+                        f"as attribute on self: {{self}}.\\n"
+                        "If the attribute from self is intended, please resolve by "
+                        f"replacing '{{name}}' with 'self.{{name}}'"
+                    )
             """
         )
         check_names = ast.parse(code)
