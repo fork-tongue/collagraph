@@ -312,8 +312,6 @@ def test_menu(qapp, qtbot):
             if isinstance(widget, QtWidgets.QMainWindow)
         ]
         assert len(windows) == 1
-        menus = windows[0].findChildren(QtWidgets.QMenu)
-        assert any([menu.title() == "File" for menu in menus])
         actions = windows[0].findChildren(QtGui.QAction)
         assert any([action.text() == "Open" for action in actions])
 
@@ -344,9 +342,7 @@ def test_menu_extensively(qapp, qtbot):
         ]
         assert len(windows) == 1
         assert menubar is bool(windows[0].findChild(QtWidgets.QMenuBar, "menubar"))
-        assert menu is bool(windows[0].findChild(QtWidgets.QMenu, "menu"))
         assert item is bool(windows[0].findChild(QtGui.QAction, "action"))
-        assert submenu is bool(windows[0].findChild(QtWidgets.QMenu, "submenu"))
         assert subitem is bool(windows[0].findChild(QtGui.QAction, "subaction"))
 
     check_items = partial(check, True, True, True, True, True)
