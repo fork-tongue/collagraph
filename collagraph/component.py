@@ -10,6 +10,7 @@ class Component:
     """Abstract base class for components"""
 
     __slots__ = ["state", "props"]
+    __lookup_cache__ = defaultdict(dict)
 
     def __init__(self, props=None):
         self.props = readonly({} if props is None else props)
@@ -17,6 +18,7 @@ class Component:
         self._element = None
         self._slots = {}
         self._event_handlers = defaultdict(set)
+        self._lookup_cache = Component.__lookup_cache__[type(self)]
 
     @property
     def element(self):
@@ -81,3 +83,38 @@ class Component:
     def remove_event_handler(self, event, handler):
         """Removes an event handler for the given event."""
         self._event_handlers[event].remove(handler)
+
+    def _lookup(self, name):
+        """
+        Helper method that is used in the template.
+        The method looks up variables that are mentioned in the template.
+        This provides some syntactic sugar so that users can leave out `self`,
+        `self.state` and `self.props`.
+        """
+        cache = self._lookup_cache
+        if method := cache.get(name):
+            return method(self, name)
+
+        def props_lookup(self, name):
+            return self.props[name]
+
+        def state_lookup(self, name):
+            return self.state[name]
+
+        def self_lookup(self, name):
+            return getattr(self, name)
+
+        def global_lookup(self, name):
+            return globals()[name]
+
+        if name in self.props:
+            cache[name] = props_lookup
+        elif name in self.state:
+            cache[name] = state_lookup
+        elif hasattr(self, name):
+            cache[name] = self_lookup
+        elif name in globals():
+            cache[name] = global_lookup
+        else:
+            raise NameError(f"name '{name}' is not defined")
+        return self._lookup(name)
