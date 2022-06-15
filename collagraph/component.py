@@ -10,7 +10,7 @@ class Component:
     """Abstract base class for components"""
 
     __slots__ = ["state", "props"]
-    __lookup_cache__ = {}
+    __lookup_cache__ = defaultdict(dict)
 
     def __init__(self, props=None):
         self.props = readonly({} if props is None else props)
@@ -18,6 +18,7 @@ class Component:
         self._element = None
         self._slots = {}
         self._event_handlers = defaultdict(set)
+        self._lookup_cache = Component.__lookup_cache__[type(self)]
 
     @property
     def element(self):
@@ -90,7 +91,7 @@ class Component:
         This provides some syntactic sugar so that users can leave out `self`,
         `self.state` and `self.props`.
         """
-        cache = Component.__lookup_cache__
+        cache = self._lookup_cache
         if method := cache.get(name):
             return method(self, name)
 
