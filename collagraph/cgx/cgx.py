@@ -24,46 +24,6 @@ FOR_LOOP_OUTPUT = "for_loop_output"
 AST_GEN_VARIABLE_PREFIX = "_ast_"
 
 COMPONENT_CLASS_DEFINITION = re.compile(r"class\s*(.*?)\s*\(.*?\)\s*:")
-AST_LOOKUP_FUNCTION = ast.parse(
-    textwrap.dedent(
-        """
-        def _lookup(self, name, cache={}):
-            # Note that the default value of cache is using the fact
-            # that defaults are created at function definition, so
-            # the cache is actually a 'global' object that is shared
-            # between method calls and thus is suited to serve as
-            # a cache for storing the method used for looking up the
-            # value.
-            if method := cache.get(name):
-                return method(self, name)
-
-            def props_lookup(self, name):
-                return self.props[name]
-
-            def state_lookup(self, name):
-                return self.state[name]
-
-            def self_lookup(self, name):
-                return getattr(self, name)
-
-            def global_lookup(self, name):
-                return globals()[name]
-
-            if name in self.props:
-                cache[name] = props_lookup
-            elif name in self.state:
-                cache[name] = state_lookup
-            elif hasattr(self, name):
-                cache[name] = self_lookup
-            elif name in globals():
-                cache[name] = global_lookup
-            else:
-                raise NameError(f"name '{name}' is not defined")
-            return _lookup(self, name)
-        """
-    ),
-    mode="exec",
-)
 
 
 def load(path):
@@ -132,29 +92,6 @@ def construct_ast(path):
     imported_names = ImportsCollector()
     imported_names.visit(script_tree)
 
-    # Inject 'create_element' into imports so that the (generated) render
-    # method can call this function
-    script_tree.body.append(
-        ast.ImportFrom(
-            module="collagraph",
-            names=[ast.alias(name="create_element", asname="_create_element")],
-            level=0,
-        ),
-    )
-    if CGX_RUNTIME_WARNINGS:
-        script_tree.body.append(
-            ast.ImportFrom(
-                module="warnings",
-                names=[ast.alias(name="warn", asname="_warn")],
-                level=0,
-            ),
-        )
-
-    # Inject a method (`_lookup`) into the script for looking up variables that
-    # are mentioned in the template. This provides some syntactic sugar so that
-    # people can leave out `self`, `self.state` and `self.props`.
-    script_tree.body.append(AST_LOOKUP_FUNCTION.body[0])
-
     # Find the last ClassDef and assume that it is the
     # component that is defined in the SFC
     component_def = None
@@ -173,6 +110,16 @@ def construct_ast(path):
     render_tree = create_ast_render_function(
         template_node.children[0], names=imported_names.names
     )
+    ast.fix_missing_locations(render_tree)
+
+    # Put location of render function outside of the script tag
+    # This makes sure that the render function can be excluded
+    # from linting.
+    # Note that it's still possible to put code after the component
+    # class at the end of the script node.
+    script_node = parser.root.child_with_tag("script")
+    line, _ = script_node.end
+    ast.increment_lineno(render_tree, n=line)
     component_def.body.append(render_tree)
 
     # Because we modified the AST significantly we need to call an AST
@@ -201,11 +148,19 @@ def create_ast_render_function(node, names):
     """
     Create render function as AST.
     """
-    extra_statements = []
+    extra_statements = [
+        ast.ImportFrom(
+            module="collagraph",
+            names=[ast.alias(name="create_element", asname="_create_element")],
+            level=0,
+        )
+    ]
     if CGX_RUNTIME_WARNINGS:
         names_str = ", ".join([f"'{name}'" for name in names])
         code = textwrap.dedent(
             f"""
+            from warnings import warn as _warn
+
             for name in {{{names_str}}}:
                 if name in self.state:
                     _warn(
@@ -560,9 +515,12 @@ class RewriteName(ast.NodeTransformer):
             return node
 
         return ast.Call(
-            func=ast.Name(id="_lookup", ctx=ast.Load()),
+            func=ast.Attribute(
+                value=ast.Name(id="self", ctx=ast.Load()),
+                attr="_lookup",
+                ctx=ast.Load(),
+            ),
             args=[
-                ast.Name(id="self", ctx=ast.Load()),
                 ast.Constant(value=node.id),
             ],
             keywords=[],
