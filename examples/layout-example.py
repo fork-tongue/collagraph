@@ -37,6 +37,18 @@ def LayoutExample(props):
             text = "Line 2, long text:"
         form.append((widget, {"form_label": text, "form_index": i}))
 
+    def accepted():
+        print("accepted")  # noqa: T201
+
+    def rejected():
+        print("rejected")  # noqa: T201
+
+    def select_all():
+        print("select all")  # noqa: T201
+
+    def clicked(btn):
+        print("clicked:", btn)  # noqa: T201
+
     return h(
         "Window",
         {},
@@ -101,9 +113,24 @@ def LayoutExample(props):
             ),
             h(
                 "DialogButtonBox",
-                {},
-                h("Button", {"flag": "Ok"}),
-                h("Button", {"flag": "Cancel"}),
+                {
+                    "on_accepted": accepted,
+                    "on_rejected": rejected,
+                    "on_clicked": clicked,
+                    "flags": ("Ok", "Cancel"),
+                },
+                # Add custom buttons by adding real buttons and specifying a
+                # `role` attribute that will determine where the button will
+                # end up in the botton box.
+                # See `QDialogButtonBox.ButtonRole` enum for more info.
+                h(
+                    "Button",
+                    {
+                        "text": "Select all",
+                        "role": "ResetRole",
+                        "on_clicked": select_all,
+                    },
+                ),
             ),
         ),
     )
