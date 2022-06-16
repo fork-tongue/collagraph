@@ -117,7 +117,9 @@ def LayoutExample(props):
                     "on_accepted": accepted,
                     "on_rejected": rejected,
                     "on_clicked": clicked,
-                    "flags": ("Ok", "Cancel"),
+                    # Provide a list of standard buttons to add to the dialog box.
+                    # See `QDialogButtonBox.ButtonRole` enum for more info.
+                    "buttons": ("Ok", "Cancel"),
                 },
                 # Add custom buttons by adding real buttons and specifying a
                 # `role` attribute that will determine where the button will

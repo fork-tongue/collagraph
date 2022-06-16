@@ -17,7 +17,7 @@ def insert(self, el, anchor=None):
 
 
 def set_attribute(self, attr, value):
-    if attr == "flags":
+    if attr == "buttons":
         for flag in value:
             flag = (
                 flag
