@@ -122,9 +122,8 @@ def test_layouts(qapp, qtbot):
                 ),
                 h(
                     "DialogButtonBox",
-                    {},
-                    h("Button", {"flag": "Ok"}),
-                    h("Button", {"flag": "Cancel"}),
+                    {"buttons": ("Ok", "Cancel")},
+                    h("Button", {"text": "Custom", "role": "ActionRole"}),
                 ),
             ),
         )
