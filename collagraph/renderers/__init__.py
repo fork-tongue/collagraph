@@ -48,6 +48,13 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
 from .dict_renderer import DictRenderer
 
 try:
+    import js
+except ImportError:  # pragma: no cover
+    pass
+else:
+    from .dom_renderer import DomRenderer
+
+try:
     import pygfx
 except ImportError:  # pragma: no cover
     pass
