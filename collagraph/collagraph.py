@@ -50,6 +50,10 @@ def watch(fn, cb, lazy=False, deep=False, **kwargs):
 def create_element(type, props=None, *children) -> VNode:
     """Create an element description, based on type, props and (optionally) children"""
     key = props.get("key", None) if props is not None else None
+    children = [
+        child if not isinstance(child, str) else create_text_element(child)
+        for child in children
+    ]
     if len(children) == 1:
         # If children is 1 dictionary, then that is the slots definition
         if isinstance(children[0], dict):
@@ -58,6 +62,10 @@ def create_element(type, props=None, *children) -> VNode:
         elif callable(children[0]):
             children = {"default": children[0]}
     return VNode(type, reactive(props or {}), children or tuple(), key)
+
+
+def create_text_element(text):
+    return VNode("TEXT_ELEMENT", {"content": text}, [])
 
 
 def render_slot(name, props, slots):
