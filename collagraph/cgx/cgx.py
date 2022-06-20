@@ -23,6 +23,7 @@ DIRECTIVE_ON = f"{DIRECTIVE_PREFIX}on"
 AST_GEN_VARIABLE_PREFIX = "_ast_"
 
 COMPONENT_CLASS_DEFINITION = re.compile(r"class\s*(.*?)\s*\(.*?\)\s*:")
+MOUSTACHES = re.compile(r"\{\{.*?\}\}")
 
 
 def load(path):
@@ -433,6 +434,42 @@ def convert_node_to_args(node, *, names=None):
     if control_flow:
         children_args.append(create_control_flow_ast(control_flow, names=names))
         control_flow = []
+
+    if node.data:
+        groups = [match for match in MOUSTACHES.finditer(node.data)]
+        if not groups:
+            children_args.append(ast.Constant(value=node.data))
+        else:
+            offset = 0
+            removed = 0
+            format_string = node.data
+            expressions = []
+            for group in groups:
+                span = group.span()
+                expr = (node.data[span[0] + 2 : span[1] - 2]).strip()
+                expressions.append(
+                    RewriteName(skip=names).visit(ast.parse(expr, mode="eval")).body
+                )
+                format_string = "{}".join(
+                    [
+                        format_string[offset : span[0] - removed],
+                        format_string[span[1] - removed :],
+                    ]
+                )
+                # -2 because {{}} is replace with {}
+                removed += span[1] - span[0] - 2
+
+            children_args.append(
+                ast.Call(
+                    func=ast.Attribute(
+                        value=ast.Constant(value=format_string),
+                        attr="format",
+                        ctx=ast.Load(),
+                    ),
+                    args=expressions,
+                    keywords=[],
+                )
+            )
 
     # Create a starred list comprehension that when called, will generate
     # all child elements
