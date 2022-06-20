@@ -12,7 +12,7 @@ pygfx = ["pygfx"]
 pyside = ["pyside6_essentials"]
 
 [tool.poetry.dependencies]
-python = ">=3.8"
+python = ">=3.9"
 observ = ">=0.9.3"
 pygfx = { version = ">=0.1.9", optional = true }
 pyside6_essentials = { version = "^6.3", python = "<3.11", optional = true }

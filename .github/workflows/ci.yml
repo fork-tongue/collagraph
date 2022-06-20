@@ -34,8 +34,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Linux py38
-            pyversion: '3.8'
           - name: Linux py39
             pyversion: '3.9'
           - name: Linux py310
