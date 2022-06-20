@@ -1,0 +1,14 @@
+<template>
+    <div>
+        <h1>I'm a heading</h1>
+        <button class="button is-primary">Primary</button>
+        <button class="button is-danger">Danger</button>
+    </div>
+</template>
+
+<script>
+from collagraph import Component
+
+class Example(Component):
+    pass
+</script>

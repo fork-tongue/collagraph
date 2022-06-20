@@ -52,7 +52,8 @@ def load(path):
 
     """
     # Construct the AST tree
-    tree, name = construct_ast(path)
+    template = path.read_text()
+    tree, name = construct_ast(template, path)
 
     # Compile the tree into a code object (module)
     code = compile(tree, filename=str(path), mode="exec")
@@ -71,7 +72,54 @@ def load(path):
     return component_class, module_namespace
 
 
-def construct_ast(path):
+def load_from_string(template):
+    """
+    Load template from a string
+
+    A subclass of Component will be created from the CGX file
+    where the contents of the <template> tag will be used as
+    the `render` function, while the contents of the <script>
+    tag will be used to provide the rest of the functions of
+    the component.
+
+    For example:
+
+        <template>
+          <item foo="bar">
+            <item baz="bla"/>
+          </item>
+        </template
+
+        <script>
+        import collagraph as cg
+
+        class Foo(cg.Component):
+            pass
+        </script>
+
+    """
+    # Construct the AST tree
+    path = "<template>"
+    tree, name = construct_ast(template, path=path)
+
+    # Compile the tree into a code object (module)
+    code = compile(tree, filename=str(path), mode="exec")
+    # Execute the code as module and pass a dictionary that will capture
+    # the global and local scope of the module
+    module_namespace = {}
+    exec(code, module_namespace)
+
+    # Check that the class definition is an actual subclass of Component
+    component_class = module_namespace[name]
+    if not issubclass(component_class, Component):
+        raise ValueError(
+            f"The last class defined in {path} is not a subclass of "
+            f"Component: {component_class}"
+        )
+    return component_class, module_namespace
+
+
+def construct_ast(template, path):
     """
     Returns a tuple of the constructed AST tree and name of (enhanced) component class.
 
@@ -81,7 +129,7 @@ def construct_ast(path):
     """
     # Parse the file component into a tree of Node instances
     parser = CGXParser()
-    parser.feed(path.read_text())
+    parser.feed(template)
 
     # Get the AST from the script tag
     script_tree = get_script_ast(parser, path)

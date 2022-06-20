@@ -8,7 +8,9 @@ DATA_PATH = Path(__file__).parent.parent / "data"
 
 
 def test_cgx_construct_ast():
-    tree, name = cgx.construct_ast(DATA_PATH / "simple.cgx")
+    path = DATA_PATH / "simple.cgx"
+    content = path.read_text()
+    tree, name = cgx.construct_ast(content, path)
 
     assert name == "Simple"
     assert isinstance(tree, ast.Module)
