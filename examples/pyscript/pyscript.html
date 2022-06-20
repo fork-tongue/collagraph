@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PyScript example</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://pyscript.net/alpha/pyscript.css" />
+  <script defer src="https://pyscript.net/alpha/pyscript.js"></script>
+</head>
+<py-env>
+  - ./deps/collagraph-0.4.1-py3-none-any.whl
+</py-env>
+<body>
+  <div id="output" style="width: 100%; height: 100%"></div>
+  <py-script>
+    import collagraph as cg
+
+    print("collagraph:", cg.__version__)
+  </py-script>
+</body>
+</html>
