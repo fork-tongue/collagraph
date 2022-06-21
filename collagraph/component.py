@@ -84,7 +84,7 @@ class Component:
         """Removes an event handler for the given event."""
         self._event_handlers[event].remove(handler)
 
-    def _lookup(self, name):
+    def _lookup(self, name, context):
         """
         Helper method that is used in the template.
         The method looks up variables that are mentioned in the template.
@@ -105,7 +105,7 @@ class Component:
             return getattr(self, name)
 
         def global_lookup(self, name):
-            return globals()[name]
+            return context[name]
 
         if name in self.props:
             cache[name] = props_lookup
@@ -113,8 +113,8 @@ class Component:
             cache[name] = state_lookup
         elif hasattr(self, name):
             cache[name] = self_lookup
-        elif name in globals():
+        elif name in context:
             cache[name] = global_lookup
         else:
             raise NameError(f"name '{name}' is not defined")
-        return self._lookup(name)
+        return self._lookup(name, context)

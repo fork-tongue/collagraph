@@ -353,9 +353,14 @@ def convert_node_to_args(node, *, names=None):
             _, key = key.split(split_char)
             key = f"on_{key}"
             props_keys.append(ast.Constant(value=key))
-            props_values.append(
-                RewriteName(skip=names).visit(ast.parse(val, mode="eval")).body
-            )
+
+            tree = ast.parse(val, mode="eval")
+            # v-on directives allow for lambdas which define arguments
+            # which need to be skipped by the RewriteName visitor
+            lambda_names = LambdaNamesCollector()
+            lambda_names.visit(tree)
+            RewriteName(skip=names | lambda_names.names).visit(tree)
+            props_values.append(tree.body)
             continue
 
         if key.startswith((DIRECTIVE_FOR)):
@@ -621,6 +626,15 @@ class NameCollector(ast.NodeVisitor):
         self.names.add(node.id)
 
 
+class LambdaNamesCollector(ast.NodeVisitor):
+    def __init__(self):
+        self.names = set()
+
+    def visit_Lambda(self, node):
+        for arg in node.args.posonlyargs + node.args.args + node.args.kwonlyargs:
+            self.names.add(arg.arg)
+
+
 class RewriteName(ast.NodeTransformer):
     """AST node transformer that will try to replace static Name nodes with
     a call to `_lookup` with the name of the node."""
@@ -645,6 +659,11 @@ class RewriteName(ast.NodeTransformer):
             ),
             args=[
                 ast.Constant(value=node.id),
+                ast.Call(
+                    func=ast.Name(id="globals", ctx=ast.Load()),
+                    args=[],
+                    keywords=[],
+                ),
             ],
             keywords=[],
         )
