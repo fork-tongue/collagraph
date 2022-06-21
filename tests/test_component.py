@@ -283,3 +283,27 @@ def test_component_element():
     assert component is not None
     assert isinstance(component, SpecialComponent)
     assert component.element is container["children"][0]
+
+
+def test_component_overwrite_props_and_state():
+    class OverwriteState(Component):
+        def __init__(self, props):
+            super().__init__(props)
+            self.state = {}
+
+        def render(self):
+            return h
+
+    with pytest.raises(RuntimeError):
+        _ = OverwriteState({})
+
+    class OverwriteProps(Component):
+        def __init__(self, props):
+            super().__init__(props)
+            self.props = {}
+
+        def render(self):
+            return h
+
+    with pytest.raises(RuntimeError):
+        _ = OverwriteProps({})

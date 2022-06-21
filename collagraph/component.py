@@ -9,16 +9,35 @@ from collagraph import render_slot
 class Component:
     """Abstract base class for components"""
 
-    __slots__ = ["state", "props"]
     __lookup_cache__ = defaultdict(dict)
 
     def __init__(self, props=None):
-        self.props = readonly({} if props is None else props)
-        self.state = reactive({})
+        self._props = readonly({} if props is None else props)
+        self._state = reactive({})
         self._element = None
         self._slots = {}
         self._event_handlers = defaultdict(set)
         self._lookup_cache = Component.__lookup_cache__[type(self)]
+
+    @property
+    def props(self):
+        """The incoming props of this component."""
+        return self._props
+
+    @props.setter
+    def props(self, value):
+        """Prevent overwriting the props attribute."""
+        raise RuntimeError("Not allowed to override props attribute")
+
+    @property
+    def state(self):
+        """The local state of this component."""
+        return self._state
+
+    @state.setter
+    def state(self, value):
+        """Prevent overwriting the state attribute."""
+        raise RuntimeError("Not allowed to override state attribute")
 
     @property
     def element(self):
