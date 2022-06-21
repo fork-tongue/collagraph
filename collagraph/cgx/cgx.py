@@ -441,32 +441,71 @@ def convert_node_to_args(node, *, names=None):
             children_args.append(ast.Constant(value=node.data))
         else:
             offset = 0
-            removed = 0
-            format_string = node.data
+            string_parts = []
             expressions = []
             for group in groups:
                 span = group.span()
+                string_parts.append(ast.Constant(value=node.data[offset : span[0]]))
                 expr = (node.data[span[0] + 2 : span[1] - 2]).strip()
                 expressions.append(
                     RewriteName(skip=names).visit(ast.parse(expr, mode="eval")).body
                 )
-                format_string = "{}".join(
-                    [
-                        format_string[offset : span[0] - removed],
-                        format_string[span[1] - removed :],
-                    ]
-                )
-                # -2 because {{}} is replace with {}
-                removed += span[1] - span[0] - 2
+                offset = span[1]
+
+            string_suffix = ast.Constant(value=node.data[offset:])
 
             children_args.append(
+                # The following tree is the ast of the following expression:
+                # "".join(
+                #     [x + str(y) for x, y in zip(string_parts, expressions)]
+                #     + [string_suffix]
+                # )
                 ast.Call(
                     func=ast.Attribute(
-                        value=ast.Constant(value=format_string),
-                        attr="format",
-                        ctx=ast.Load(),
+                        value=ast.Constant(value=""), attr="join", ctx=ast.Load()
                     ),
-                    args=expressions,
+                    args=[
+                        ast.BinOp(
+                            left=ast.ListComp(
+                                elt=ast.BinOp(
+                                    left=ast.Name(id="x", ctx=ast.Load()),
+                                    op=ast.Add(),
+                                    right=ast.Call(
+                                        func=ast.Name(id="str", ctx=ast.Load()),
+                                        args=[ast.Name(id="y", ctx=ast.Load())],
+                                        keywords=[],
+                                    ),
+                                ),
+                                generators=[
+                                    ast.comprehension(
+                                        target=ast.Tuple(
+                                            elts=[
+                                                ast.Name(id="x", ctx=ast.Store()),
+                                                ast.Name(id="y", ctx=ast.Store()),
+                                            ],
+                                            ctx=ast.Store(),
+                                        ),
+                                        iter=ast.Call(
+                                            func=ast.Name(id="zip", ctx=ast.Load()),
+                                            args=[
+                                                ast.List(
+                                                    elts=string_parts, ctx=ast.Load()
+                                                ),
+                                                ast.List(
+                                                    elts=expressions, ctx=ast.Load()
+                                                ),
+                                            ],
+                                            keywords=[],
+                                        ),
+                                        ifs=[],
+                                        is_async=0,
+                                    )
+                                ],
+                            ),
+                            op=ast.Add(),
+                            right=ast.List(elts=[string_suffix], ctx=ast.Load()),
+                        )
+                    ],
                     keywords=[],
                 )
             )

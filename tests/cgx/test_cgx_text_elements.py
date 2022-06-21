@@ -34,4 +34,4 @@ def test_text_elements():
     assert multiple.type == "TEXT_ELEMENT"
     assert static.props["content"] == "Static content"
     assert dynamic.props["content"] == "Dynamic foo"
-    assert multiple.props["content"] == "Even bar dynamic foo"
+    assert multiple.props["content"] == r"Even bar dyna{}mic\{} foo"
