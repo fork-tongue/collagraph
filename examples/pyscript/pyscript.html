@@ -27,8 +27,7 @@
     component_class, module_namespace = cg.cgx.cgx.load_from_string(template.getvalue())
 
     container = js.window.document.getElementById("output")
-    renderer = cg.DomRenderer()
-    gui = cg.Collagraph(renderer=renderer)
+    gui = cg.Collagraph(renderer=cg.DomRenderer())
     gui.render(cg.h(component_class), container)
   </py-script>
   <py-repl id="my-repl" auto-generate="true"> </py-repl>
