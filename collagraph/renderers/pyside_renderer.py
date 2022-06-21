@@ -6,6 +6,7 @@ from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QAction, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QBoxLayout,
+    QComboBox,
     QDialogButtonBox,
     QFormLayout,
     QGridLayout,
@@ -23,6 +24,7 @@ from PySide6.QtWidgets import (
 from . import Renderer
 from .pyside.objects import (
     action,
+    combobox,
     dialogbuttonbox,
     itemmodel,
     listview,
@@ -85,6 +87,7 @@ SET_ATTR_MAPPING = sorted_on_class_hierarchy(
         QStandardItem: widget.set_attribute,
         QStandardItemModel: widget.set_attribute,
         QDialogButtonBox: dialogbuttonbox.set_attribute,
+        QComboBox: combobox.set_attribute,
     }
 )
 
