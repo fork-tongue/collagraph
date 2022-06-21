@@ -52,55 +52,19 @@ def load(path):
         </script>
 
     """
-    # Construct the AST tree
     template = path.read_text()
-    tree, name = construct_ast(template, path)
 
-    # Compile the tree into a code object (module)
-    code = compile(tree, filename=str(path), mode="exec")
-    # Execute the code as module and pass a dictionary that will capture
-    # the global and local scope of the module
-    module_namespace = {}
-    exec(code, module_namespace)
-
-    # Check that the class definition is an actual subclass of Component
-    component_class = module_namespace[name]
-    if not issubclass(component_class, Component):
-        raise ValueError(
-            f"The last class defined in {path} is not a subclass of "
-            f"Component: {component_class}"
-        )
-    return component_class, module_namespace
+    return load_from_string(template, path)
 
 
-def load_from_string(template):
+def load_from_string(template, path=None):
     """
     Load template from a string
-
-    A subclass of Component will be created from the CGX file
-    where the contents of the <template> tag will be used as
-    the `render` function, while the contents of the <script>
-    tag will be used to provide the rest of the functions of
-    the component.
-
-    For example:
-
-        <template>
-          <item foo="bar">
-            <item baz="bla"/>
-          </item>
-        </template
-
-        <script>
-        import collagraph as cg
-
-        class Foo(cg.Component):
-            pass
-        </script>
-
     """
+    if path is None:
+        path = "<template>"
+
     # Construct the AST tree
-    path = "<template>"
     tree, name = construct_ast(template, path=path)
 
     # Compile the tree into a code object (module)
@@ -253,7 +217,7 @@ def create_ast_render_function(node, names):
     )
 
 
-def call_create_element(node, *, names=None):
+def call_create_element(node, *, names):
     """
     Returns an ast.Call of `collagraph.create_element()` with the right args
     for the given node.
@@ -261,8 +225,6 @@ def call_create_element(node, *, names=None):
     Names is a set of variable names that should not be wrapped in
     the _lookup method.
     """
-    if names is None:
-        names = set()
     return ast.Call(
         func=ast.Name(id="_create_element", ctx=ast.Load()),
         args=convert_node_to_args(node, names=names),
