@@ -187,6 +187,9 @@ class PySideRenderer(Renderer):
 
         return create_instance(WRAPPED_TYPES[type_name])
 
+    def create_text_element(self):
+        raise NotImplementedError
+
     def insert(self, el: Any, parent: Any, anchor: Any = None):
         """
         Add element `el` as a child to the element `parent`.
@@ -213,6 +216,9 @@ class PySideRenderer(Renderer):
             el.close()
             return
         parent.remove(el)
+
+    def set_element_text(self, el: Any, value: str):
+        raise NotImplementedError
 
     def set_attribute(self, el: Any, attr: str, value: Any):
         """Set the attribute `attr` of the element `el` to the value `value`."""

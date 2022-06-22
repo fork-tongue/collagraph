@@ -403,4 +403,4 @@ def test_text_elements():
 
     text_node = div["children"][0]
     assert text_node["type"] == "TEXT_ELEMENT"
-    assert text_node["attrs"]["content"] == "foo"
+    assert text_node["text"] == "foo"

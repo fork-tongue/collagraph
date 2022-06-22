@@ -7,12 +7,10 @@ class DomRenderer(Renderer):
     """Renderer that renders to a pyodide dom"""
 
     def create_element(self, type: str) -> dict:
-        element = (
-            js.window.document.createTextNode("")
-            if type == "TEXT_ELEMENT"
-            else js.window.document.createElement(type)
-        )
-        return element
+        return js.window.document.createElement(type)
+
+    def create_text_element(self):
+        return js.window.document.createTextNode("")
 
     def insert(self, el, parent, anchor=None):
         if anchor:
@@ -23,11 +21,11 @@ class DomRenderer(Renderer):
     def remove(self, el, parent):
         parent.removeChild(el)
 
+    def set_element_text(self, el, value):
+        el.textContent = value
+
     def set_attribute(self, obj, attr: str, value):
-        if obj.nodeType == js.Node.TEXT_NODE:  # and attr == "content":
-            obj.nodeValue = value
-        else:
-            obj.setAttribute(attr, value)
+        obj.setAttribute(attr, value)
 
     def remove_attribute(self, obj, attr: str, value):
         obj.removeAttribute(attr)

@@ -57,10 +57,16 @@ class CustomElementRenderer(Renderer):
         delattr(el, attr)
 
     def add_event_listener(self, el, event_type, value):
-        return NotImplemented
+        raise NotImplementedError
 
     def remove_event_listener(self, el, event_type, value):
-        return NotImplemented
+        raise NotImplementedError
+
+    def create_text_element(self):
+        raise NotImplementedError
+
+    def set_element_text(self):
+        raise NotImplementedError
 
 
 def test_reconcile_by_key():

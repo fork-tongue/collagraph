@@ -11,6 +11,11 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
         pass
 
     @abstractmethod
+    def create_text_element(self) -> Any:
+        """Create a text element."""
+        pass
+
+    @abstractmethod
     def insert(self, el: Any, parent: Any, anchor: Any = None):
         """
         Add element `el` as a child to the element `parent`.
@@ -22,6 +27,11 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
     @abstractmethod
     def remove(self, el: Any, parent: Any):
         """Remove the element `el` from the children of the element `parent`."""
+        pass
+
+    @abstractmethod
+    def set_element_text(self, el: Any, value: str):
+        """Set the text of a text element."""
         pass
 
     @abstractmethod

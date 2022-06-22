@@ -7,7 +7,7 @@ def test_pyside_sfc_event_handlers(qapp, qtbot):
     """Test that class methods can work as event handlers in PySide."""
     from tests.data.directive_on import Buttons
 
-    renderer = cg.PySideRenderer()
+    renderer = cg.PySideRenderer(autoshow=False)
     gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
     container = renderer.create_element("widget")
     gui.render(cg.h(Buttons, {}), container)

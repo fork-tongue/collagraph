@@ -285,7 +285,11 @@ class Collagraph:
         self.reconcile_children(fiber, fiber.children)
 
     def create_dom(self, fiber: Fiber) -> Any:
-        dom = self.renderer.create_element(fiber.type)
+        dom = (
+            self.renderer.create_text_element()
+            if fiber.type == "TEXT_ELEMENT"
+            else self.renderer.create_element(fiber.type)
+        )
         self.update_dom_or_component(fiber, dom, prev_props={}, next_props=fiber.props)
         return dom
 
@@ -533,6 +537,11 @@ class Collagraph:
     ):
         if not dom and not fiber.component:
             return
+
+        if fiber.type == "TEXT_ELEMENT":
+            if (new_content := next_props["content"]) != prev_props.get("content"):
+                self.renderer.set_element_text(dom, new_content)
+                return
 
         events_to_remove = {}
         attrs_to_remove = {}
