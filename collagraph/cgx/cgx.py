@@ -1,5 +1,6 @@
 import ast
 from html.parser import HTMLParser
+from pathlib import Path
 import re
 import sys
 import textwrap
@@ -65,7 +66,7 @@ def load_from_string(template, path=None):
         path = "<template>"
 
     # Construct the AST tree
-    tree, name = construct_ast(template, path=path)
+    tree, name = construct_ast(path=path, template=template)
 
     # Compile the tree into a code object (module)
     code = compile(tree, filename=str(path), mode="exec")
@@ -84,7 +85,7 @@ def load_from_string(template, path=None):
     return component_class, module_namespace
 
 
-def construct_ast(template, path):
+def construct_ast(path, template=None):
     """
     Returns a tuple of the constructed AST tree and name of (enhanced) component class.
 
@@ -92,6 +93,9 @@ def construct_ast(template, path):
     and then compile the contents of the template tag and insert that into the component
     class definition as `render` function.
     """
+    if not template:
+        template = Path(path).read_text()
+
     # Parse the file component into a tree of Node instances
     parser = CGXParser()
     parser.feed(template)
