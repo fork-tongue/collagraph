@@ -112,18 +112,18 @@ class Component:
         """
         cache = self._lookup_cache
         if method := cache.get(name):
-            return method(self, name)
+            return method(self, name, context)
 
-        def props_lookup(self, name):
+        def props_lookup(self, name, context):
             return self.props[name]
 
-        def state_lookup(self, name):
+        def state_lookup(self, name, context):
             return self.state[name]
 
-        def self_lookup(self, name):
+        def self_lookup(self, name, context):
             return getattr(self, name)
 
-        def global_lookup(self, name):
+        def global_lookup(self, name, context):
             return context[name]
 
         if name in self.props:
