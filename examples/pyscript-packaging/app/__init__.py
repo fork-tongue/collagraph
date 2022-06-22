@@ -1,6 +1,6 @@
 import collagraph as cg
 
-from .app import App
+from .app import App  # noqa: I202
 
 
 def start(container):
