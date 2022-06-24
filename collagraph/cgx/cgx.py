@@ -68,9 +68,6 @@ def load_from_string(template, path=None):
     # Construct the AST tree
     tree, name = construct_ast(path=path, template=template)
 
-    if "lambdas" in path.stem:
-        _print_ast_tree_as_code(tree)
-
     # Compile the tree into a code object (module)
     code = compile(tree, filename=str(path), mode="exec")
     # Execute the code as module and pass a dictionary that will capture
