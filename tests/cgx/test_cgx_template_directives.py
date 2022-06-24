@@ -62,6 +62,23 @@ def test_directive_bind_state_and_props():
     assert second_label.props["text"] == "Custom label"
 
 
+def test_directive_bind_full():
+    from tests.data.directive_bind_multiple import Labels
+
+    component = Labels({"text": "foo", "other": "bar"})
+    node = component.render()
+
+    assert node.type == "widget"
+
+    first_label = node.children[0]
+    second_label = node.children[1]
+    third_label = node.children[2]
+
+    assert first_label.props["text"] == "foo"
+    assert second_label.props["text"] == "bar"
+    assert third_label.props["text"] == "foo"
+
+
 def test_directive_if():
     from tests.data.directive_if import Label
 

@@ -307,11 +307,18 @@ def convert_node_to_args(node, *, names=None):
             continue
 
         if key.startswith((DIRECTIVE_BIND, ":")):
-            _, key = key.split(":")
-            props_keys.append(ast.Constant(value=key))
-            props_values.append(
-                RewriteName(skip=names).visit(ast.parse(val, mode="eval")).body
-            )
+            if key == DIRECTIVE_BIND:
+                # Use 'None' to mark this is a binding of multiple attributes
+                props_keys.append(None)
+                props_values.append(
+                    RewriteName(skip=names).visit(ast.parse(val, mode="eval")).body
+                )
+            else:
+                _, key = key.split(":")
+                props_keys.append(ast.Constant(value=key))
+                props_values.append(
+                    RewriteName(skip=names).visit(ast.parse(val, mode="eval")).body
+                )
             continue
 
         if key.startswith((DIRECTIVE_ON, "@")):
@@ -534,8 +541,45 @@ def convert_node_to_args(node, *, names=None):
             ],
         )
 
+    # Process all (bound) attrs in order. The last defined attr will prevail.
+    pre_multiple_bind = ast.Dict(keys=[], values=[])
+    multiple_bind = None
+    post_multiple_bind = ast.Dict(keys=[], values=[])
+
+    curr_dict = pre_multiple_bind
+    for key, val in zip(props_keys, props_values):
+        # When key is None, it is a multiple binding
+        if key is None:
+            # And in that case the parsed expression can be used directly
+            multiple_bind = val
+            curr_dict = post_multiple_bind
+            continue
+
+        curr_dict.keys.append(key)
+        curr_dict.values.append(val)
+
+    # Build an expresion based on the collected values
+    # In most complex situation results in:
+    #   pre_multiple_kind | multiple_bind | post_multiple_bind
+    attr_expression = pre_multiple_bind
+    if multiple_bind is not None:
+        if not pre_multiple_bind.keys:
+            attr_expression = multiple_bind
+        else:
+            attr_expression = ast.BinOp(
+                left=pre_multiple_bind,
+                op=ast.BitOr(),
+                right=multiple_bind,
+            )
+    if post_multiple_bind.keys:
+        attr_expression = ast.BinOp(
+            left=attr_expression,
+            op=ast.BitOr(),
+            right=post_multiple_bind,
+        )
+
     # Return all the arguments
-    return [type_arg, ast.Dict(keys=props_keys, values=props_values), starred_expr]
+    return [type_arg, attr_expression, starred_expr]
 
 
 def create_control_flow_ast(control_flow, *, names):
