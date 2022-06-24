@@ -132,7 +132,7 @@ def test_removing_attribute_not_supported():
     assert not hasattr(widget, "foo")
 
     with pytest.raises(NotImplementedError):
-        renderer.remove_attribute(widget, "geometry", QtCore.QRect(0, 0, 20, 20))
+        renderer.remove_attribute(widget, "geometry", rect)
 
 
 def test_pyside_event_listeners(qapp, qtbot):

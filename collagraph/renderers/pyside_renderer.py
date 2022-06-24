@@ -112,7 +112,6 @@ class EventFilter(QtCore.QObject):
 
     def eventFilter(self, obj, event):  # noqa: N802
         event_name = event.type().name.decode()
-        # print(event_name)
         if handlers := self.event_handlers[event_name]:
             for handler in handlers.copy():
                 handler(event)
@@ -235,7 +234,6 @@ class PySideRenderer(Renderer):
             if not hasattr(el, "slots"):
                 el.slots = defaultdict(set)
 
-            # breakpoint()
             # Create a slot with the given value
             # Note that the slot apparently does not need arguments to specify the type
             # or amount of arguments the enclosed callback needs. If the callback has
