@@ -2,34 +2,23 @@ from collections import defaultdict
 import logging
 from typing import Any, Callable
 
-from PySide6 import QtCore, QtWidgets
-from PySide6.QtGui import QAction, QStandardItem, QStandardItemModel
-from PySide6.QtWidgets import (
-    QBoxLayout,
-    QDialogButtonBox,
-    QFormLayout,
-    QGridLayout,
-    QListView,
-    QMainWindow,
-    QMenu,
-    QMenuBar,
-    QSplitter,
-    QTableView,
-    QTabWidget,
-    QTreeView,
-    QWidget,
-)
+from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6.QtWidgets import QBoxLayout, QFormLayout, QGridLayout, QWidget
 
 from . import Renderer
 from .pyside.objects import (
     action,
+    combobox,
     dialogbuttonbox,
+    dockwidget,
     itemmodel,
     listview,
     menu,
     menubar,
     splitter,
+    statusbar,
     tab,
+    toolbar,
     widget,
     window,
 )
@@ -53,38 +42,46 @@ def sorted_on_class_hierarchy(value):
 
 INSERT_MAPPING = sorted_on_class_hierarchy(
     {
-        QWidget: widget.insert,
-        QMainWindow: window.insert,
-        QDialogButtonBox: dialogbuttonbox.insert,
-        QTabWidget: tab.insert,
-        QMenuBar: menubar.insert,
-        QMenu: menu.insert,
-        QListView: listview.insert,
-        QTableView: listview.insert,
-        QTreeView: listview.insert,
-        QSplitter: splitter.insert,
-        QStandardItemModel: itemmodel.insert,
+        QtWidgets.QWidget: widget.insert,
+        QtWidgets.QMainWindow: window.insert,
+        QtWidgets.QDialogButtonBox: dialogbuttonbox.insert,
+        QtWidgets.QTabWidget: tab.insert,
+        QtWidgets.QMenuBar: menubar.insert,
+        QtWidgets.QMenu: menu.insert,
+        QtWidgets.QListView: listview.insert,
+        QtWidgets.QTableView: listview.insert,
+        QtWidgets.QTreeView: listview.insert,
+        QtWidgets.QSplitter: splitter.insert,
+        QtGui.QStandardItemModel: itemmodel.insert,
+        QtWidgets.QStatusBar: statusbar.insert,
+        QtWidgets.QToolBar: toolbar.insert,
+        QtWidgets.QDockWidget: dockwidget.insert,
     }
 )
 REMOVE_MAPPING = sorted_on_class_hierarchy(
     {
-        QWidget: widget.remove,
-        QTabWidget: tab.remove,
-        QListView: listview.remove,
-        QTableView: listview.remove,
-        QTreeView: listview.remove,
-        QMenuBar: menubar.remove,
-        QMenu: menu.remove,
-        QStandardItemModel: itemmodel.remove,
+        QtWidgets.QWidget: widget.remove,
+        QtWidgets.QTabWidget: tab.remove,
+        QtWidgets.QListView: listview.remove,
+        QtWidgets.QTableView: listview.remove,
+        QtWidgets.QTreeView: listview.remove,
+        QtWidgets.QMenuBar: menubar.remove,
+        QtWidgets.QMenu: menu.remove,
+        QtGui.QStandardItemModel: itemmodel.remove,
+        QtWidgets.QStatusBar: statusbar.remove,
+        QtWidgets.QToolBar: toolbar.remove,
+        QtWidgets.QDockWidget: dockwidget.remove,
     }
 )
 SET_ATTR_MAPPING = sorted_on_class_hierarchy(
     {
-        QWidget: widget.set_attribute,
-        QAction: action.set_attribute,
-        QStandardItem: widget.set_attribute,
-        QStandardItemModel: widget.set_attribute,
-        QDialogButtonBox: dialogbuttonbox.set_attribute,
+        QtWidgets.QWidget: widget.set_attribute,
+        QtGui.QAction: action.set_attribute,
+        QtGui.QStandardItem: widget.set_attribute,
+        QtGui.QStandardItemModel: widget.set_attribute,
+        QtWidgets.QDialogButtonBox: dialogbuttonbox.set_attribute,
+        QtWidgets.QComboBox: combobox.set_attribute,
+        QtWidgets.QStatusBar: statusbar.set_attribute,
     }
 )
 
@@ -115,6 +112,7 @@ class EventFilter(QtCore.QObject):
 
     def eventFilter(self, obj, event):  # noqa: N802
         event_name = event.type().name.decode()
+        # print(event_name)
         if handlers := self.event_handlers[event_name]:
             for handler in handlers.copy():
                 handler(event)
@@ -219,7 +217,12 @@ class PySideRenderer(Renderer):
 
     def remove_attribute(self, el: Any, attr: str, value: Any):
         """Remove the attribute `attr` from the element `el`."""
-        raise NotImplementedError
+        # Make it possible to delete custom attributes
+        if attribute := getattr(el, attr, None):
+            if attribute == value:
+                delattr(el, attr)
+                return
+        raise NotImplementedError(f"Can't remove {attr}: {value}")
 
     def add_event_listener(self, el: Any, event_type: str, value: Callable):
         """Add event listener for `event_type` to the element `el`."""
@@ -232,6 +235,7 @@ class PySideRenderer(Renderer):
             if not hasattr(el, "slots"):
                 el.slots = defaultdict(set)
 
+            # breakpoint()
             # Create a slot with the given value
             # Note that the slot apparently does not need arguments to specify the type
             # or amount of arguments the enclosed callback needs. If the callback has
