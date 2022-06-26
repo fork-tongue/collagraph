@@ -217,8 +217,8 @@ class PySideRenderer(Renderer):
     def remove_attribute(self, el: Any, attr: str, value: Any):
         """Remove the attribute `attr` from the element `el`."""
         # Make it possible to delete custom attributes
-        if attribute := getattr(el, attr, None):
-            if attribute == value:
+        if hasattr(el, attr):
+            if getattr(el, attr) == value:
                 delattr(el, attr)
                 return
         raise NotImplementedError(f"Can't remove {attr}: {value}")

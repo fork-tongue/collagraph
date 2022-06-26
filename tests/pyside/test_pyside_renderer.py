@@ -114,7 +114,7 @@ def test_removing_attribute_not_supported():
 
     widget = renderer.create_element("widget")
     # This results in a custom attribute being set on widget
-    renderer.set_attribute(widget, "foo", "foo")
+    renderer.set_attribute(widget, "foo", False)
     # This results in a call to `setGeometry`
     renderer.set_attribute(widget, "geometry", rect)
 
@@ -128,7 +128,7 @@ def test_removing_attribute_not_supported():
     with pytest.raises(NotImplementedError):
         renderer.remove_attribute(widget, "bar", "bar")
 
-    renderer.remove_attribute(widget, "foo", "foo")
+    renderer.remove_attribute(widget, "foo", False)
     assert not hasattr(widget, "foo")
 
     with pytest.raises(NotImplementedError):
