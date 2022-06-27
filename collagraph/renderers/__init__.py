@@ -1,9 +1,14 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable
+from typing import Any, Callable, Optional
+
+from collagraph.types import EventLoopType
 
 
 class Renderer(metaclass=ABCMeta):  # pragma: no cover
     """Abstract base class for renderers"""
+
+    def preferred_event_loop_type(self) -> Optional[EventLoopType]:
+        return None
 
     @abstractmethod
     def create_element(self, type: str) -> Any:

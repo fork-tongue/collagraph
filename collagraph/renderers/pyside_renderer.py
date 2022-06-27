@@ -5,6 +5,7 @@ from typing import Any, Callable
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import QBoxLayout, QFormLayout, QGridLayout, QWidget
 
+from collagraph.types import EventLoopType
 from . import Renderer
 from .pyside.objects import (
     action,
@@ -132,6 +133,9 @@ class PySideRenderer(Renderer):
     def __init__(self, autoshow=True):
         super().__init__()
         self.autoshow = autoshow
+
+    def preferred_event_loop_type(self):
+        return EventLoopType.QT
 
     def register(self, type_name, custom_type):
         # Check that the custom type is a subclass of QWidget.

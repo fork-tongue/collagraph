@@ -74,11 +74,15 @@ class Collagraph:
         self,
         renderer,
         *,
-        event_loop_type: EventLoopType = EventLoopType.DEFAULT,
+        event_loop_type: EventLoopType = None,
     ):
         if not isinstance(renderer, Renderer):
             raise TypeError(f"Expected a Renderer but got a {type(renderer)}")
         self.renderer = renderer
+        if not event_loop_type:
+            event_loop_type = (
+                renderer.preferred_event_loop_type() or EventLoopType.DEFAULT
+            )
         self.event_loop_type = event_loop_type
         if self.event_loop_type is EventLoopType.QT:
             scheduler.register_qt()  # pragma: no cover
