@@ -125,14 +125,15 @@ def test_removing_attribute_not_supported():
     assert widget.geometry != rect
     assert widget.geometry() == rect
 
+    # Try and remove a non-existing property
     with pytest.raises(NotImplementedError):
         renderer.remove_attribute(widget, "bar", "bar")
 
     renderer.remove_attribute(widget, "foo", False)
     assert not hasattr(widget, "foo")
 
-    with pytest.raises(NotImplementedError):
-        renderer.remove_attribute(widget, "geometry", rect)
+    # Removing Qt properties *is* actually supported now
+    renderer.remove_attribute(widget, "geometry", rect)
 
 
 def test_pyside_event_listeners(qapp, qtbot):

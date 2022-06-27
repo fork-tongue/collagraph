@@ -24,6 +24,7 @@ from .pyside.objects import (
     window,
 )
 from .pyside.utils import (
+    attr_name_to_method_name,
     camel_case,
     DEFAULT_ARGS,
     name_to_type,
@@ -88,6 +89,8 @@ SET_ATTR_MAPPING = sorted_on_class_hierarchy(
 
 # Cache for wrapped types
 WRAPPED_TYPES = {}
+
+DEFAULT_VALUES = {}
 
 LAYOUT = {
     "Box": QBoxLayout,
@@ -214,6 +217,23 @@ class PySideRenderer(Renderer):
 
     def set_attribute(self, el: Any, attr: str, value: Any):
         """Set the attribute `attr` of the element `el` to the value `value`."""
+
+        key = f"{type(el).__name__}.{attr}"
+        if key not in DEFAULT_VALUES:
+            if not hasattr(el, "metaObject"):
+                logger.warning(f"{el} does not have metaObject")
+            else:
+                method_name = attr_name_to_method_name(attr, setter=False)
+
+                meta_object = el.metaObject()
+                property_idx = meta_object.indexOfProperty(method_name)
+                if property_idx >= 0:
+                    meta_property = meta_object.property(property_idx)
+                    result = meta_property.read(el)
+                    DEFAULT_VALUES[key] = (meta_property, result)
+                else:
+                    logger.warning(f"'{attr}' is not a Qt property on {type(el)}")
+
         # Support a custom attribute 'layout_direction' so that we can
         # set the layout direction of the layout of the given element
         el.set_attribute(attr, value)
@@ -225,6 +245,13 @@ class PySideRenderer(Renderer):
             if getattr(el, attr) == value:
                 delattr(el, attr)
                 return
+
+        key = f"{type(el).__name__}.{attr}"
+        if key in DEFAULT_VALUES:
+            meta_property, default_value = DEFAULT_VALUES[key]
+            meta_property.write(el, default_value)
+            return
+
         raise NotImplementedError(f"Can't remove {attr}: {value}")
 
     def add_event_listener(self, el: Any, event_type: str, value: Callable):

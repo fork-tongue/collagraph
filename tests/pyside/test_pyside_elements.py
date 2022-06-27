@@ -396,6 +396,18 @@ def test_app(qapp, qtbot):
         assert show == bool(obj)
 
     qtbot.waitUntil(
+        partial(check_name, type=QtWidgets.QWidget, name="dock_title", show=True),
+        timeout=500,
+    )
+    dock = window.findChild(QtGui.QAction, "toggle_dock_title")
+    dock.triggered.emit()
+
+    qtbot.waitUntil(
+        partial(check_name, type=QtWidgets.QWidget, name="dock_title", show=False),
+        timeout=500,
+    )
+
+    qtbot.waitUntil(
         partial(check_name, type=QtWidgets.QStatusBar, name="statusbar", show=True),
         timeout=500,
     )
@@ -443,18 +455,6 @@ def test_app(qapp, qtbot):
 
     qtbot.waitUntil(
         partial(check_name, type=QtWidgets.QWidget, name="dock_content", show=False),
-        timeout=500,
-    )
-
-    qtbot.waitUntil(
-        partial(check_name, type=QtWidgets.QWidget, name="dock_title", show=True),
-        timeout=500,
-    )
-    dock = window.findChild(QtGui.QAction, "toggle_dock_title")
-    dock.triggered.emit()
-
-    qtbot.waitUntil(
-        partial(check_name, type=QtWidgets.QWidget, name="dock_title", show=False),
         timeout=500,
     )
 
