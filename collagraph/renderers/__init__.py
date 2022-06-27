@@ -50,7 +50,7 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
         pass
 
 
-from .dict_renderer import DictRenderer
+from .dict_renderer import DictRenderer  # noqa: I202
 
 try:
     import pygfx
