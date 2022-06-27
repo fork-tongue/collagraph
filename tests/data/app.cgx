@@ -98,34 +98,33 @@ def quit():
 class Window(cg.Component):
     def __init__(self, props):
         super().__init__(props)
-        self.state['toggles'] = {
-            'show_dock': True,
-            'show_dock_title': True,
-            'show_dock_content': True,
-            'show_toolbar': True,
-            'show_action': True,
-            'show_statusbar': True,
+        self.state["toggles"] = {
+            "show_dock": True,
+            "show_dock_title": True,
+            "show_dock_content": True,
+            "show_toolbar": True,
+            "show_action": True,
+            "show_statusbar": True,
         }
         self.state["items"] = [
             [["Item", "Value"], False],
             [["Foo", "Bar"], False],
         ]
 
-
     @property
     def standard_items(self):
-      items = []
-      for row, (item, check_state) in enumerate(self.state["items"]):
-          for column, text in enumerate(item):
-              child_props = {
-                  "text": text,
-                  "model_index": (row, column),
-                  "checkable": column == 0,
-              }
-              if column == 0:
-                  child_props["check_state"] = STATE_MAP[check_state]
-              items.append(child_props)
-      return items
+        items = []
+        for row, (item, check_state) in enumerate(self.state["items"]):
+            for column, text in enumerate(item):
+                child_props = {
+                    "text": text,
+                    "model_index": (row, column),
+                    "checkable": column == 0,
+                }
+                if column == 0:
+                    child_props["check_state"] = STATE_MAP[check_state]
+                items.append(child_props)
+        return items
 
     def on_new(self):
         pass
@@ -137,5 +136,7 @@ class Window(cg.Component):
         pass
 
     def toggle_item(self, name):
-        self.state['toggles'][f'show_{name}'] = not self.state['toggles'][f'show_{name}']
+        self.state["toggles"][f"show_{name}"] = not self.state["toggles"][
+            f"show_{name}"
+        ]
 </script>
