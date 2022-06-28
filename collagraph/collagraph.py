@@ -50,6 +50,10 @@ def watch(fn, cb, lazy=False, deep=False, **kwargs):
 def create_element(type, props=None, *children) -> VNode:
     """Create an element description, based on type, props and (optionally) children"""
     key = props.get("key", None) if props is not None else None
+    children = [
+        child if not isinstance(child, str) else create_text_element(child)
+        for child in children
+    ]
     if len(children) == 1:
         # If children is 1 dictionary, then that is the slots definition
         if isinstance(children[0], dict):
@@ -58,6 +62,10 @@ def create_element(type, props=None, *children) -> VNode:
         elif callable(children[0]):
             children = {"default": children[0]}
     return VNode(type, reactive(props or {}), children or tuple(), key)
+
+
+def create_text_element(text):
+    return VNode("TEXT_ELEMENT", {"content": text}, [])
 
 
 def render_slot(name, props, slots):
@@ -277,7 +285,11 @@ class Collagraph:
         self.reconcile_children(fiber, fiber.children)
 
     def create_dom(self, fiber: Fiber) -> Any:
-        dom = self.renderer.create_element(fiber.type)
+        dom = (
+            self.renderer.create_text_element()
+            if fiber.type == "TEXT_ELEMENT"
+            else self.renderer.create_element(fiber.type)
+        )
         self.update_dom_or_component(fiber, dom, prev_props={}, next_props=fiber.props)
         return dom
 
@@ -473,8 +485,8 @@ class Collagraph:
 
         traverse_before_unmount(fiber.child)
 
-        if dom := fiber.dom:
-            self.renderer.remove(dom, dom_parent)
+        if fiber.dom is not None:
+            self.renderer.remove(fiber.dom, dom_parent)
             fiber.dom = None
         else:
             self.commit_deletion(fiber.child, dom_parent)
@@ -487,7 +499,7 @@ class Collagraph:
             return
 
         dom_parent_fiber = fiber.parent
-        while not dom_parent_fiber.dom:
+        while dom_parent_fiber.dom is None:
             dom_parent_fiber = dom_parent_fiber.parent
         dom_parent = dom_parent_fiber.dom
 
@@ -497,10 +509,10 @@ class Collagraph:
                     fiber, None, prev_props={}, next_props=fiber.props
                 )
                 fiber.mounted = True
-            if fiber.dom:
+            if fiber.dom is not None:
                 self.renderer.insert(fiber.dom, dom_parent, anchor=fiber.anchor)
         elif fiber.effect_tag == EffectTag.UPDATE:
-            if fiber.dom:
+            if fiber.dom is not None:
                 if fiber.move:
                     self.renderer.remove(fiber.dom, dom_parent)
                     self.renderer.insert(
@@ -525,6 +537,11 @@ class Collagraph:
     ):
         if not dom and not fiber.component:
             return
+
+        if fiber.type == "TEXT_ELEMENT":
+            if (new_content := next_props["content"]) != prev_props.get("content"):
+                self.renderer.set_element_text(dom, new_content)
+                return
 
         events_to_remove = {}
         attrs_to_remove = {}

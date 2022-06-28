@@ -1,5 +1,6 @@
 import ast
 from html.parser import HTMLParser
+from pathlib import Path
 import re
 import sys
 import textwrap
@@ -23,6 +24,7 @@ DIRECTIVE_ON = f"{DIRECTIVE_PREFIX}on"
 AST_GEN_VARIABLE_PREFIX = "_ast_"
 
 COMPONENT_CLASS_DEFINITION = re.compile(r"class\s*(.*?)\s*\(.*?\)\s*:")
+MOUSTACHES = re.compile(r"\{\{.*?\}\}")
 
 
 def load(path):
@@ -51,8 +53,20 @@ def load(path):
         </script>
 
     """
+    template = path.read_text()
+
+    return load_from_string(template, path)
+
+
+def load_from_string(template, path=None):
+    """
+    Load template from a string
+    """
+    if path is None:
+        path = "<template>"
+
     # Construct the AST tree
-    tree, name = construct_ast(path)
+    tree, name = construct_ast(path=path, template=template)
 
     # Compile the tree into a code object (module)
     code = compile(tree, filename=str(path), mode="exec")
@@ -71,7 +85,7 @@ def load(path):
     return component_class, module_namespace
 
 
-def construct_ast(path):
+def construct_ast(path, template=None):
     """
     Returns a tuple of the constructed AST tree and name of (enhanced) component class.
 
@@ -79,9 +93,12 @@ def construct_ast(path):
     and then compile the contents of the template tag and insert that into the component
     class definition as `render` function.
     """
+    if not template:
+        template = Path(path).read_text()
+
     # Parse the file component into a tree of Node instances
     parser = CGXParser()
-    parser.feed(path.read_text())
+    parser.feed(template)
 
     # Get the AST from the script tag
     script_tree = get_script_ast(parser, path)
@@ -204,7 +221,7 @@ def create_ast_render_function(node, names):
     )
 
 
-def call_create_element(node, *, names=None):
+def call_create_element(node, *, names):
     """
     Returns an ast.Call of `collagraph.create_element()` with the right args
     for the given node.
@@ -212,8 +229,6 @@ def call_create_element(node, *, names=None):
     Names is a set of variable names that should not be wrapped in
     the _lookup method.
     """
-    if names is None:
-        names = set()
     return ast.Call(
         func=ast.Name(id="_create_element", ctx=ast.Load()),
         args=convert_node_to_args(node, names=names),
@@ -311,9 +326,14 @@ def convert_node_to_args(node, *, names=None):
             _, key = key.split(split_char)
             key = f"on_{key}"
             props_keys.append(ast.Constant(value=key))
-            props_values.append(
-                RewriteName(skip=names).visit(ast.parse(val, mode="eval")).body
-            )
+
+            tree = ast.parse(val, mode="eval")
+            # v-on directives allow for lambdas which define arguments
+            # which need to be skipped by the RewriteName visitor
+            lambda_names = LambdaNamesCollector()
+            lambda_names.visit(tree)
+            RewriteName(skip=names | lambda_names.names).visit(tree)
+            props_values.append(tree.body)
             continue
 
         if key.startswith((DIRECTIVE_FOR)):
@@ -392,6 +412,81 @@ def convert_node_to_args(node, *, names=None):
     if control_flow:
         children_args.append(create_control_flow_ast(control_flow, names=names))
         control_flow = []
+
+    if node.data:
+        groups = [match for match in MOUSTACHES.finditer(node.data)]
+        if not groups:
+            children_args.append(ast.Constant(value=node.data))
+        else:
+            offset = 0
+            string_parts = []
+            expressions = []
+            for group in groups:
+                span = group.span()
+                string_parts.append(ast.Constant(value=node.data[offset : span[0]]))
+                expr = (node.data[span[0] + 2 : span[1] - 2]).strip()
+                expressions.append(
+                    RewriteName(skip=names).visit(ast.parse(expr, mode="eval")).body
+                )
+                offset = span[1]
+
+            string_suffix = ast.Constant(value=node.data[offset:])
+
+            children_args.append(
+                # The following tree is the ast of the following expression:
+                # "".join(
+                #     [x + str(y) for x, y in zip(string_parts, expressions)]
+                #     + [string_suffix]
+                # )
+                ast.Call(
+                    func=ast.Attribute(
+                        value=ast.Constant(value=""), attr="join", ctx=ast.Load()
+                    ),
+                    args=[
+                        ast.BinOp(
+                            left=ast.ListComp(
+                                elt=ast.BinOp(
+                                    left=ast.Name(id="x", ctx=ast.Load()),
+                                    op=ast.Add(),
+                                    right=ast.Call(
+                                        func=ast.Name(id="str", ctx=ast.Load()),
+                                        args=[ast.Name(id="y", ctx=ast.Load())],
+                                        keywords=[],
+                                    ),
+                                ),
+                                generators=[
+                                    ast.comprehension(
+                                        target=ast.Tuple(
+                                            elts=[
+                                                ast.Name(id="x", ctx=ast.Store()),
+                                                ast.Name(id="y", ctx=ast.Store()),
+                                            ],
+                                            ctx=ast.Store(),
+                                        ),
+                                        iter=ast.Call(
+                                            func=ast.Name(id="zip", ctx=ast.Load()),
+                                            args=[
+                                                ast.List(
+                                                    elts=string_parts, ctx=ast.Load()
+                                                ),
+                                                ast.List(
+                                                    elts=expressions, ctx=ast.Load()
+                                                ),
+                                            ],
+                                            keywords=[],
+                                        ),
+                                        ifs=[],
+                                        is_async=0,
+                                    )
+                                ],
+                            ),
+                            op=ast.Add(),
+                            right=ast.List(elts=[string_suffix], ctx=ast.Load()),
+                        )
+                    ],
+                    keywords=[],
+                )
+            )
 
     # Create a starred list comprehension that when called, will generate
     # all child elements
@@ -541,6 +636,15 @@ class NameCollector(ast.NodeVisitor):
         self.names.add(node.id)
 
 
+class LambdaNamesCollector(ast.NodeVisitor):
+    def __init__(self):
+        self.names = set()
+
+    def visit_Lambda(self, node):
+        for arg in node.args.posonlyargs + node.args.args + node.args.kwonlyargs:
+            self.names.add(arg.arg)
+
+
 class RewriteName(ast.NodeTransformer):
     """AST node transformer that will try to replace static Name nodes with
     a call to `_lookup` with the name of the node."""
@@ -565,6 +669,11 @@ class RewriteName(ast.NodeTransformer):
             ),
             args=[
                 ast.Constant(value=node.id),
+                ast.Call(
+                    func=ast.Name(id="globals", ctx=ast.Load()),
+                    args=[],
+                    keywords=[],
+                ),
             ],
             keywords=[],
         )

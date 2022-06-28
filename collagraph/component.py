@@ -9,16 +9,35 @@ from collagraph import render_slot
 class Component:
     """Abstract base class for components"""
 
-    __slots__ = ["state", "props"]
     __lookup_cache__ = defaultdict(dict)
 
     def __init__(self, props=None):
-        self.props = readonly({} if props is None else props)
-        self.state = reactive({})
+        self._props = readonly({} if props is None else props)
+        self._state = reactive({})
         self._element = None
         self._slots = {}
         self._event_handlers = defaultdict(set)
         self._lookup_cache = Component.__lookup_cache__[type(self)]
+
+    @property
+    def props(self):
+        """The incoming props of this component."""
+        return self._props
+
+    @props.setter
+    def props(self, value):
+        """Prevent overwriting the props attribute."""
+        raise RuntimeError("Not allowed to override props attribute")
+
+    @property
+    def state(self):
+        """The local state of this component."""
+        return self._state
+
+    @state.setter
+    def state(self, value):
+        """Prevent overwriting the state attribute."""
+        raise RuntimeError("Not allowed to override state attribute")
 
     @property
     def element(self):
@@ -84,7 +103,7 @@ class Component:
         """Removes an event handler for the given event."""
         self._event_handlers[event].remove(handler)
 
-    def _lookup(self, name):
+    def _lookup(self, name, context):
         """
         Helper method that is used in the template.
         The method looks up variables that are mentioned in the template.
@@ -93,19 +112,19 @@ class Component:
         """
         cache = self._lookup_cache
         if method := cache.get(name):
-            return method(self, name)
+            return method(self, name, context)
 
-        def props_lookup(self, name):
+        def props_lookup(self, name, context):
             return self.props[name]
 
-        def state_lookup(self, name):
+        def state_lookup(self, name, context):
             return self.state[name]
 
-        def self_lookup(self, name):
+        def self_lookup(self, name, context):
             return getattr(self, name)
 
-        def global_lookup(self, name):
-            return globals()[name]
+        def global_lookup(self, name, context):
+            return context[name]
 
         if name in self.props:
             cache[name] = props_lookup
@@ -113,8 +132,8 @@ class Component:
             cache[name] = state_lookup
         elif hasattr(self, name):
             cache[name] = self_lookup
-        elif name in globals():
+        elif name in context:
             cache[name] = global_lookup
         else:
             raise NameError(f"name '{name}' is not defined")
-        return self._lookup(name)
+        return self._lookup(name, context)

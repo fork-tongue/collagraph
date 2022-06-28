@@ -1,0 +1,3 @@
+[run]
+omit =
+    collagraph/renderers/dom_renderer.py

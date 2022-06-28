@@ -388,3 +388,19 @@ def test_only_render_on_relevant_change_component():
     state["foo"] = "foo"
 
     assert rendered == 3
+
+
+def test_text_elements():
+    def render(props):
+        return h("div", {}, "foo")
+
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    container = {"type": "root"}
+    gui.render(h(render), container)
+
+    div = container["children"][0]
+    assert div["type"] == "div"
+
+    text_node = div["children"][0]
+    assert text_node["type"] == "TEXT_ELEMENT"
+    assert text_node["text"] == "foo"
