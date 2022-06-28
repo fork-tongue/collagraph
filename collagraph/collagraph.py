@@ -485,8 +485,8 @@ class Collagraph:
 
         traverse_before_unmount(fiber.child)
 
-        if dom := fiber.dom:
-            self.renderer.remove(dom, dom_parent)
+        if fiber.dom is not None:
+            self.renderer.remove(fiber.dom, dom_parent)
             fiber.dom = None
         else:
             self.commit_deletion(fiber.child, dom_parent)
@@ -499,7 +499,7 @@ class Collagraph:
             return
 
         dom_parent_fiber = fiber.parent
-        while not dom_parent_fiber.dom:
+        while dom_parent_fiber.dom is None:
             dom_parent_fiber = dom_parent_fiber.parent
         dom_parent = dom_parent_fiber.dom
 
@@ -509,10 +509,10 @@ class Collagraph:
                     fiber, None, prev_props={}, next_props=fiber.props
                 )
                 fiber.mounted = True
-            if fiber.dom:
+            if fiber.dom is not None:
                 self.renderer.insert(fiber.dom, dom_parent, anchor=fiber.anchor)
         elif fiber.effect_tag == EffectTag.UPDATE:
-            if fiber.dom:
+            if fiber.dom is not None:
                 if fiber.move:
                     self.renderer.remove(fiber.dom, dom_parent)
                     self.renderer.insert(
