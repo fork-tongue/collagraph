@@ -26,6 +26,11 @@ def Example(props):
         props["items"][item.row()][0][item.column()] = item.text()
         props["items"][item.row()][1] = item.checkState() == QtCore.Qt.Checked
 
+    def selection_changed(selected, deselected):
+        sel = [(idx.row(), idx.column()) for idx in selected.indexes()]
+        desel = [(idx.row(), idx.column()) for idx in deselected.indexes()]
+        print(desel, "=>", sel)  # noqa: T201
+
     children = []
     for row, (item, check_state) in enumerate(props["items"]):
         for column, text in enumerate(item):
@@ -46,6 +51,10 @@ def Example(props):
         },
         *children
     )
+    selection_model = h(
+        "QItemSelectionModel",
+        {"on_selection_changed": selection_changed},
+    )
 
     return h(
         "Window",
@@ -60,16 +69,27 @@ def Example(props):
                     "QListView",
                     {},
                     item_model,
+                    selection_model,
+                    # NOTE: the order of `item_model` and `selection_model` matters:
+                    # the item model needs to come before the selection model, because
+                    # the selection model needs an item model in order to function and
+                    # `setSelectionModel` call will fail with the following message:
+                    #
+                    #   > QAbstractItemView::setSelectionModel() failed: Trying to set
+                    #   > a selection model, which works on a different model than the
+                    #   > view.
                 ),
                 h(
                     "QTableView",
                     {},
                     item_model,
+                    selection_model,
                 ),
                 h(
                     "QTreeView",
                     {},
                     item_model,
+                    selection_model,
                 ),
             ),
             h(
