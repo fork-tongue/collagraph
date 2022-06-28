@@ -23,6 +23,9 @@ class PygfxRenderer(Renderer):
 
         raise ValueError(f"Can't create element of type: {type}")
 
+    def create_text_element(self):
+        raise NotImplementedError
+
     def insert(
         self,
         el: gfx.WorldObject,
@@ -33,6 +36,9 @@ class PygfxRenderer(Renderer):
 
     def remove(self, el: gfx.WorldObject, parent: gfx.WorldObject):
         parent.remove(el)
+
+    def set_element_text(self, el, value: str):
+        raise NotImplementedError
 
     def set_attribute(self, obj, attr, value):
         if isinstance(obj, gfx.WorldObject):

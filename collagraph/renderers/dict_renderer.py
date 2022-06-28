@@ -10,10 +10,14 @@ class DictRenderer(Renderer):
     * children: list
     * attributes: dict
     * event_listeners: defaultdict(set)
+    * text: str (only for TEXT_ELEMENT items)
     """
 
     def create_element(self, type: str) -> dict:
         return {"type": type}
+
+    def create_text_element(self):
+        return {"type": "TEXT_ELEMENT"}
 
     def insert(self, el, parent, anchor=None):
         children = parent.setdefault("children", [])
@@ -23,6 +27,9 @@ class DictRenderer(Renderer):
     def remove(self, el, parent):
         children = parent["children"]
         children.remove(el)
+
+    def set_element_text(self, el: dict, value: str):
+        el["text"] = value
 
     def set_attribute(self, obj, attr: str, value):
         attributes = obj.setdefault("attrs", {})
