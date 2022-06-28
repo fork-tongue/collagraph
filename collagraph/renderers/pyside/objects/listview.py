@@ -27,6 +27,6 @@ def remove(self, el: Union[QStandardItemModel, QItemSelectionModel]):
     elif isinstance(el, QItemSelectionModel):
         self.setSelectionModel(None)
     else:
-        raise NotImplementedError
+        raise NotImplementedError(type(el).__name__)
 
     el.setParent(None)
