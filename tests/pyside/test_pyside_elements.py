@@ -131,10 +131,17 @@ def test_layouts(qapp, qtbot):
     element = h(LayoutExample, {})
     gui.render(element, qapp)
 
-    def check_label():
-        window = current_window(qapp)
-        assert window
+    window = None
 
+    def get_window():
+        nonlocal window
+        result = current_window(qapp)
+        assert result
+        window = result
+
+    qtbot.waitUntil(get_window, timeout=500)
+
+    def check_label():
         box = window.findChild(QtWidgets.QGroupBox, name="box")
         assert box
         assert isinstance(box.layout(), QtWidgets.QBoxLayout)
