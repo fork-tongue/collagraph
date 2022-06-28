@@ -24,11 +24,11 @@ class DomRenderer(Renderer):
     def set_element_text(self, el, value):
         el.textContent = value
 
-    def set_attribute(self, obj, attr: str, value):
-        obj.setAttribute(attr, value)
+    def set_attribute(self, el, attr: str, value):
+        el.setAttribute(attr, value)
 
-    def remove_attribute(self, obj, attr: str, value):
-        obj.removeAttribute(attr)
+    def remove_attribute(self, el, attr: str, value):
+        el.removeAttribute(attr)
 
     def add_event_listener(self, el, event_type, value):
         el.addEventListener(event_type, value)
