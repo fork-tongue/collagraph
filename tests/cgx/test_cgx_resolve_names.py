@@ -22,3 +22,18 @@ def test_resolve_names():
     assert item.props["value"] == "state_value", item
     item = root.children[5]
     assert item.props["value"] == "value", item
+
+
+def test_cgx_file_dunder():
+    from tests.data.file_dunder import Example
+
+    example = Example()
+    file = example.file()
+
+    assert file.endswith("file_dunder.cgx")
+
+    name = example.name()
+    assert name.endswith("file_dunder")
+
+    package = example.package()
+    assert package == "tests.data"

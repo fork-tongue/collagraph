@@ -1,0 +1,19 @@
+<template>
+  <item />
+</template>
+
+<script>
+import collagraph as cg
+
+
+class Example(cg.Component):
+    def file(self):
+        return __file__
+
+    def name(self):
+        return __name__
+
+    def package(self):
+        return __package__
+
+</script>
