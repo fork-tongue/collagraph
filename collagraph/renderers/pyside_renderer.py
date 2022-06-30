@@ -227,7 +227,7 @@ class PySideRenderer(Renderer):
         key = f"{type(el).__name__}.{attr}"
         if key not in DEFAULT_VALUES:
             if not hasattr(el, "metaObject"):
-                logger.warning(f"{el} does not have metaObject")
+                logger.debug(f"{el} does not have metaObject")
             else:
                 method_name = attr_name_to_method_name(attr, setter=False)
 
@@ -238,7 +238,7 @@ class PySideRenderer(Renderer):
                     result = meta_property.read(el)
                     DEFAULT_VALUES[key] = (meta_property, result)
                 else:
-                    logger.warning(f"'{attr}' is not a Qt property on {type(el)}")
+                    logger.debug(f"'{attr}' is not a Qt property on {type(el)}")
 
         # Support a custom attribute 'layout_direction' so that we can
         # set the layout direction of the layout of the given element
