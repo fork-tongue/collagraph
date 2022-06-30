@@ -262,6 +262,7 @@ class PySideRenderer(Renderer):
 
     def add_event_listener(self, el: Any, event_type: str, value: Callable):
         """Add event listener for `event_type` to the element `el`."""
+        event_type = event_type.replace("-", "_")
         signal_name = camel_case(event_type, "_")
 
         # Try and get the signal from the object
@@ -298,6 +299,7 @@ class PySideRenderer(Renderer):
 
     def remove_event_listener(self, el: Any, event_type: str, value: Callable):
         """Remove event listener for `event_type` to the element `el`."""
+        event_type = event_type.replace("-", "_")
         signal_name = camel_case(event_type, "_")
 
         signal = getattr(el, signal_name, None)
