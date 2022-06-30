@@ -216,6 +216,29 @@ def test_directive_for_with_enumerate():
             assert node.children[idx].props["text"] == label
 
 
+def test_directive_for_lambdas():
+    from tests.data.directive_for_lambdas import Example
+
+    state = reactive({"names": ["foo", "bar"]})
+    component = Example(state)
+    node = component.render()
+
+    assert node.type == "widget"
+
+    foo_button, bar_button = node.children
+
+    assert foo_button.props["text"] == "foo"
+    assert bar_button.props["text"] == "bar"
+
+    foo_button.props["on_clicked"]("baz")
+
+    assert Example.clicked_names[-1] == ("baz", "foo")
+
+    bar_button.props["on_clicked"]("bas")
+
+    assert Example.clicked_names[-1] == ("bas", "bar")
+
+
 def test_directive_for_elaborate():
     from tests.data.directive_for_elaborate import Labels
 

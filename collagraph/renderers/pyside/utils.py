@@ -20,10 +20,14 @@ TYPE_MAPPING = {
     "spinbox": QtWidgets.QSpinBox,
     "statusbar": QtWidgets.QStatusBar,
     "textedit": QtWidgets.QTextEdit,
+    "toolbar": QtWidgets.QToolBar,
     "treeview": QtWidgets.QTreeView,
     "widget": QtWidgets.QWidget,
     "window": QtWidgets.QMainWindow,
     "action": QtGui.QAction,
+    "dock": QtWidgets.QDockWidget,
+    "itemmodel": QtGui.QStandardItemModel,
+    "standarditem": QtGui.QStandardItem,
 }
 
 # Default arguments for types that need

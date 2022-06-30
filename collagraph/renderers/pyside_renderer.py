@@ -2,40 +2,29 @@ from collections import defaultdict
 import logging
 from typing import Any, Callable
 
-from PySide6 import QtCore, QtWidgets
-from PySide6.QtGui import QAction, QStandardItem, QStandardItemModel
-from PySide6.QtWidgets import (
-    QBoxLayout,
-    QComboBox,
-    QDialogButtonBox,
-    QFormLayout,
-    QGridLayout,
-    QListView,
-    QMainWindow,
-    QMenu,
-    QMenuBar,
-    QSplitter,
-    QTableView,
-    QTabWidget,
-    QTreeView,
-    QWidget,
-)
+from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6.QtWidgets import QBoxLayout, QFormLayout, QGridLayout, QWidget
 
+from collagraph.types import EventLoopType
 from . import Renderer
 from .pyside.objects import (
     action,
     combobox,
     dialogbuttonbox,
+    dockwidget,
     itemmodel,
     listview,
     menu,
     menubar,
     splitter,
+    statusbar,
     tab,
+    toolbar,
     widget,
     window,
 )
 from .pyside.utils import (
+    attr_name_to_method_name,
     camel_case,
     DEFAULT_ARGS,
     name_to_type,
@@ -55,44 +44,53 @@ def sorted_on_class_hierarchy(value):
 
 INSERT_MAPPING = sorted_on_class_hierarchy(
     {
-        QWidget: widget.insert,
-        QMainWindow: window.insert,
-        QDialogButtonBox: dialogbuttonbox.insert,
-        QTabWidget: tab.insert,
-        QMenuBar: menubar.insert,
-        QMenu: menu.insert,
-        QListView: listview.insert,
-        QTableView: listview.insert,
-        QTreeView: listview.insert,
-        QSplitter: splitter.insert,
-        QStandardItemModel: itemmodel.insert,
+        QtWidgets.QWidget: widget.insert,
+        QtWidgets.QMainWindow: window.insert,
+        QtWidgets.QDialogButtonBox: dialogbuttonbox.insert,
+        QtWidgets.QTabWidget: tab.insert,
+        QtWidgets.QMenuBar: menubar.insert,
+        QtWidgets.QMenu: menu.insert,
+        QtWidgets.QListView: listview.insert,
+        QtWidgets.QTableView: listview.insert,
+        QtWidgets.QTreeView: listview.insert,
+        QtWidgets.QSplitter: splitter.insert,
+        QtGui.QStandardItemModel: itemmodel.insert,
+        QtWidgets.QStatusBar: statusbar.insert,
+        QtWidgets.QToolBar: toolbar.insert,
+        QtWidgets.QDockWidget: dockwidget.insert,
     }
 )
 REMOVE_MAPPING = sorted_on_class_hierarchy(
     {
-        QWidget: widget.remove,
-        QTabWidget: tab.remove,
-        QListView: listview.remove,
-        QTableView: listview.remove,
-        QTreeView: listview.remove,
-        QMenuBar: menubar.remove,
-        QMenu: menu.remove,
-        QStandardItemModel: itemmodel.remove,
+        QtWidgets.QWidget: widget.remove,
+        QtWidgets.QTabWidget: tab.remove,
+        QtWidgets.QListView: listview.remove,
+        QtWidgets.QTableView: listview.remove,
+        QtWidgets.QTreeView: listview.remove,
+        QtWidgets.QMenuBar: menubar.remove,
+        QtWidgets.QMenu: menu.remove,
+        QtGui.QStandardItemModel: itemmodel.remove,
+        QtWidgets.QStatusBar: statusbar.remove,
+        QtWidgets.QToolBar: toolbar.remove,
+        QtWidgets.QDockWidget: dockwidget.remove,
     }
 )
 SET_ATTR_MAPPING = sorted_on_class_hierarchy(
     {
-        QWidget: widget.set_attribute,
-        QAction: action.set_attribute,
-        QStandardItem: widget.set_attribute,
-        QStandardItemModel: widget.set_attribute,
-        QDialogButtonBox: dialogbuttonbox.set_attribute,
-        QComboBox: combobox.set_attribute,
+        QtWidgets.QWidget: widget.set_attribute,
+        QtGui.QAction: action.set_attribute,
+        QtGui.QStandardItem: widget.set_attribute,
+        QtGui.QStandardItemModel: widget.set_attribute,
+        QtWidgets.QDialogButtonBox: dialogbuttonbox.set_attribute,
+        QtWidgets.QComboBox: combobox.set_attribute,
+        QtWidgets.QStatusBar: statusbar.set_attribute,
     }
 )
 
 # Cache for wrapped types
 WRAPPED_TYPES = {}
+
+DEFAULT_VALUES = {}
 
 LAYOUT = {
     "Box": QBoxLayout,
@@ -138,6 +136,9 @@ class PySideRenderer(Renderer):
     def __init__(self, autoshow=True):
         super().__init__()
         self.autoshow = autoshow
+
+    def preferred_event_loop_type(self):
+        return EventLoopType.QT
 
     def register(self, type_name, custom_type):
         # Check that the custom type is a subclass of QWidget.
@@ -222,16 +223,46 @@ class PySideRenderer(Renderer):
 
     def set_attribute(self, el: Any, attr: str, value: Any):
         """Set the attribute `attr` of the element `el` to the value `value`."""
+
+        key = f"{type(el).__name__}.{attr}"
+        if key not in DEFAULT_VALUES:
+            if not hasattr(el, "metaObject"):
+                logger.debug(f"{el} does not have metaObject")
+            else:
+                method_name = attr_name_to_method_name(attr, setter=False)
+
+                meta_object = el.metaObject()
+                property_idx = meta_object.indexOfProperty(method_name)
+                if property_idx >= 0:
+                    meta_property = meta_object.property(property_idx)
+                    result = meta_property.read(el)
+                    DEFAULT_VALUES[key] = (meta_property, result)
+                else:
+                    logger.debug(f"'{attr}' is not a Qt property on {type(el)}")
+
         # Support a custom attribute 'layout_direction' so that we can
         # set the layout direction of the layout of the given element
         el.set_attribute(attr, value)
 
     def remove_attribute(self, el: Any, attr: str, value: Any):
         """Remove the attribute `attr` from the element `el`."""
-        raise NotImplementedError
+        # Make it possible to delete custom attributes
+        if hasattr(el, attr):
+            if getattr(el, attr) == value:
+                delattr(el, attr)
+                return
+
+        key = f"{type(el).__name__}.{attr}"
+        if key in DEFAULT_VALUES:
+            meta_property, default_value = DEFAULT_VALUES[key]
+            meta_property.write(el, default_value)
+            return
+
+        raise NotImplementedError(f"Can't remove {attr}: {value}")
 
     def add_event_listener(self, el: Any, event_type: str, value: Callable):
         """Add event listener for `event_type` to the element `el`."""
+        event_type = event_type.replace("-", "_")
         signal_name = camel_case(event_type, "_")
 
         # Try and get the signal from the object
@@ -268,6 +299,7 @@ class PySideRenderer(Renderer):
 
     def remove_event_listener(self, el: Any, event_type: str, value: Callable):
         """Remove event listener for `event_type` to the element `el`."""
+        event_type = event_type.replace("-", "_")
         signal_name = camel_case(event_type, "_")
 
         signal = getattr(el, signal_name, None)

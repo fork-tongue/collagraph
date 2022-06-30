@@ -109,8 +109,31 @@ def test_not_implemented():
 
 def test_removing_attribute_not_supported():
     renderer = PySideRenderer(autoshow=False)
+
+    rect = QtCore.QRect(0, 0, 20, 20)
+
+    widget = renderer.create_element("widget")
+    # This results in a custom attribute being set on widget
+    renderer.set_attribute(widget, "foo", False)
+    # This results in a call to `setGeometry`
+    renderer.set_attribute(widget, "geometry", rect)
+
+    assert hasattr(widget, "foo")
+    assert hasattr(widget, "geometry")
+    # Check that the geometry has been set through `setGeometry`
+    assert callable(widget.geometry)
+    assert widget.geometry != rect
+    assert widget.geometry() == rect
+
+    # Try and remove a non-existing property
     with pytest.raises(NotImplementedError):
-        renderer.remove_attribute(None, None, None)
+        renderer.remove_attribute(widget, "bar", "bar")
+
+    renderer.remove_attribute(widget, "foo", False)
+    assert not hasattr(widget, "foo")
+
+    # Removing Qt properties *is* actually supported now
+    renderer.remove_attribute(widget, "geometry", rect)
 
 
 def test_pyside_event_listeners(qapp, qtbot):

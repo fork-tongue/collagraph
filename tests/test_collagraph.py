@@ -15,8 +15,15 @@ def test_basic_dict_renderer():
 
 
 def test_renderer_required():
+    # renderer argument is required
     with pytest.raises(TypeError):
         Collagraph(event_loop_type=EventLoopType.SYNC)
+
+    # When the renderer argument is passed, it should be a Renderer subclass
+    with pytest.raises(TypeError) as e:
+        Collagraph(renderer=True, event_loop_type=EventLoopType.SYNC)
+
+    assert "Expected a Renderer" in str(e)
 
 
 def test_lots_of_elements():

@@ -579,6 +579,8 @@ def convert_node_to_args(node, *, names=None):
         )
 
     # Return all the arguments
+    if not slots and not children_args:
+        return [type_arg, attr_expression]
     return [type_arg, attr_expression, starred_expr]
 
 
@@ -641,6 +643,12 @@ class LambdaNamesCollector(ast.NodeVisitor):
         self.names = set()
 
     def visit_Lambda(self, node):
+        # For some reason the body of a lambda is not visited
+        # so we need to do it manually.
+        visitor = LambdaNamesCollector()
+        visitor.visit(node.body)
+        self.names.update(visitor.names)
+
         for arg in node.args.posonlyargs + node.args.args + node.args.kwonlyargs:
             self.names.add(arg.arg)
 

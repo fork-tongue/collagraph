@@ -375,3 +375,105 @@ def test_menu_extensively(qapp, qtbot):
 
     check_items = partial(check, False, False, False, False, False)
     qtbot.waitUntil(check_items, timeout=500)
+
+
+def test_app(qapp, qtbot):
+    from tests.data.app import Window
+
+    renderer = PySideRenderer(autoshow=False)
+    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
+    gui.render(h(Window), qapp)
+
+    window = None
+
+    def check():
+        nonlocal window
+        windows = [
+            widget
+            for widget in qapp.topLevelWidgets()
+            if isinstance(widget, QtWidgets.QMainWindow)
+        ]
+        assert len(windows) == 1
+        window = windows[0]
+
+    qtbot.waitUntil(check, timeout=500)
+
+    def check_name(type, name, show):
+        obj = window.findChild(type, name)
+        assert show == bool(obj)
+
+    qtbot.waitUntil(
+        partial(check_name, type=QtWidgets.QWidget, name="dock_title", show=True),
+        timeout=500,
+    )
+    dock = window.findChild(QtGui.QAction, "toggle_dock_title")
+    dock.triggered.emit()
+
+    qtbot.waitUntil(
+        partial(check_name, type=QtWidgets.QWidget, name="dock_title", show=False),
+        timeout=500,
+    )
+
+    qtbot.waitUntil(
+        partial(check_name, type=QtWidgets.QStatusBar, name="statusbar", show=True),
+        timeout=500,
+    )
+
+    statusbar = window.findChild(QtGui.QAction, "toggle_statusbar")
+    statusbar.triggered.emit()
+
+    qtbot.waitUntil(
+        partial(check_name, type=QtWidgets.QStatusBar, name="statusbar", show=False),
+        timeout=500,
+    )
+
+    qtbot.waitUntil(
+        partial(check_name, type=QtGui.QAction, name="action", show=True),
+        timeout=500,
+    )
+
+    action = window.findChild(QtGui.QAction, "toggle_action")
+    action.triggered.emit()
+
+    qtbot.waitUntil(
+        partial(check_name, type=QtGui.QAction, name="action", show=False),
+        timeout=500,
+    )
+
+    qtbot.waitUntil(
+        partial(check_name, type=QtWidgets.QToolBar, name="toolbar", show=True),
+        timeout=500,
+    )
+
+    toolbar = window.findChild(QtGui.QAction, "toggle_toolbar")
+    toolbar.triggered.emit()
+
+    qtbot.waitUntil(
+        partial(check_name, type=QtWidgets.QToolBar, name="toolbar", show=False),
+        timeout=500,
+    )
+
+    qtbot.waitUntil(
+        partial(check_name, type=QtWidgets.QWidget, name="dock_content", show=True),
+        timeout=500,
+    )
+    dock = window.findChild(QtGui.QAction, "toggle_dock_content")
+    dock.triggered.emit()
+
+    qtbot.waitUntil(
+        partial(check_name, type=QtWidgets.QWidget, name="dock_content", show=False),
+        timeout=500,
+    )
+
+    qtbot.waitUntil(
+        partial(check_name, type=QtWidgets.QDockWidget, name="dock", show=True),
+        timeout=500,
+    )
+
+    dock = window.findChild(QtGui.QAction, "toggle_dock")
+    dock.triggered.emit()
+
+    qtbot.waitUntil(
+        partial(check_name, type=QtWidgets.QDockWidget, name="dock", show=False),
+        timeout=500,
+    )
