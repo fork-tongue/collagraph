@@ -1,4 +1,5 @@
 from collections import namedtuple
+import math
 
 import pytest
 
@@ -29,6 +30,17 @@ def test_pygfx_create_element():
         renderer.create_element("Foo")
 
 
+def test_pygfx_text_element_not_supported():
+    renderer = PygfxRenderer()
+    obj = renderer.create_element("scene")
+
+    with pytest.raises(NotImplementedError):
+        renderer.create_text_element()
+
+    with pytest.raises(NotImplementedError):
+        renderer.set_element_text(obj, "Foo")
+
+
 def test_pygfx_insert_remove():
     renderer = PygfxRenderer()
 
@@ -56,28 +68,66 @@ def test_pygfx_insert_remove():
 def test_pygfx_attributes():
     renderer = PygfxRenderer()
 
+    # Set and unset attributes on Mesh
     mesh = gfx.Mesh()
 
+    # Custom attribute 'name'
     renderer.set_attribute(mesh, "name", "foo")
     assert mesh.name == "foo"
 
+    renderer.remove_attribute(mesh, "name", "foo")
+    assert not hasattr(mesh, "name")
+
+    # Position attribute
+    original_position_contents = mesh.position.to_array()
     renderer.set_attribute(mesh, "position", [3, 2, 5])
     assert mesh.position == gfx.linalg.Vector3(3, 2, 5)
 
+    renderer.remove_attribute(mesh, "position", [3, 2, 5])
+    assert mesh.position.to_array() == original_position_contents
+
+    # Rotation attribute
+    original_rotation_contents = mesh.rotation.to_array()
     renderer.set_attribute(mesh, "rotation", [1, 2, 3, 4])
     assert mesh.rotation == gfx.linalg.Quaternion(1, 2, 3, 4)
 
+    renderer.remove_attribute(mesh, "rotation", [1, 2, 3, 4])
+    assert mesh.rotation.to_array() == original_rotation_contents
+
+    # Matrix attribute
+    original_matrix_contents = mesh.matrix.to_array()
     renderer.set_attribute(mesh, "matrix", [1] * 16)
     assert mesh.matrix == gfx.linalg.Matrix4(*[1] * 16)
 
-    material = gfx.Material()
+    renderer.remove_attribute(mesh, "matrix", [1] * 16)
+    assert mesh.matrix.to_array() == original_matrix_contents
 
+    # Set and unset attributes on Material
+    material = gfx.LineMaterial()
+
+    # Color attribute
+    original_color_hex = material.color.hex
     renderer.set_attribute(material, "color", [1, 0.5, 0, 0.8])
-    assert material.color == [1, 0.5, 0, 0.8]
+    assert material.color.hex == gfx.Color(1, 0.5, 0, 0.8).hex
 
-    # The pygfx renderer does not support removing attributes
-    with pytest.raises(NotImplementedError):
-        renderer.remove_attribute(material, "color", [1, 0.5, 0, 0.8])
+    renderer.remove_attribute(material, "color", [1, 0.5, 0, 0.8])
+    assert material.color.hex == original_color_hex
+
+    # Opacity attribute
+    original_opacity = material.opacity
+    renderer.set_attribute(material, "opacity", 0.5)
+    assert math.isclose(material.opacity, 0.5)
+
+    renderer.remove_attribute(material, "opacity", 0.5)
+    assert material.opacity == original_opacity
+
+    # Clipping planes attribute
+    original_clipping_planes = material.clipping_planes.copy()
+    renderer.set_attribute(material, "clipping_planes", [(0, 1, 2, 3)])
+    assert material.clipping_planes[0] == (0, 1, 2, 3)
+
+    renderer.remove_attribute(material, "clipping_planes", [(0, 1, 2, 3)])
+    assert material.clipping_planes == original_clipping_planes
 
 
 def test_event_handlers():
