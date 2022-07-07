@@ -1,0 +1,52 @@
+<template>
+  <qdialog
+    :flags="Qt.FramelessWindowHint"
+    @accepted="accepted"
+    @rejected="rejected"
+    modal
+  >
+    <label text="Select elements" />
+    <treeview>
+      <qstandarditemmodel>
+        <standarditem
+          v-for="item in items"
+          :text="item"
+        />
+      </qstandarditemmodel>
+      <qitemselectionmodel
+        @selection-changed="selection_changed"
+      />
+    </treeview>
+    <dialogbuttonbox
+      :buttons="('Ok', 'Cancel')"
+      @accepted="lambda: element.accepted.emit()"
+      @rejected="lambda: element.rejected.emit()"
+    />
+  </qdialog>
+</template>
+
+<script>
+from PySide6.QtCore import Qt
+import collagraph as cg
+
+
+class ListDialog(cg.Component):
+    def __init__(self, props):
+        super().__init__(props)
+        self.state["selected"] = -1
+
+    def accepted(self):
+        self.emit('accepted', self.state['selected'])
+        self.emit('finished')
+
+    def rejected(self):
+        self.emit('rejected')
+        self.emit('finished')
+
+    def selection_changed(self, new, old):
+        indexes = new.indexes()
+        index = -1
+        if indexes:
+            index = indexes[0].row()
+        self.state['selected'] = index
+</script>
