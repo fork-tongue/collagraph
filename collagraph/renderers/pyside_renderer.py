@@ -209,6 +209,11 @@ class PySideRenderer(Renderer):
                 el.show()
             return
 
+        if isinstance(el, QtWidgets.QDialog):
+            el.setParent(parent, el.windowFlags())
+            el.show()
+            return
+
         parent.insert(el, anchor=anchor)
 
     def remove(self, el: Any, parent: Any):
@@ -216,6 +221,15 @@ class PySideRenderer(Renderer):
         if isinstance(parent, QtWidgets.QApplication):
             el.close()
             return
+
+        if isinstance(el, QtWidgets.QDialog):
+            # Hide the dialog to make sure it's not visible anymore
+            el.hide()
+            # Then mark the element for deletion, so that it won't trigger
+            # any of 'finished', 'done', 'rejected', 'accepted' signals.
+            el.deleteLater()
+            return
+
         parent.remove(el)
 
     def set_element_text(self, el: Any, value: str):
