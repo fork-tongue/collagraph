@@ -4,6 +4,16 @@
       <widget>
         <label text="Please select an item" />
         <label :text="selected_text" />
+        <radiobutton
+          text="Window modal"
+          :checked="modality == 'window'"
+          @clicked="lambda: update_modality('window')"
+        />
+        <radiobutton
+          text="Application modal"
+          :checked="modality == 'app'"
+          @clicked="lambda: update_modality('app')"
+        />
         <button
           text="Select an item"
           @clicked="show_dialog"
@@ -12,6 +22,7 @@
       <ListDialog
         v-if="dialog_active"
         :items="items"
+        :global_dialog="modality == 'app'"
         @accepted="show_result"
         @finished="close_dialog"
       />
@@ -35,6 +46,7 @@ class Window(cg.Component):
         super().__init__(props)
         self.state["dialog_active"] = False
         self.state['selected_text'] = ""
+        self.state['modality'] = "window"
 
     def show_dialog(self):
         self.state["dialog_active"] = True
@@ -49,5 +61,6 @@ class Window(cg.Component):
 
         self.state['selected_text'] = selected_text
 
-
+    def update_modality(self, modality):
+        self.state['modality'] = modality
 </script>

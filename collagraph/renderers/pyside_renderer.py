@@ -210,15 +210,7 @@ class PySideRenderer(Renderer):
             return
 
         if isinstance(el, QtWidgets.QDialog):
-            # Simply show the dialog without setting the parent
-            # It is possible to specify more window flags by using
-            # the custom 'flags' attribute on a QDialog element
-            flags = (
-                QtCore.Qt.Dialog
-                if not hasattr(el, "flags")
-                else QtCore.Qt.Dialog | el.flags
-            )
-            el.setParent(parent, flags)
+            el.setParent(parent, el.windowFlags())
             el.show()
             return
 
