@@ -1,20 +1,28 @@
 <template>
-  <window>
-    <widget>
-      <label text="Please select an item" />
-      <label :text="selected_text" />
-      <button
-        text="Select an item"
-        @clicked="show_dialog"
+  <template>
+    <window>
+      <widget>
+        <label text="Please select an item" />
+        <label :text="selected_text" />
+        <button
+          text="Select an item"
+          @clicked="show_dialog"
+        />
+      </widget>
+      <ListDialog
+        v-if="dialog_active"
+        :items="items"
+        @accepted="show_result"
+        @finished="close_dialog"
       />
-    </widget>
-    <ListDialog
-      v-if="dialog_active"
-      :items="items"
-      @accepted="show_result"
-      @finished="close_dialog"
-    />
-  </window>
+    </window>
+    <window>
+      <widget>
+        <label text="Another window" />
+      </widget>
+    </window>
+  </template>
+
 </template>
 
 <script>
