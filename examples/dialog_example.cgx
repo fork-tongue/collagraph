@@ -1,6 +1,5 @@
 <template>
   <!--
-    Show how to customize the window flags with 'flags'.
     When specifying a 'modal' dialog, use window-modality
     to change the default 'ApplicationModal' to 'WindowModal'
     if you don't want to block input to other windows.
