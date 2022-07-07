@@ -24,8 +24,8 @@
     </treeview>
     <dialogbuttonbox
       :buttons="('Ok', 'Cancel')"
-      @accepted="lambda: element.accepted.emit()"
-      @rejected="lambda: element.rejected.emit()"
+      @accepted="lambda: element.accept()"
+      @rejected="lambda: element.reject()"
     />
   </qdialog>
 </template>
