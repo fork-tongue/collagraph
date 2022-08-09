@@ -53,7 +53,7 @@ jobs:
       - name: Install dependencies
         run: poetry install --extras pyside --extras pygfx
       - name: Test
-        run: poetry run pytest --cov=collagraph --cov-report=term-missing
+        run: poetry run pytest -v --cov=collagraph --cov-report=term-missing
         env:
           QT_QPA_PLATFORM: offscreen
 
