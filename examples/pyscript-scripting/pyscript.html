@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PyScript example</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel='stylesheet' type='text/css' media='screen' href='https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css'>
+  <link rel="stylesheet" href="https://pyscript.net/alpha/pyscript.css" />
+  <script defer src="https://pyscript.net/alpha/pyscript.js"></script>
+</head>
+<py-env>
+  - collagraph
+</py-env>
+<body>
+  <div id="output" style="width: 100vw; height: 50vh"></div>
+  <style type="text/css">
+    .example {
+      background-color: red;
+    }
+  </style>
+  <py-script>
+    import js
+    from pyodide.http import open_url
+    import collagraph as cg
+
+    template = open_url("http://localhost:8000/pyscript.cgx")
+    component_class, module_namespace = cg.cgx.cgx.load_from_string(template.getvalue())
+
+    container = js.window.document.getElementById("output")
+    gui = cg.Collagraph(renderer=cg.DomRenderer())
+    gui.render(cg.h(component_class), container)
+  </py-script>
+  <!-- <py-repl id="my-repl" auto-generate="true"> </py-repl> -->
+</body>
+</html>
