@@ -6,9 +6,7 @@ authors = ["Your Name <you@example.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-# TODO: uncomment this and update README once collagraph
-#       DomRenderer is released
-# collagraph = "^0.4.1"
+collagraph = "^0.5.0"
 
 [tool.poetry.dev-dependencies]
 
