@@ -1,6 +1,3 @@
-# from PySide6.QtGui import QStandardItem
-
-
 def insert(self, el, anchor=None):
     if index := getattr(el, "model_index", None):
         self.setRowCount(max(self.rowCount(), index[0]))
