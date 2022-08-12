@@ -1,0 +1,158 @@
+<template>
+  <window>
+    <widget>
+      <treeview>
+        <Model
+          v-bind="state"
+          @item-changed="item_changed"
+        />
+        <qitemselectionmodel @selection-changed="selection_changed" />
+      </treeview>
+      <widget :layout="{'type': 'Box', 'direction': 'LeftToRight'}">
+        <button
+          text="Add row"
+          @clicked="add_row"
+        />
+        <button
+          text="Add column"
+          @clicked="add_column"
+        />
+        <button
+          text="Add child"
+          :enabled="bool(selected)"
+          @clicked="add_child"
+        />
+    </widget>
+      <widget :layout="{'type': 'Box', 'direction': 'LeftToRight'}">
+        <button
+          text="Remove item"
+          :enabled="bool(selected)"
+          @clicked="remove_item"
+        />
+        <button
+          text="Remove column"
+          :enabled="len(columns) > 1"
+          @clicked="remove_column"
+        />
+      </widget>
+    </widget>
+  </window>
+</template>
+
+<script>
+import collagraph as cg
+from PySide6 import QtWidgets
+
+
+class Model(cg.Component):
+    def updated(self):
+        # The column count automatically grows by updating 'horizontal-header-labels'
+        # but doesn't automatically shrink, so we'll have to do that ourselves
+        if self.element.columnCount() != len(self.props["columns"]):
+            self.element.setColumnCount(len(self.props["columns"]))
+
+    def render_items(self, items):
+        return [
+            cg.h(
+                "standarditem",
+                {"text": item["text"]},
+                *self.render_items(item["children"] if "children" in item else [])
+            )
+            for item in items
+        ]
+
+    def render(self):
+        return cg.h(
+            "itemmodel",
+            {
+                "horizontal-header-labels": self.props["columns"],
+                "on_item_changed": lambda item: self.emit("item-changed", item),
+            },
+            *self.render_items(self.props["items"])
+        )
+
+
+class TreeView(cg.Component):
+    def __init__(self, props):
+        super().__init__(props)
+        self.state["columns"] = ["text"]
+        self.state["items"] = [
+            {"text": "Foo", "children": [{"text": "Bar"}]},
+            {"text": "Bla"},
+        ]
+        self.state["selected"] = []
+
+    def add_row(self):
+        self.state["items"].append({"text": "New"})
+
+    def add_column(self):
+        text, ok = QtWidgets.QInputDialog.getText(
+            self.element, "Name for new column", "Column name:"
+        )
+        if ok and text:
+            self.state["columns"].append(text)
+
+    def add_child(self):
+        selection = self.state["selected"][0]
+        items = self.state["items"]
+        for index in selection[:-1]:
+            items = items[index]["children"]
+
+        selected_item = items[selection[-1]]
+        children = selected_item.setdefault("children", [])
+        children.append({"text": "New"})
+
+    def remove_item(self):
+        selections = self.state["selected"]
+        # Process selections in reverse so that it 'should'
+        # work with multiple selections (which is not enabled by default)
+        for selection in reversed(selections):
+            items = self.state["items"]
+            for index in selection[:-1]:
+                items = items[index]["children"]
+
+            items.pop(selection[-1])
+
+    def remove_column(self):
+        columns = self.state["columns"]
+        if len(columns) > 1:
+            column = columns.pop()
+
+            def clear_column(item, column):
+                if column in item:
+                    del item[column]
+                if "children" in item:
+                    for child in item["children"]:
+                        clear_column(child, column)
+
+            for item in self.state["items"]:
+                clear_column(item, column)
+
+    def item_changed(self, item):
+        column = self.state["columns"][item.index().column()]
+        index = convert_qindex(item.index())
+        items = self.state["items"]
+        for row in index[:-1]:
+            items = items[row]["children"]
+
+        selected_item = items[index[-1]]
+        selected_item[column] = item.text()
+
+    def selection_changed(self, selected, deselected):
+        selection = []
+        for index in selected.indexes():
+            indexes = convert_qindex(index)
+            selection.append(indexes)
+
+        self.state["selected"] = selection
+
+
+def convert_qindex(index):
+    indexes = []
+
+    while index.isValid():
+        indexes.insert(0, index.row())
+        index = index.parent()
+
+    return indexes
+</script>
