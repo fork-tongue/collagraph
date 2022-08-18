@@ -8,7 +8,6 @@ from PySide6.QtWidgets import QBoxLayout, QFormLayout, QGridLayout, QWidget
 from collagraph.types import EventLoopType
 from . import Renderer
 from .pyside.objects import (
-    action,
     combobox,
     dialogbuttonbox,
     dockwidget,
@@ -16,6 +15,7 @@ from .pyside.objects import (
     listview,
     menu,
     menubar,
+    qobject,
     splitter,
     standarditem,
     statusbar,
@@ -81,9 +81,10 @@ REMOVE_MAPPING = sorted_on_class_hierarchy(
 SET_ATTR_MAPPING = sorted_on_class_hierarchy(
     {
         QtWidgets.QWidget: widget.set_attribute,
-        QtGui.QAction: action.set_attribute,
-        QtGui.QStandardItem: widget.set_attribute,
-        QtGui.QStandardItemModel: widget.set_attribute,
+        QtGui.QAction: qobject.set_attribute,
+        QtGui.QStandardItem: qobject.set_attribute,
+        QtGui.QStandardItemModel: qobject.set_attribute,
+        QtCore.QItemSelectionModel: qobject.set_attribute,
         QtWidgets.QDialogButtonBox: dialogbuttonbox.set_attribute,
         QtWidgets.QComboBox: combobox.set_attribute,
         QtWidgets.QStatusBar: statusbar.set_attribute,

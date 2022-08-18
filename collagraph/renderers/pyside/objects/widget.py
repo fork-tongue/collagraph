@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .qobject import set_attribute as qobject_set_attribute
 from ..utils import attr_name_to_method_name, call_method
 
 logger = logging.getLogger(__name__)
@@ -125,11 +126,4 @@ def set_attribute(self, attr, value):
         self.resize(*value)
         return
 
-    method_name = attr_name_to_method_name(attr, setter=True)
-    method = getattr(self, method_name, None)
-    if not method:
-        logger.debug(f"Setting custom attr: {attr}")
-        setattr(self, attr, value)
-        return
-
-    call_method(method, value)
+    qobject_set_attribute(self, attr, value)
