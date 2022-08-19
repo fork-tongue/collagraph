@@ -1,3 +1,6 @@
+from .qobject import set_attribute as qobject_set_attribute
+
+
 def insert(self, el, anchor=None):
     if index := getattr(el, "model_index", None):
         self.setRowCount(max(self.rowCount(), index[0]))
@@ -20,7 +23,27 @@ def insert(self, el, anchor=None):
 
 def remove(self, el):
     if index := getattr(el, "model_index", None):
-        self.takeChild(*index)
+        # Only support removal of rows for now
+        if model := el.model():
+            index = model.indexFromItem(el)
+            self.takeRow(index.row())
         return
 
     self.takeRow(el.row())
+
+
+def set_attribute(self, attr, value):
+    if attr == "model_index":
+        if model := self.model():
+            index = model.indexFromItem(self)
+            if index.row() != value[0] or index.column() != value[1]:
+                if parent := self.parent():
+                    it = parent.takeChild(index.row(), index.column())
+                    assert it == self
+                    parent.setChild(*value, self)
+                else:
+                    it = model.takeItem(index.row(), index.column())
+                    assert it == self
+                    model.setItem(*value, it)
+
+    qobject_set_attribute(self, attr, value)

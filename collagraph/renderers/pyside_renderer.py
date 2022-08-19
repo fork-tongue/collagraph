@@ -82,7 +82,7 @@ SET_ATTR_MAPPING = sorted_on_class_hierarchy(
     {
         QtWidgets.QWidget: widget.set_attribute,
         QtGui.QAction: qobject.set_attribute,
-        QtGui.QStandardItem: qobject.set_attribute,
+        QtGui.QStandardItem: standarditem.set_attribute,
         QtGui.QStandardItemModel: qobject.set_attribute,
         QtCore.QItemSelectionModel: qobject.set_attribute,
         QtWidgets.QDialogButtonBox: dialogbuttonbox.set_attribute,
