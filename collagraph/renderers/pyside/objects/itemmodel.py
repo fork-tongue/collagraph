@@ -3,8 +3,9 @@ from PySide6.QtGui import QStandardItemModel
 
 def insert(self, el, anchor=None):
     if isinstance(self, QStandardItemModel):
-        if index := getattr(el, "model_index", None):
-            self.setItem(*index, el)
+        if hasattr(el, "model_index"):
+            row, column = getattr(el, "model_index")
+            self.setItem(row, column, el)
             return
 
         if anchor is not None:

@@ -2,14 +2,15 @@ from .qobject import set_attribute as qobject_set_attribute
 
 
 def insert(self, el, anchor=None):
-    if index := getattr(el, "model_index", None):
-        self.setChild(*index, el)
+    if hasattr(el, "model_index"):
+        row, column = getattr(el, "model_index")
+        self.setChild(row, column, el)
         return
 
     if anchor is not None:
         index = None
         for row in range(self.rowCount()):
-            if anchor == self.child(row):
+            if anchor is self.child(row):
                 index = row
                 break
         if index is None:
@@ -20,11 +21,14 @@ def insert(self, el, anchor=None):
 
 
 def remove(self, el):
-    if index := getattr(el, "model_index", None):
+    if hasattr(el, "model_index"):
         # Only support removal of rows for now
+        row, column = getattr(el, "model_index")
         if model := el.model():
             index = model.indexFromItem(el)
-            self.takeRow(index.row())
+            row = index.row()
+
+        self.takeRow(row)
         return
 
     self.takeRow(el.row())
@@ -34,14 +38,15 @@ def set_attribute(self, attr, value):
     if attr == "model_index":
         if model := self.model():
             index = model.indexFromItem(self)
-            if index.row() != value[0] or index.column() != value[1]:
+            row, column = value
+            if index.row() != row or index.column() != column:
                 if parent := self.parent():
+                    # `it` is `self`
                     it = parent.takeChild(index.row(), index.column())
-                    assert it == self
-                    parent.setChild(*value, self)
+                    parent.setChild(row, column, self)
                 else:
+                    # `it` is `self`
                     it = model.takeItem(index.row(), index.column())
-                    assert it == self
-                    model.setItem(*value, it)
+                    model.setItem(row, column, it)
 
     qobject_set_attribute(self, attr, value)
