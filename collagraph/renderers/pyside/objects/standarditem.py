@@ -3,8 +3,6 @@ from .qobject import set_attribute as qobject_set_attribute
 
 def insert(self, el, anchor=None):
     if index := getattr(el, "model_index", None):
-        self.setRowCount(max(self.rowCount(), index[0]))
-        self.setColumnCount(max(self.columnCount(), index[1]))
         self.setChild(*index, el)
         return
 
