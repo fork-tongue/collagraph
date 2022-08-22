@@ -25,7 +25,7 @@
           :enabled="bool(selected)"
           @clicked="add_child"
         />
-    </widget>
+      </widget>
       <widget :layout="{'type': 'Box', 'direction': 'LeftToRight'}">
         <button
           text="Remove item"
