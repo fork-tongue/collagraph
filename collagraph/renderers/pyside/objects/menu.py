@@ -4,13 +4,13 @@ from PySide6.QtWidgets import QMenu
 
 def insert(self, el, anchor=None):
     if isinstance(el, QMenu):
-        if anchor:
+        if anchor is not None:
             action = self.insertMenu(anchor, el)
         else:
             action = self.addMenu(el)
         action.setParent(self.menuAction())
     elif isinstance(el, QAction):
-        if anchor:
+        if anchor is not None:
             self.insertAction(anchor, el)
         else:
             self.addAction(el)

@@ -6,7 +6,7 @@ def insert(self, el, anchor=None):
         self.setChild(*index, el)
         return
 
-    if anchor:
+    if anchor is not None:
         index = None
         for row in range(self.rowCount()):
             if anchor == self.child(row):

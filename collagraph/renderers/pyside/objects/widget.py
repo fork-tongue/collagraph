@@ -32,7 +32,7 @@ def insert(self, el, anchor=None):
         self.setLayout(layout)
 
     index = -1
-    if anchor:
+    if anchor is not None:
         index = layout.indexOf(anchor)
 
     if hasattr(el, "grid_index"):
