@@ -2,7 +2,7 @@ from PySide6.QtWidgets import QMenu
 
 
 def insert(self, el: QMenu, anchor: QMenu = None):
-    if anchor:
+    if anchor is not None:
         action = self.insertMenu(anchor, el)
     else:
         action = self.addMenu(el)

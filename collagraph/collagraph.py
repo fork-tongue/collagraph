@@ -115,6 +115,7 @@ class Collagraph:
         self._request = None
         self._qt_timer = None
         self._work = SimpleQueue()
+        self._dirty = False
 
     def render(self, element: VNode, container, callback=None):
         self._wip_root = Fiber(
@@ -201,7 +202,11 @@ class Collagraph:
             # All the preparations to build the new WIP root have been performed,
             # so it's time to walk through the new WIP root fiber tree and update
             # the actual DOM
+            self._dirty = False
             self.commit_root()
+            # A state change happened during updating of the DOM
+            if self._dirty:
+                self.prepare_next_iteration_of_work()
 
         if self._next_unit_of_work:
             self.request_idle_work()
@@ -297,7 +302,7 @@ class Collagraph:
         self.update_dom_or_component(fiber, dom, prev_props={}, next_props=fiber.props)
         return dom
 
-    def state_updated(self, fiber: Fiber):
+    def prepare_next_iteration_of_work(self):
         # Request an update to start building/update the wip fiber tree
         self._wip_root = (
             self._current_root and self._current_root.alternate
@@ -309,6 +314,12 @@ class Collagraph:
         self._next_unit_of_work = self._wip_root
         self._deletions = []
         self.request_idle_work()
+
+    def state_updated(self, fiber: Fiber):
+        self._dirty = True
+
+        if not self._wip_root:
+            self.prepare_next_iteration_of_work()
 
     def reconcile_children(self, wip_fiber: Fiber, elements: List[VNode]):
         # The old fiber, which holds the state as it was rendered to DOM

@@ -27,6 +27,7 @@ TYPE_MAPPING = {
     "action": QtGui.QAction,
     "dock": QtWidgets.QDockWidget,
     "itemmodel": QtGui.QStandardItemModel,
+    "itemselectionmodel": QtCore.QItemSelectionModel,
     "standarditem": QtGui.QStandardItem,
 }
 

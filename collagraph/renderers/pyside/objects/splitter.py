@@ -2,7 +2,7 @@ from PySide6.QtWidgets import QWidget
 
 
 def insert(self, el: QWidget, anchor: QWidget = None):
-    if anchor:
+    if anchor is not None:
         index = self.indexOf(anchor)
         self.insertWidget(index, el)
         el.setParent(self)

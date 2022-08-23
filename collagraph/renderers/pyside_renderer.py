@@ -8,7 +8,6 @@ from PySide6.QtWidgets import QBoxLayout, QFormLayout, QGridLayout, QWidget
 from collagraph.types import EventLoopType
 from . import Renderer
 from .pyside.objects import (
-    action,
     combobox,
     dialogbuttonbox,
     dockwidget,
@@ -16,7 +15,9 @@ from .pyside.objects import (
     listview,
     menu,
     menubar,
+    qobject,
     splitter,
+    standarditem,
     statusbar,
     tab,
     toolbar,
@@ -55,6 +56,7 @@ INSERT_MAPPING = sorted_on_class_hierarchy(
         QtWidgets.QTreeView: listview.insert,
         QtWidgets.QSplitter: splitter.insert,
         QtGui.QStandardItemModel: itemmodel.insert,
+        QtGui.QStandardItem: standarditem.insert,
         QtWidgets.QStatusBar: statusbar.insert,
         QtWidgets.QToolBar: toolbar.insert,
         QtWidgets.QDockWidget: dockwidget.insert,
@@ -70,6 +72,7 @@ REMOVE_MAPPING = sorted_on_class_hierarchy(
         QtWidgets.QMenuBar: menubar.remove,
         QtWidgets.QMenu: menu.remove,
         QtGui.QStandardItemModel: itemmodel.remove,
+        QtGui.QStandardItem: standarditem.remove,
         QtWidgets.QStatusBar: statusbar.remove,
         QtWidgets.QToolBar: toolbar.remove,
         QtWidgets.QDockWidget: dockwidget.remove,
@@ -78,9 +81,10 @@ REMOVE_MAPPING = sorted_on_class_hierarchy(
 SET_ATTR_MAPPING = sorted_on_class_hierarchy(
     {
         QtWidgets.QWidget: widget.set_attribute,
-        QtGui.QAction: action.set_attribute,
-        QtGui.QStandardItem: widget.set_attribute,
-        QtGui.QStandardItemModel: widget.set_attribute,
+        QtGui.QAction: qobject.set_attribute,
+        QtGui.QStandardItem: standarditem.set_attribute,
+        QtGui.QStandardItemModel: qobject.set_attribute,
+        QtCore.QItemSelectionModel: qobject.set_attribute,
         QtWidgets.QDialogButtonBox: dialogbuttonbox.set_attribute,
         QtWidgets.QComboBox: combobox.set_attribute,
         QtWidgets.QStatusBar: statusbar.set_attribute,

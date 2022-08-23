@@ -13,7 +13,7 @@ class DomRenderer(Renderer):
         return js.window.document.createTextNode("")
 
     def insert(self, el, parent, anchor=None):
-        if anchor:
+        if anchor is not None:
             parent.insertBefore(el, anchor)
         else:
             parent.appendChild(el)
