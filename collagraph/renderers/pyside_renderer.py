@@ -94,7 +94,6 @@ SET_ATTR_MAPPING = sorted_on_class_hierarchy(
         QtWidgets.QDialogButtonBox: dialogbuttonbox.set_attribute,
         QtWidgets.QComboBox: combobox.set_attribute,
         QtWidgets.QStatusBar: statusbar.set_attribute,
-        QtWidgets.QTreeWidget: treewidget.set_attribute,
         QtWidgets.QTreeWidgetItem: treewidgetitem.set_attribute,
     }
 )
