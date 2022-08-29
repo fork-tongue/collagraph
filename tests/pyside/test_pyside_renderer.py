@@ -209,3 +209,13 @@ def test_cleanup_collagraph_instance(qapp):
 
     # Now we expect the weak ref to be empty
     assert not gui_ref()
+
+
+def test_is_new_no_type_error(qapp):
+    # Comparing a QtCore.Qt.ItemFlags with None results in a TypeError
+    # This can happen during reconciliation so let's make sure we test for that
+    element = h(
+        "widget", {"flags": QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable}
+    )
+    gui = Collagraph(renderer=PySideRenderer(autoshow=False))
+    gui.render(element, qapp)

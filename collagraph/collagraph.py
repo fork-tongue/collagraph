@@ -634,7 +634,11 @@ def key_to_event(key):
 
 
 def is_new(val, other, key):
-    return val != other.get(key)
+    other_value = other.get(key)
+    if other_value is None and val is not None:
+        return True
+
+    return val != other_value
 
 
 def is_equivalent_event_handler(val, other, key):
