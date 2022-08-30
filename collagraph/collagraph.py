@@ -636,10 +636,7 @@ def key_to_event(key):
 
 def is_new(val, other, key):
     other_value = other.get(key)
-    if xor(other_value is None, val is None):
-        return True
-
-    return val != other_value
+    return xor(old_value is None, new_value is None) or old_value != new_value
 
 
 def is_equivalent_event_handler(val, other, key):
