@@ -1,5 +1,6 @@
 from itertools import zip_longest
 import logging
+from operator import xor
 from queue import SimpleQueue
 import time
 from typing import Any, Callable, Dict, Iterable, List, Optional
@@ -634,7 +635,8 @@ def key_to_event(key):
 
 
 def is_new(val, other, key):
-    return val != other.get(key)
+    old_value = other.get(key)
+    return xor(old_value is None, val is None) or old_value != val
 
 
 def is_equivalent_event_handler(val, other, key):
