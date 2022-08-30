@@ -214,8 +214,12 @@ def test_cleanup_collagraph_instance(qapp):
 def test_is_new_no_type_error(qapp):
     # Comparing a QtCore.Qt.ItemFlags with None results in a TypeError
     # This can happen during reconciliation so let's make sure we test for that
-    element = h(
-        "widget", {"flags": QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable}
+    state = reactive({"flags": QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable})
+    element = h("widget", state)
+    gui = Collagraph(
+        renderer=PySideRenderer(autoshow=False), event_loop_type=EventLoopType.SYNC
     )
-    gui = Collagraph(renderer=PySideRenderer(autoshow=False))
     gui.render(element, qapp)
+
+    # Resetting the flags property to None should also not result in a TypeError
+    state["flags"] = None
