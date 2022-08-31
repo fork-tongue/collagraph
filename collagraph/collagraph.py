@@ -575,7 +575,7 @@ class Collagraph:
 
                 event_type = key_to_event(key)
                 events_to_remove[event_type] = val
-            elif dom:  # Don't track prop changes for non-dom fibers
+            else:
                 # Is key gone?
                 if key not in next_props:
                     attrs_to_remove[key] = prev_props[key]
@@ -587,12 +587,30 @@ class Collagraph:
 
                 event_type = key_to_event(key)
                 events_to_add[event_type] = next_props[key]
-            elif dom:  # Don't track prop changes for non-dom fibers
+            else:
                 # Is key new or changed?
                 if is_new(val, prev_props, key):
                     attrs_to_update[key] = val
 
-        if dom:
+        if fiber.component:
+            # Get a writable reference to the read-only props of the component
+            props = reactive(fiber.component.props)
+
+            for event_type, val in events_to_remove.items():
+                fiber.component.remove_event_handler(event_type, val)
+
+            for key in attrs_to_remove:
+                del props[key]
+
+            props.update(attrs_to_update)
+
+            for event_type, val in events_to_add.items():
+                fiber.component.add_event_handler(event_type, val)
+
+            if events_to_remove or events_to_add or attrs_to_remove or attrs_to_update:
+                # Mark the fiber as updated
+                fiber.updated = True
+        elif dom:
             for event_type, val in events_to_remove.items():
                 self.renderer.remove_event_listener(dom, event_type, val)
 
@@ -616,13 +634,6 @@ class Collagraph:
                         parent.updated = True
                         break
                     parent = parent.parent
-
-        if fiber.component:
-            for event_type, val in events_to_remove.items():
-                fiber.component.remove_event_handler(event_type, val)
-
-            for event_type, val in events_to_add.items():
-                fiber.component.add_event_handler(event_type, val)
 
 
 def is_event(key):

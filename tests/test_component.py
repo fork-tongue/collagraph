@@ -197,6 +197,48 @@ def test_component_props_update():
     assert container["children"][0]["attrs"]["prop"] is True
 
 
+def test_component_props_update_elaborate():
+    """
+    Test that 'computed' values are updated on the component.
+    'Computed' values are values that are not coming from reactive
+    state directly, for instance a function that returns a new list.
+    """
+
+    class Example(Component):
+        def render(self):
+            return h("foo", {"value": self.props["selection"]})
+
+    def App(props):
+        # Function
+        def selected_items():
+            return [
+                item
+                for key, item in props["items"].items()
+                if key in props["selected_items"]
+            ]
+
+        return h(Example, {"selection": selected_items()})
+
+    state = reactive(
+        {
+            "items": {"a": "A"},
+            "selected_items": ["a"],
+        }
+    )
+
+    container = {"type": "root"}
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui.render(h(App, state), container)
+
+    foo = container["children"][0]
+    assert foo["type"] == "foo"
+    assert foo["attrs"]["value"] == ["A"]
+
+    state["selected_items"] = []
+
+    assert foo["attrs"]["value"] == []
+
+
 def test_component_props_deep_update():
     class Counter(Component):
         updates = 0
