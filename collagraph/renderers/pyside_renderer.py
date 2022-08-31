@@ -21,6 +21,8 @@ from .pyside.objects import (
     statusbar,
     tab,
     toolbar,
+    treewidget,
+    treewidgetitem,
     widget,
     window,
 )
@@ -60,6 +62,8 @@ INSERT_MAPPING = sorted_on_class_hierarchy(
         QtWidgets.QStatusBar: statusbar.insert,
         QtWidgets.QToolBar: toolbar.insert,
         QtWidgets.QDockWidget: dockwidget.insert,
+        QtWidgets.QTreeWidget: treewidget.insert,
+        QtWidgets.QTreeWidgetItem: treewidgetitem.insert,
     }
 )
 REMOVE_MAPPING = sorted_on_class_hierarchy(
@@ -76,6 +80,8 @@ REMOVE_MAPPING = sorted_on_class_hierarchy(
         QtWidgets.QStatusBar: statusbar.remove,
         QtWidgets.QToolBar: toolbar.remove,
         QtWidgets.QDockWidget: dockwidget.remove,
+        QtWidgets.QTreeWidget: treewidget.remove,
+        QtWidgets.QTreeWidgetItem: treewidgetitem.remove,
     }
 )
 SET_ATTR_MAPPING = sorted_on_class_hierarchy(
@@ -88,6 +94,7 @@ SET_ATTR_MAPPING = sorted_on_class_hierarchy(
         QtWidgets.QDialogButtonBox: dialogbuttonbox.set_attribute,
         QtWidgets.QComboBox: combobox.set_attribute,
         QtWidgets.QStatusBar: statusbar.set_attribute,
+        QtWidgets.QTreeWidgetItem: treewidgetitem.set_attribute,
     }
 )
 

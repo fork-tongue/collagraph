@@ -22,6 +22,8 @@ TYPE_MAPPING = {
     "textedit": QtWidgets.QTextEdit,
     "toolbar": QtWidgets.QToolBar,
     "treeview": QtWidgets.QTreeView,
+    "treewidget": QtWidgets.QTreeWidget,
+    "treewidgetitem": QtWidgets.QTreeWidgetItem,
     "widget": QtWidgets.QWidget,
     "window": QtWidgets.QMainWindow,
     "action": QtGui.QAction,
