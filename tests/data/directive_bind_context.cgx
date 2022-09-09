@@ -1,6 +1,6 @@
 <template>
   <!-- Bind with complete dictionary -->
-  <widget :layout="{'type': 'box', 'direction': QBoxLayout.Direction.LeftToRight}">
+  <widget :layout="{'type': 'box', 'direction': Direction.LeftToRight}">
     <!-- Normal bind -->
     <label v-bind:text="state['label_text']"/>
     <!-- Use context -->
@@ -9,8 +9,13 @@
 </template>
 
 <script lang="python">
-from PySide6.QtWidgets import QBoxLayout
+from enum import Enum
 import collagraph as cg
+
+
+class Direction(Enum):
+    LeftToRight = 0
+    RightToLeft = 0
 
 
 class Labels(cg.Component):

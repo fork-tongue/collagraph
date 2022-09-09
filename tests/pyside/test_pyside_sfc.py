@@ -1,4 +1,11 @@
-from PySide6 import QtCore, QtWidgets
+import pytest
+
+try:
+    from PySide6 import QtCore, QtGui, QtWidgets
+except ImportError:
+    pytest.skip(
+        "skip test for PySide6 renderer when not available", allow_module_level=True
+    )
 
 import collagraph as cg
 

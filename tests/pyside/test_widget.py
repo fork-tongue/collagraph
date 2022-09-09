@@ -1,5 +1,12 @@
 from observ import reactive
-from PySide6 import QtWidgets
+import pytest
+
+try:
+    from PySide6 import QtWidgets
+except ImportError:
+    pytest.skip(
+        "skip test for PySide6 renderer when not available", allow_module_level=True
+    )
 
 import collagraph as cg
 
