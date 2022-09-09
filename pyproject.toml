@@ -17,7 +17,7 @@ observ = ">=0.9.5"
 pygfx = { version = ">=0.1.9", optional = true }
 pyside6_essentials = { version = "^6.3", python = "<3.11", optional = true }
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 black = "*"
 flake8 = "*"
 flake8-black = "*"
@@ -26,9 +26,18 @@ flake8-print = "*"
 pre-commit = "*"
 pytest = "*"
 pytest-cov = "*"
+twine = "*"
+
+[tool.poetry.group.pyside]
+optional = true
+
+[tool.poetry.group.pyside.dependencies]
+# When PySide6 is not installed, then pytest-qt will break the test suite.
+# But pytest-qt can't be marked as an optional dev dependency. So instead
+# it is now part of a group which can be installed as follows:
+#  > poetry install --with pyside --extras pyside
 pytest-qt = "*"
 pytest-xvfb = "*"
-twine = "*"
 
 [build-system]
 requires = ["poetry>=1.0.0"]

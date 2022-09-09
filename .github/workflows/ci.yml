@@ -51,7 +51,7 @@ jobs:
       - name: Install poetry
         run: pip install "poetry>=1.1.12,<1.2"
       - name: Install dependencies
-        run: poetry install --extras pyside --extras pygfx
+        run: poetry install --extras pyside --extras pygfx --with pyside
       - name: Test
         run: poetry run pytest -v --cov=collagraph --cov-report=term-missing
         env:
