@@ -20,6 +20,7 @@ class Component:
         self._event_handlers = defaultdict(set)
         self._lookup_cache = Component.__lookup_cache__[type(self)]
         self._parent = ref(parent) if parent else None
+        self._provided = {}
 
     @property
     def props(self):
@@ -103,6 +104,28 @@ class Component:
     @abstractmethod
     def render():  # pragma: no cover
         pass
+
+    def provide(self, values: dict = None, /, **kwargs):
+        if values:
+            self._provided.update(values)
+        self._provided.update(kwargs)
+
+    def inject(self, *args, **kwargs):
+        """Handle all kwargs as keys with default values."""
+        # The following assert can be disabled for production apps by
+        # enabling python optimization (e.g. `python -O ...`)
+        assert not any(arg in kwargs for arg in args), "Duplicate key injection"
+
+        for arg in [*args, *kwargs]:
+            assert not hasattr(self, arg), f"Attribute '{arg}' already exists"
+            provided = None
+            parent = self.parent
+            while parent is not None:
+                if arg in parent._provided:
+                    provided = parent._provided[arg]
+                    break
+                parent = parent.parent
+            setattr(self, arg, provided if provided is not None else kwargs.get(arg))
 
     def emit(self, event, *args, **kwargs):
         """Call event handlers for the given event. Any args and kwargs will be passed
