@@ -38,8 +38,8 @@ def TodoList(props):
 
 
 class TodoApp(cg.Component):
-    def __init__(self, props):
-        super().__init__(props)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.state = reactive(
             {
                 "items": [

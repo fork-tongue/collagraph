@@ -51,7 +51,7 @@ class Fiber:
     snapshot: Dict = None
     type: Union[str, Callable] = None
     watcher: Any = None
-    component: Any = None
+    component: Any = None  # Component instance
     mounted: bool = False  # Flag for components whether it was mounted
     updated: bool = False  # Flag for components whether any DOM was updated
     unmounted: bool = False  # Flag for components whether it was unmounted

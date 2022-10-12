@@ -21,9 +21,9 @@ import collagraph as cg
 
 
 class Example(cg.Component):
-    def __init__(self, props):
-        super().__init__(props)
-        assert "prop_val" in props
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert "prop_val" in self.props
         self.state["state_val"] = "state_value"
 
     @property

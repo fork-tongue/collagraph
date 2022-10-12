@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from collections import defaultdict
+from weakref import ref
 
 from observ import reactive, readonly
 
@@ -11,13 +12,14 @@ class Component:
 
     __lookup_cache__ = defaultdict(dict)
 
-    def __init__(self, props=None):
+    def __init__(self, props=None, parent=None):
         self._props = readonly({} if props is None else props)
         self._state = reactive({})
         self._element = None
         self._slots = {}
         self._event_handlers = defaultdict(set)
         self._lookup_cache = Component.__lookup_cache__[type(self)]
+        self._parent = ref(parent) if parent else None
 
     @property
     def props(self):
@@ -46,8 +48,21 @@ class Component:
 
     @element.setter
     def element(self, value):
-        """Setter that is used by the internals of Collagraph. Please don't use this."""
-        self._element = value
+        """Prevent overwriting the element attribute."""
+        raise RuntimeError("Not allowed to override element attribute")
+
+    @property
+    def parent(self):
+        """
+        The parent component of this component.
+        For the root component, this returns None.
+        """
+        return self._parent and self._parent()
+
+    @parent.setter
+    def parent(self, value):
+        """Prevent overwriting the parent attribute."""
+        raise RuntimeError("Not allowed to override parent attribute")
 
     def render_slot(self, name, props=None):
         return render_slot(name, props, self._slots)

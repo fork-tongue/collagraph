@@ -16,6 +16,6 @@
 import collagraph as cg
 
 class Template(cg.Component):
-    def __init__(self, props):
-        super().__init__(props)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 </script>
