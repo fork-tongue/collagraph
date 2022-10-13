@@ -49,7 +49,7 @@ def insert(self, el, anchor=None):
     if hasattr(layout, "insertWidget"):
         layout.insertWidget(index, el)
     else:
-        raise NotImplementedError
+        raise NotImplementedError(f"Can't insert {el} into {self} ({layout})")
 
 
 def remove(self, el):
