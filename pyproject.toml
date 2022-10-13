@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "collagraph"
-version = "0.5.2"
+version = "0.6.0"
 description = "Reactive user interfaces"
 authors = ["Berend Klein Haneveld <berendkleinhaneveld@gmail.com>", "Korijn van Golen <korijn@gmail.com>"]
 license = "MIT"
