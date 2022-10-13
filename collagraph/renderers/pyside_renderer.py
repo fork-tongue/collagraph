@@ -3,7 +3,6 @@ import logging
 from typing import Any, Callable
 
 from PySide6 import QtCore, QtGui, QtWidgets
-from PySide6.QtWidgets import QBoxLayout, QFormLayout, QGridLayout, QWidget
 
 from collagraph.types import EventLoopType
 from . import Renderer
@@ -103,12 +102,6 @@ WRAPPED_TYPES = {}
 
 DEFAULT_VALUES = {}
 
-LAYOUT = {
-    "Box": QBoxLayout,
-    "Grid": QGridLayout,
-    "Form": QFormLayout,
-}
-
 
 def not_implemented(self, *args, **kwargs):
     raise NotImplementedError(type(self).__name__)
@@ -156,7 +149,7 @@ class PySideRenderer(Renderer):
         # This ensures that the custom widget can be properly wrapped
         # and will get the `insert`, `remove` and `set_attribute`
         # methods.
-        if QWidget not in custom_type.__mro__:
+        if QtWidgets.QWidget not in custom_type.__mro__:
             raise TypeError(f"Specified type '{custom_type}' not a subclass of QWidget")
         TYPE_MAPPING[type_name.lower()] = custom_type
 
