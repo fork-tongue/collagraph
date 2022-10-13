@@ -105,27 +105,17 @@ class Component:
     def render():  # pragma: no cover
         pass
 
-    def provide(self, values: dict = None, /, **kwargs):
-        if values:
-            self._provided.update(values)
-        self._provided.update(kwargs)
+    def provide(self, key: str, value):
+        self._provided[key] = value
 
-    def inject(self, *args, **kwargs):
-        """Handle all kwargs as keys with default values."""
-        # The following assert can be disabled for production apps by
-        # enabling python optimization (e.g. `python -O ...`)
-        assert not any(arg in kwargs for arg in args), "Duplicate key injection"
+    def inject(self, key, default=None):
+        parent = self.parent
+        while parent is not None:
+            if key in parent._provided:
+                return parent._provided[key]
+            parent = parent.parent
 
-        for arg in [*args, *kwargs]:
-            assert not hasattr(self, arg), f"Attribute '{arg}' already exists"
-            provided = None
-            parent = self.parent
-            while parent is not None:
-                if arg in parent._provided:
-                    provided = parent._provided[arg]
-                    break
-                parent = parent.parent
-            setattr(self, arg, provided if provided is not None else kwargs.get(arg))
+        return default
 
     def emit(self, event, *args, **kwargs):
         """Call event handlers for the given event. Any args and kwargs will be passed
