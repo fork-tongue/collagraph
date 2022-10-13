@@ -33,8 +33,8 @@ class Scrubber(cg.Component):
     scrubber_geometry = gfx.sphere_geometry()
     scrubber_material = gfx.MeshPhongMaterial(color=[0.5, 1, 0.5])
 
-    def __init__(self, props):
-        super().__init__(props)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._captured = False
         self._sphere = None
         self._mouse_pos = (0, 0)

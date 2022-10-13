@@ -13,8 +13,8 @@ class Button(cg.Component):
         "hovered": gfx.MeshPhongMaterial(color=[1.0, 0.2, 0.0]),
     }
 
-    def __init__(self, props):
-        super().__init__(props)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.state["pressed"] = False
         self.state["hovered"] = False
         self.state["scale"] = self.props.get("scale", [0.85] * 3)
@@ -54,8 +54,8 @@ class Button(cg.Component):
 
 
 class NumberPad(cg.Component):
-    def __init__(self, props):
-        super().__init__(props)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.state["columns"] = 4
         self.state["rows"] = 5
 

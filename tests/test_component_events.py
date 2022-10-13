@@ -7,8 +7,8 @@ def test_components_events():
     child = None
 
     class Parent(cg.Component):
-        def __init__(self, props):
-            super().__init__(props)
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
             nonlocal parent
             parent = self
 
@@ -33,8 +33,8 @@ def test_components_events():
             return cg.h("parent", {}, cg.h(Child, props))
 
     class Child(cg.Component):
-        def __init__(self, props):
-            super().__init__(props)
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
             nonlocal child
             child = self
 

@@ -239,7 +239,15 @@ class Collagraph:
     def update_class_component(self, fiber: Fiber):
         component = fiber.component or fiber.alternate and fiber.alternate.component
         if not component:
-            component = fiber.type(fiber.props)
+            parent_component = None
+            parent_fiber = fiber.parent
+            while parent_fiber is not None:
+                if parent_fiber.component:
+                    parent_component = parent_fiber.component
+                    break
+                parent_fiber = parent_fiber.parent
+
+            component = fiber.type(props=fiber.props, parent=parent_component)
 
         # Attach the component instance to the fiber
         fiber.component = component
@@ -458,7 +466,7 @@ class Collagraph:
 
             if fiber.mounted:
                 if fiber.component:
-                    fiber.component.element = fiber.child.dom
+                    fiber.component._element = fiber.child.dom
                     fiber.component.mounted()
                 fiber.mounted = False
                 fiber.updated = False

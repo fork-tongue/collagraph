@@ -11,8 +11,8 @@ from collagraph import (
 
 
 class Counter(Component):
-    def __init__(self, props):
-        super().__init__(props)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.state["count"] = self.props.get("count", 0)
         self.state["step_size"] = self.props.get("step_size", 1)
 
@@ -63,8 +63,8 @@ def test_component_basic_lifecycle():
     class SpecialCounter(Counter):
         lifecycle = []
 
-        def __init__(self, props):
-            super().__init__(props)
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
 
         def mounted(self):
             super().mounted()
@@ -169,6 +169,30 @@ def test_component_without_render_method():
 
     with pytest.raises(TypeError):
         gui.render(element, container)
+
+
+def test_component_parent():
+    class Child(Component):
+        parent_instance = None
+
+        def mounted(self):
+            Child.parent_instance = self.parent
+
+        def render(self):
+            return h("child")
+
+    class Parent(Component):
+        def render(self):
+            return h("parent", {}, h(Child))
+
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    container = {"type": "root"}
+    element = h(Parent)
+
+    gui.render(element, container)
+
+    assert Child.parent_instance is not None
+    assert isinstance(Child.parent_instance, Parent)
 
 
 def test_component_props_update():
@@ -327,10 +351,10 @@ def test_component_element():
     assert component.element is container["children"][0]
 
 
-def test_component_overwrite_props_and_state():
+def test_component_overwrite_attributes():
     class OverwriteState(Component):
-        def __init__(self, props):
-            super().__init__(props)
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
             self.state = {}
 
         def render(self):
@@ -340,9 +364,31 @@ def test_component_overwrite_props_and_state():
         _ = OverwriteState({})
 
     class OverwriteProps(Component):
-        def __init__(self, props):
-            super().__init__(props)
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
             self.props = {}
+
+        def render(self):
+            return h
+
+    with pytest.raises(RuntimeError):
+        _ = OverwriteProps({})
+
+    class OverwriteParent(Component):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.parent = {}
+
+        def render(self):
+            return h
+
+    with pytest.raises(RuntimeError):
+        _ = OverwriteProps({})
+
+    class OverwriteElement(Component):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.element = {}
 
         def render(self):
             return h
