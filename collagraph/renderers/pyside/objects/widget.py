@@ -54,8 +54,12 @@ def insert(self, el, anchor=None):
 
 def remove(self, el):
     layout = self.layout()
-    layout.removeWidget(el)
-    el.setParent(None)
+    if isinstance(layout, QFormLayout):
+        # Layout also deletes 'el' so no need to unset parent
+        layout.removeRow(el)
+    else:
+        layout.removeWidget(el)
+        el.setParent(None)
 
 
 def set_attribute(self, attr, value):
