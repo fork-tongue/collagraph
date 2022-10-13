@@ -11,7 +11,7 @@ class PygfxRenderer(Renderer):
 
     def create_element(self, type: str) -> gfx.WorldObject:
         """Create pygfx element for the given type"""
-        type = type.lower()
+        type = type.lower().replace("-", "")
         if element_type := ELEMENT_TYPE_CACHE.get(type):
             return element_type()
 
