@@ -15,7 +15,7 @@ import collagraph as cg
 
 class Direction(Enum):
     LeftToRight = 0
-    RightToLeft = 0
+    RightToLeft = 1
 
 
 class Labels(cg.Component):
