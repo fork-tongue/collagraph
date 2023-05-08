@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("PySide6")
+
 from PySide6 import QtCore, QtGui, QtWidgets
 
 import collagraph as cg

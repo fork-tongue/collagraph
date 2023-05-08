@@ -39,6 +39,8 @@ def test_directive_bind_context():
 
     assert node.type == "widget"
     assert node.props["layout"]
+    assert node.props["layout"]["type"] == "box"
+    assert node.props["layout"]["direction"].value == 0
 
     first_label = node.children[0]
     second_label = node.children[1]

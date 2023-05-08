@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: 3.9
       - name: Install poetry
-        run: pip install "poetry>=1.1.12,<1.2"
+        run: pip install "poetry>=1.4.2,<1.5"
       - name: Install dependencies
         run: poetry install
       - name: Lint
@@ -49,9 +49,9 @@ jobs:
           sudo apt-get update -y -qq
           sudo apt-get install -y libgles2-mesa-dev
       - name: Install poetry
-        run: pip install "poetry>=1.1.12,<1.2"
+        run: pip install "poetry>=1.4.2,<1.5"
       - name: Install dependencies
-        run: poetry install --extras pyside --extras pygfx
+        run: poetry install --extras pyside --extras pygfx --with pyside
       - name: Test
         run: poetry run pytest -v --cov=collagraph --cov-report=term-missing
         env:
@@ -67,7 +67,7 @@ jobs:
       with:
         python-version: '3.9'
     - name: Install poetry
-      run: pip install "poetry>=1.1.12,<1.2"
+      run: pip install "poetry>=1.4.2,<1.5"
     - name: Install dependencies
       run: poetry install
     - name: Build wheel
