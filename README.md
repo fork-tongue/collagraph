@@ -64,3 +64,21 @@ Currently there are two renderers:
 * [PygfxRenderer](collagraph/renderers/pygfx_renderer.py): for rendering 3D graphic scenes with [Pygfx](https://github.com/pygfx/pygfx)
 
 It is possible to create a custom Renderer using the [Renderer](collagraph/renderers/__init__.py) interface, to render to other UI frameworks, for instance wxPython, or even the browser DOM.
+
+
+## Development
+
+To try out Collagraph or start development, run:
+
+```sh
+# Basic dev setup (no pygfx or pyside)
+poetry install
+# Full dev setup
+poetry install --with pyside --extras pyside --extras pygfx
+# Run example:
+poetry run python examples/layout-example.py
+# Run test suite:
+poetry run pytest
+# Install git pre-commit hooks to make sure tests/linting passes before committing
+poetry run pre-commit install
+```

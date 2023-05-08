@@ -1,4 +1,8 @@
 from observ import reactive
+import pytest
+
+pytest.importorskip("PySide6")
+
 from PySide6 import QtWidgets
 
 import collagraph as cg
