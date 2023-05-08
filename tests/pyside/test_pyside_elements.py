@@ -3,12 +3,9 @@ from functools import partial
 from observ import reactive
 import pytest
 
-try:
-    from PySide6 import QtCore, QtGui, QtWidgets
-except ImportError:
-    pytest.skip(
-        "skip test for PySide6 renderer when not available", allow_module_level=True
-    )
+PySide6 = pytest.importorskip("PySide6")
+
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from collagraph import Collagraph, create_element as h, EventLoopType
 from collagraph.renderers import PySideRenderer
