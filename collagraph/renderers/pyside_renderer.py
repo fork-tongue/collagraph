@@ -110,20 +110,16 @@ def not_implemented(self, *args, **kwargs):
 class EventFilter(QtCore.QObject):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.event_handlers = defaultdict(set)
+        self._event_handlers = defaultdict(set)
 
     def add_event_handler(self, event, handler):
-        self.event_handlers[event].add(handler)
+        self._event_handlers[event].add(handler)
 
     def remove_event_handler(self, event, handler):
-        self.event_handlers[event].remove(handler)
+        self._event_handlers[event].remove(handler)
 
     def eventFilter(self, obj, event):  # noqa: N802
-        event_name = event.type().name
-        # Before PySide v6.4, event_name was a binary string
-        if hasattr(event_name, "decode"):
-            event_name = event_name.decode()
-        if handlers := self.event_handlers[event_name]:
+        if handlers := self._event_handlers[event.type().name]:
             for handler in handlers.copy():
                 handler(event)
 
