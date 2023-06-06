@@ -26,7 +26,7 @@ Here is an example that shows a counter, made with a component with Vue-like syn
 from PySide6 import QtWidgets
 import collagraph as cg
 
-Counter, _ = cg.sfc.load_from_string(
+Counter, _ = cg.cgx.cgx.load_from_string(
     textwrap.dedent(
         """
         <template>
@@ -45,7 +45,7 @@ Counter, _ = cg.sfc.load_from_string(
         import collagraph as cg
         
         
-        class App(cg.Component):
+        class Counter(cg.Component):
             def __init__(self, props):
                 super().__init__(props)
                 self.state["count"] = 0
