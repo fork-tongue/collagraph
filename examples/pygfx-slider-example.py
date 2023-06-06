@@ -43,7 +43,7 @@ class Scrubber(cg.Component):
     def mouse_down(self, event):
         if not self._sphere:
             self._sphere = event.current_target
-        self._sphere.set_pointer_capture(event.pointer_id)
+        self._sphere.set_pointer_capture(event.pointer_id, event.root)
         self._captured = True
         self._mouse_pos = event.x, event.y
 
@@ -81,7 +81,18 @@ class Scrubber(cg.Component):
 class Slider(cg.Component):
     def render(self):
         return h(
-            "Group", self.state, h(Track, {"scale": [0.5, 0.5, 10]}), h(Scrubber, {})
+            "Group",
+            self.state,
+            h(Track, {"scale": [0.5, 0.5, 10]}),
+            h(Scrubber, {}),
+            h("AmbientLight"),
+            h(
+                "PointLight",
+                {
+                    "position": [20, 40, 50],
+                    "cast_shadow": True,
+                },
+            ),
         )
 
 

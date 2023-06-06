@@ -90,7 +90,13 @@ if __name__ == "__main__":
         renderer=cg.PygfxRenderer(), event_loop_type=cg.EventLoopType.QT
     )
 
-    element = h(NumberPad, {})
+    element = h(
+        "Group",
+        {},
+        h(NumberPad),
+        h("AmbientLight"),
+        h("PointLight", {"position": [10, 30, 40]}),
+    )
     container = gfx.Scene()
 
     def animate():

@@ -29,6 +29,8 @@ class RenderWidget(cg.Component):
             {
                 "name": "Landmarks",
             },
+            h("AmbientLight"),
+            h("PointLight"),
             h(
                 PointCloud,
                 # When increasing this number, it will take longer
