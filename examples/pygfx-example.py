@@ -1,29 +1,3 @@
-"""
-Followed the following guide:
-https://pomb.us/build-your-own-react/
-and implemented it in Python.
-
-Example 'React' code:
-
-<Group name="Landmarks">
-  <Point name="Hip" position="[1, 1, 1]" />
-</Group>
-
-This can be transpiled to a tree of 'VNodes'.
-Instead of JSX/Vue template, this could also be just creating
-the tree of VNodes 'manually'.
-VNodes are essentially a description of the to-be-displayed item.
-
-1. Create tree of VNodes
-2. Render the tree (see __init__.py)
-    - Split up the work in smaller chunks (node-by-node)
-    - Build up a 'work-in-progress' tree of 'fibers'
-    - Once it is ready, compare this tree with the 'current' tree (reconciliation)
-    - The renderer that is called during reconciliation creates the actual 'dom' nodes,
-      so a PygfxRenderer for instance would know how to reconcile a tree of pygfx
-      objects.
-
-"""
 from point_cloud import materials, PointCloud, sphere_geom
 import pygfx as gfx
 from wgpu.gui.auto import run, WgpuCanvas
@@ -36,7 +10,7 @@ if __name__ == "__main__":
     canvas = WgpuCanvas(size=(600, 400))
     renderer = gfx.renderers.WgpuRenderer(canvas)
 
-    camera = gfx.PerspectiveCamera(60, 16 / 9)
+    camera = gfx.PerspectiveCamera(70, 16 / 9)
     camera.position.z = 15
 
     controls = gfx.OrbitController(camera.position.clone())
@@ -52,6 +26,8 @@ if __name__ == "__main__":
         {
             "name": "Landmarks",
         },
+        h("AmbientLight"),
+        h("PointLight", {"position": [0, 70, 70], "cast_shadow": True}),
         h(
             PointCloud,
             # When increasing this number, it will take longer

@@ -40,15 +40,11 @@ def TodoList(props):
 class TodoApp(cg.Component):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.state = reactive(
-            {
-                "items": [
-                    "Groceries",
-                    "Laundry",
-                ],
-                "text": "",
-            }
-        )
+        self.state["items"] = [
+            "Groceries",
+            "Laundry",
+        ]
+        self.state["text"] = ""
 
     def handle_change(self, event):
         self.state["text"] = event
