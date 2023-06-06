@@ -1,7 +1,6 @@
 """
 Example of how to render to PySide6 UI.
 """
-from observ import reactive
 from PySide6 import QtWidgets
 
 import collagraph as cg
