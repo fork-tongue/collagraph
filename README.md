@@ -20,28 +20,42 @@ Write your Python interfaces in a declarative manner with plain render functions
 * Single-file components with Vue-like syntax (`.cgx` files)
 * Custom renderers
 
-Here is an example that shows a simple counter, made with a function component:
+Here is an example that shows a counter, made with a component with Vue-like syntax:
 
 ```python
 from PySide6 import QtWidgets
-from observ import reactive
 import collagraph as cg
 
-# Declare some reactive state
-state = reactive({"count": 0})
+Counter, _ = cg.sfc.load_from_string(
+    textwrap.dedent(
+        """
+        <template>
+          <widget>
+            <label
+              :text="f'Count: {count}'"
+            />
+            <button
+              text="bump"
+              @clicked="bump"
+            />
+          </widget>
+        </template>
 
-# Define function that adjusts the state
-def bump():
-    state["count"] += 1
-
-# Declare how the state should be rendered
-def Counter(props):
-    return cg.h(
-        "widget",
-        {},
-        cg.h("label", {"text": f"Count: {props['count']}"}),
-        cg.h("button", {"text": "Bump", "on_clicked": bump}),
+        <script>
+        import collagraph as cg
+        
+        
+        class App(cg.Component):
+            def __init__(self, props):
+                super().__init__(props)
+                self.state["count"] = 0
+                
+            def bump(self):
+                self.state["count"] += 1
+        </script>
+        """
     )
+)
 
 # Create a Collagraph instance with a PySide renderer 
 # and register with the Qt event loop
@@ -49,10 +63,10 @@ gui = cg.Collagraph(
     renderer=cg.PySideRenderer(),
     event_loop_type=cg.EventLoopType.QT,
 )
-# Render the function component into a container 
+# Render the component into a container 
 # (in this case the app but can be another widget)
 app = QtWidgets.QApplication()
-gui.render(cg.h(Counter, state), app)
+gui.render(cg.h(Counter), app)
 app.exec()
 ```
 
