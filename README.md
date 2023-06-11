@@ -23,6 +23,7 @@ Write your Python interfaces in a declarative manner with plain render functions
 Here is an example that shows a counter, made with a component with Vue-like syntax:
 
 ```python
+import textwrap
 from PySide6 import QtWidgets
 import collagraph as cg
 
@@ -43,13 +44,13 @@ Counter, _ = cg.cgx.cgx.load_from_string(
 
         <script>
         import collagraph as cg
-        
-        
+
+
         class Counter(cg.Component):
-            def __init__(self, props):
-                super().__init__(props)
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
                 self.state["count"] = 0
-                
+
             def bump(self):
                 self.state["count"] += 1
         </script>
@@ -57,13 +58,13 @@ Counter, _ = cg.cgx.cgx.load_from_string(
     )
 )
 
-# Create a Collagraph instance with a PySide renderer 
+# Create a Collagraph instance with a PySide renderer
 # and register with the Qt event loop
 gui = cg.Collagraph(
     renderer=cg.PySideRenderer(),
     event_loop_type=cg.EventLoopType.QT,
 )
-# Render the component into a container 
+# Render the component into a container
 # (in this case the app but can be another widget)
 app = QtWidgets.QApplication()
 gui.render(cg.h(Counter), app)
