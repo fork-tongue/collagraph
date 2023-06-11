@@ -73,12 +73,13 @@ app.exec()
 
 For more examples, please take a look at the [examples folder](examples).
 
-Currently there are two renderers:
+Currently there are three renderers:
 
 * [PysideRenderer](collagraph/renderers/pyside_renderer.py): for rendering PySide6 applications
 * [PygfxRenderer](collagraph/renderers/pygfx_renderer.py): for rendering 3D graphic scenes with [Pygfx](https://github.com/pygfx/pygfx)
+* [DomRenderer](collagraph/renderers/dom_renderer.py): for rendering to browser DOM through [PyScript](https://pyscript.net)
 
-It is possible to create a custom Renderer using the [Renderer](collagraph/renderers/__init__.py) interface, to render to other UI frameworks, for instance wxPython, or even the browser DOM.
+It is possible to create a custom Renderer using the [Renderer](collagraph/renderers/__init__.py) interface, to render to other UI frameworks, for instance wxPython.
 
 
 ## Development
