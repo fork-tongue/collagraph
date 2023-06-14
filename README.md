@@ -98,3 +98,17 @@ poetry run pytest
 # Install git pre-commit hooks to make sure tests/linting passes before committing
 poetry run pre-commit install
 ```
+
+
+### Syntax Highlighting
+
+Syntax highlighting for single-file components (`.cgx`) is supported for VSCode and Sublime Text:
+
+* [CGX syntax highlight for Sublime Text](https://github.com/fork-tongue/cgx-syntax-highlight-sublime)
+* [CGX syntax highlight for VSCode](https://github.com/fork-tongue/cgx-syntax-highlight-vscode)
+
+
+### Formatting and linting
+
+Linting cgx files is possible with a flake8 plugin: [flake8-cgx](https://github.com/fork-tongue/flake8-cgx).
+Formatting the contents of the script tag can be done with [black-cgx](https://github.com/fork-tongue/black-cgx).
