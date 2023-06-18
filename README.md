@@ -71,6 +71,10 @@ gui.render(cg.h(Counter), app)
 app.exec()
 ```
 
+Which looks something like this:
+
+![collagraph example](https://github.com/fork-tongue/collagraph/assets/1000968/4ebae92e-d7be-48ea-b76a-c6eab8d62112)
+
 For more examples, please take a look at the [examples folder](examples).
 
 Currently there are three renderers:
