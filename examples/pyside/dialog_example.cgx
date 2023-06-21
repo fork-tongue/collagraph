@@ -15,7 +15,7 @@
       <qstandarditemmodel>
         <standarditem
           v-for="item in items"
-          :text="item"
+          :text="str(item)"
         />
       </qstandarditemmodel>
       <qitemselectionmodel
@@ -41,17 +41,17 @@ class ListDialog(cg.Component):
         self.state["selected"] = -1
 
     def accepted(self):
-        self.emit('accepted', self.state['selected'])
-        self.emit('finished')
+        self.emit("accepted", self.state["selected"])
+        self.emit("finished")
 
     def rejected(self):
-        self.emit('rejected')
-        self.emit('finished')
+        self.emit("rejected")
+        self.emit("finished")
 
     def selection_changed(self, new, old):
         indexes = new.indexes()
         index = -1
         if indexes:
             index = indexes[0].row()
-        self.state['selected'] = index
+        self.state["selected"] = index
 </script>

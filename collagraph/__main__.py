@@ -1,6 +1,9 @@
 import argparse
 import importlib
+import json
 from pathlib import Path
+
+from observ import reactive
 
 import collagraph as cg
 
@@ -21,8 +24,9 @@ def available_renderers():
     return result
 
 
-def init_collagraph(renderer_type: str, component_path: Path):
+def init_collagraph(renderer_type: str, component_path: Path, state: dict = None):
     Component, _ = cg.cgx.cgx.load(component_path)
+    props = reactive(state or {})
 
     if renderer_type == "pygfx":
         import pygfx as gfx
@@ -48,7 +52,7 @@ def init_collagraph(renderer_type: str, component_path: Path):
             event_loop_type=cg.EventLoopType.QT,
         )
         gui.render(
-            cg.h(Component),
+            cg.h(Component, props),
             container,
             callback=lambda: canvas.request_draw(animate),
         )
@@ -59,7 +63,7 @@ def init_collagraph(renderer_type: str, component_path: Path):
 
         app = QtWidgets.QApplication()
         gui = cg.Collagraph(renderer=cg.PySideRenderer())
-        gui.render(cg.h(Component), app)
+        gui.render(cg.h(Component, props), app)
         app.exec()
     elif renderer_type == "dict":
         container = {"root": None}
@@ -67,7 +71,7 @@ def init_collagraph(renderer_type: str, component_path: Path):
             renderer=cg.DictRenderer(),
             event_loop_type=cg.EventLoopType.SYNC,
         )
-        gui.render(cg.h(Component), container)
+        gui.render(cg.h(Component, props), container)
         print(container)  # noqa
         # Start debugger to allow for manipulation of container
         breakpoint()
@@ -86,6 +90,21 @@ def existing_component_file(value):
     return path
 
 
+def json_contents(value):
+    path = Path(value)
+    if path.is_file():
+        with path.open(mode="r", encoding="utf-8") as fh:
+            try:
+                return json.load(fh)
+            except Exception:
+                raise argparse.ArgumentTypeError(f"{value} is not valid json")
+    else:
+        try:
+            return json.loads(value)
+        except Exception:
+            raise argparse.ArgumentTypeError(f"{value} is not valid json")
+
+
 def run():
     parser = argparse.ArgumentParser(
         description="Run collagraph components directly",
@@ -97,10 +116,11 @@ def run():
         choices=available_renderers(),
         help="The type of renderer to use",
     )
-    # parser.add_argument(
-    #     "--state",
-    #     help="Optional state to load (json file or string)",
-    # )
+    parser.add_argument(
+        "--state",
+        type=json_contents,
+        help="Optional state/props to load (json file or string)",
+    )
     parser.add_argument(
         "component",
         type=existing_component_file,
@@ -108,7 +128,7 @@ def run():
     )
     args = parser.parse_args()
 
-    init_collagraph(args.renderer, args.component)
+    init_collagraph(args.renderer, args.component, args.state)
 
 
 if __name__ == "__main__":

@@ -1,17 +1,28 @@
+<!--
+  Run this example as follows:
+  poetry run collagraph examples/pyside/tree_widget.cgx
+-->
 <template>
   <window>
     <widget>
-      <treeview :selection-mode="QtWidgets.QTreeView.ExtendedSelection">
-        <Model
-          v-bind="state"
-          @item-changed="item_changed"
+      <treewidget
+        object-name="tree-widget"
+        :selection-mode="QtWidgets.QTreeView.ExtendedSelection"
+        :header-labels="columns"
+        :column-count="len(columns)"
+        @item-changed="item_changed"
+        @item-selection-changed="selection_changed"
+        @item-double-clicked="item_double_clicked"
+      >
+        <Item
+          v-for="item in items"
+          v-bind="item"
+          :columns="columns"
         />
-        <itemselectionmodel
-          object-name="selection-model"
-          @selection-changed="selection_changed"
-        />
-      </treeview>
-      <widget :layout="{'type': 'Box', 'direction': 'LeftToRight'}">
+      </treewidget>
+      <widget
+        :layout="{'type': 'Box', 'direction': 'LeftToRight'}"
+      >
         <button
           text="Add row"
           @clicked="add_row"
@@ -26,7 +37,9 @@
           @clicked="add_child"
         />
       </widget>
-      <widget :layout="{'type': 'Box', 'direction': 'LeftToRight'}">
+      <widget
+        :layout="{'type': 'Box', 'direction': 'LeftToRight'}"
+      >
         <button
           text="Remove item"
           :enabled="bool(selected)"
@@ -47,47 +60,25 @@ import collagraph as cg
 from PySide6 import QtCore, QtWidgets
 
 
-class Model(cg.Component):
-    def updated(self):
-        # The column count automatically grows by updating 'horizontal-header-labels'
-        # but doesn't automatically shrink, so we'll have to do that ourselves
-        if self.element.columnCount() != len(self.props["columns"]):
-            self.element.setColumnCount(len(self.props["columns"]))
-
-    def convert(self, item, row, column, column_name):
-        return cg.h(
-            "standarditem",
-            {
-                "text": item.get(column_name),
-                "model_index": (row, column),
+def Item(props):
+    return cg.h(
+        "treewidgetitem",
+        {
+            "content": {
+                idx: props.get(column, "")
+                for idx, column in enumerate(props["columns"])
             },
-            *[
-                self.convert(item, row, column, column_name)
-                for row, item in enumerate(item.get("children", []))
-                for column, column_name in enumerate(self.props["columns"])
-            ],
-        )
-
-    def render(self):
-        return cg.h(
-            "itemmodel",
-            {
-                "horizontal-header-labels": self.props["columns"],
-                "on_item_changed": lambda item: self.emit("item-changed", item),
-            },
-            *[
-                self.convert(item, row, column, column_name)
-                for row, item in enumerate(self.props["items"])
-                for column, column_name in enumerate(self.props["columns"])
-            ],
-        )
+        },
+        *[
+            cg.h(Item, {**item, "columns": props["columns"]})
+            for item in props.get("children", [])
+        ]
+    )
 
 
-class TreeView(cg.Component):
+class TreeWidget(cg.Component):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Adding columns seems to work relatively OK, but removing columns
-        # has some problems...
         self.state["columns"] = ["text", "other"]
         self.state["items"] = [
             {
@@ -116,13 +107,8 @@ class TreeView(cg.Component):
             items = items[index]["children"]
 
         selected_item = items[selection[-1]]
-        # NOTE: Instead of 'setdefault', check for key instead until
-        # https://github.com/fork-tongue/observ/pull/82 is merged into
-        # collagraph
-        if "children" in selected_item:
-            selected_item["children"].append({"text": "New"})
-        else:
-            selected_item["children"] = [{"text": "New"}]
+        children = selected_item.setdefault("children", [])
+        children.append({"text": "New"})
 
     def remove_item(self):
         # Process selections in reverse so that it
@@ -150,8 +136,9 @@ class TreeView(cg.Component):
             for item in self.state["items"]:
                 clear_column(item, column)
 
-    def item_changed(self, item):
-        index = convert_qindex(item.index())
+    def item_changed(self, item, column):
+        tree_widget = self.element.findChild(QtWidgets.QTreeWidget, "tree-widget")
+        index = convert_qindex(tree_widget.indexFromItem(item))
 
         items = self.state["items"]
         for row in index[:-1]:
@@ -159,10 +146,9 @@ class TreeView(cg.Component):
 
         selected_item = items[index[-1]]
 
-        col_nr = item.index().column()
-        if col_nr < len(self.state["columns"]):
-            column = self.state["columns"][col_nr]
-            selected_item[column] = item.text()
+        if column < len(self.state["columns"]):
+            column_name = self.state["columns"][column]
+            selected_item[column_name] = item.text(column)
         else:
             for key in list(selected_item.keys()):
                 if key == "children":
@@ -170,21 +156,21 @@ class TreeView(cg.Component):
                 if key not in self.state["columns"]:
                     del selected_item[key]
 
-    def selection_changed(self, selected, deselected):
-        # Get a reference to the selection model
-        # Updating the selected rows from the 'selected' and 'deselected'
-        # arguments does not always work properly when multiple selected items
-        # are removed because the order in which events are handled.
-        # For instance, when row 2 and row 1 are removed (in that order) the
-        # selection_changed handler will be called twice with '1' as deselected
-        # argument...
-        selection_model = self.element.findChild(
-            QtCore.QItemSelectionModel, "selection-model"
+    def selection_changed(self):
+        tree_widget = self.element.findChild(QtWidgets.QTreeWidget, "tree-widget")
+        self.state["selected"] = list(
+            [
+                convert_qindex(tree_widget.indexFromItem(item))
+                for item in tree_widget.selectedItems()
+            ]
         )
-        if selection_model:
-            self.state["selected"] = list(
-                [convert_qindex(index) for index in selection_model.selectedRows()]
-            )
+
+    def item_double_clicked(self, item, column):
+        flags = item.flags()
+        if True:  # Put your logic for checking whether column/item is editable
+            item.setFlags(flags | QtCore.Qt.ItemIsEditable)
+        elif flags & QtCore.Qt.ItemIsEditable:
+            item.setFlags(flags ^ QtCore.Qt.ItemIsEditable)
 
 
 def clear_column(item, column):
