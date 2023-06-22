@@ -14,7 +14,8 @@ def available_renderers():
         "PySideRenderer": "pyside",
         "PygfxRenderer": "pygfx",
         "DictRenderer": "dict",
-        "DomRenderer": "dom",
+        # TODO: add support for DomRenderer
+        # "DomRenderer": "dom",
     }.items():
         try:
             importlib.import_module("collagraph", renderer_type)
@@ -72,11 +73,9 @@ def init_collagraph(renderer_type: str, component_path: Path, state: dict = None
             event_loop_type=cg.EventLoopType.SYNC,
         )
         gui.render(cg.h(Component, props), container)
-        print(container)  # noqa
-        # Start debugger to allow for manipulation of container
+        # Start debugger to allow for inspection of container
+        # and manipulation of props
         breakpoint()
-    elif renderer_type == "dom":
-        raise NotImplementedError
 
 
 def existing_component_file(value):
