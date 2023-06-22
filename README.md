@@ -17,46 +17,47 @@ Write your Python interfaces in a declarative manner with plain render functions
 * Reactivity (made possible by leveraging [observ](https://github.com/fork-tongue/observ))
 * Function components
 * Class components with local state and life-cycle methods/hooks
-* Single-file components with Vue-like syntax (`.cgx` files)
+* Single-file components with Vue-like template syntax (`.cgx` files)
 * Custom renderers
 
 Here is an example that shows a counter, made with a component with Vue-like syntax:
 
+Contents of `counter.cgx`:
+```html
+<template>
+  <widget>
+    <label
+      :text="f'Count: {count}'"
+    />
+    <button
+      text="bump"
+      @clicked="bump"
+    />
+  </widget>
+</template>
+
+<script>
+import collagraph as cg
+
+
+class Counter(cg.Component):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.state["count"] = 0
+
+    def bump(self):
+        self.state["count"] += 1
+</script>
+```
+
+Contents of `app.py`:
 ```python
-import textwrap
 from PySide6 import QtWidgets
 import collagraph as cg
 
-Counter, _ = cg.cgx.cgx.load_from_string(
-    textwrap.dedent(
-        """
-        <template>
-          <widget>
-            <label
-              :text="f'Count: {count}'"
-            />
-            <button
-              text="bump"
-              @clicked="bump"
-            />
-          </widget>
-        </template>
-
-        <script>
-        import collagraph as cg
-
-
-        class Counter(cg.Component):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-                self.state["count"] = 0
-
-            def bump(self):
-                self.state["count"] += 1
-        </script>
-        """
-    )
-)
+# After importing collagraph, it's possible to import
+# components directly from .cgx files
+from counter import Counter
 
 # Create a Collagraph instance with a PySide renderer
 # and register with the Qt event loop
