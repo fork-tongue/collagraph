@@ -17,53 +17,74 @@ Write your Python interfaces in a declarative manner with plain render functions
 * Reactivity (made possible by leveraging [observ](https://github.com/fork-tongue/observ))
 * Function components
 * Class components with local state and life-cycle methods/hooks
-* Single-file components with Vue-like syntax (`.cgx` files)
+* Single-file components with Vue-like template syntax (`.cgx` files)
 * Custom renderers
 
-Here is an example that shows a simple counter, made with a function component:
+Here is an example that shows a counter, made with a component with Vue-like syntax:
 
-```python
-from PySide6 import QtWidgets
-from observ import reactive
+Contents of `counter.cgx`:
+```html
+<template>
+  <widget>
+    <label
+      :text="f'Count: {count}'"
+    />
+    <button
+      text="bump"
+      @clicked="bump"
+    />
+  </widget>
+</template>
+
+<script>
 import collagraph as cg
 
-# Declare some reactive state
-state = reactive({"count": 0})
 
-# Define function that adjusts the state
-def bump():
-    state["count"] += 1
+class Counter(cg.Component):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.state["count"] = 0
 
-# Declare how the state should be rendered
-def Counter(props):
-    return cg.h(
-        "widget",
-        {},
-        cg.h("label", {"text": f"Count: {props['count']}"}),
-        cg.h("button", {"text": "Bump", "on_clicked": bump}),
-    )
+    def bump(self):
+        self.state["count"] += 1
+</script>
+```
 
-# Create a Collagraph instance with a PySide renderer 
+Contents of `app.py`:
+```python
+from PySide6 import QtWidgets
+import collagraph as cg
+
+# After importing collagraph, it's possible to import
+# components directly from .cgx files
+from counter import Counter
+
+# Create a Collagraph instance with a PySide renderer
 # and register with the Qt event loop
 gui = cg.Collagraph(
     renderer=cg.PySideRenderer(),
     event_loop_type=cg.EventLoopType.QT,
 )
-# Render the function component into a container 
+# Render the component into a container
 # (in this case the app but can be another widget)
 app = QtWidgets.QApplication()
-gui.render(cg.h(Counter, state), app)
+gui.render(cg.h(Counter), app)
 app.exec()
 ```
 
+Which looks something like this:
+
+![collagraph example](https://github.com/fork-tongue/collagraph/assets/1000968/4ebae92e-d7be-48ea-b76a-c6eab8d62112)
+
 For more examples, please take a look at the [examples folder](examples).
 
-Currently there are two renderers:
+Currently there are three renderers:
 
 * [PysideRenderer](collagraph/renderers/pyside_renderer.py): for rendering PySide6 applications
 * [PygfxRenderer](collagraph/renderers/pygfx_renderer.py): for rendering 3D graphic scenes with [Pygfx](https://github.com/pygfx/pygfx)
+* [DomRenderer](collagraph/renderers/dom_renderer.py): for rendering to browser DOM through [PyScript](https://pyscript.net) (or rather [Pyodide](https://pyodide.org/en/stable/))
 
-It is possible to create a custom Renderer using the [Renderer](collagraph/renderers/__init__.py) interface, to render to other UI frameworks, for instance wxPython, or even the browser DOM.
+It is possible to create a custom Renderer using the [Renderer](collagraph/renderers/__init__.py) interface, to render to other UI frameworks, for instance wxPython.
 
 
 ## Development
@@ -82,3 +103,17 @@ poetry run pytest
 # Install git pre-commit hooks to make sure tests/linting passes before committing
 poetry run pre-commit install
 ```
+
+
+### Syntax Highlighting
+
+Syntax highlighting for single-file components (`.cgx`) is supported for VSCode and Sublime Text:
+
+* [CGX syntax highlight for Sublime Text](https://github.com/fork-tongue/cgx-syntax-highlight-sublime)
+* [CGX syntax highlight for VSCode](https://github.com/fork-tongue/cgx-syntax-highlight-vscode)
+
+
+### Formatting and linting
+
+Linting cgx files is possible with a flake8 plugin: [flake8-cgx](https://github.com/fork-tongue/flake8-cgx).
+Formatting the contents of the script tag can be done with [black-cgx](https://github.com/fork-tongue/black-cgx).
