@@ -909,20 +909,21 @@ files = [
 
 [[package]]
 name = "pygfx"
-version = "0.1.12"
+version = "0.1.13"
 description = "A threejs-like render engine based on wgpu"
 category = "main"
 optional = true
-python-versions = ">=3.7.0"
+python-versions = ">=3.8.0"
 files = [
-    {file = "pygfx-0.1.12-py3-none-any.whl", hash = "sha256:196bbce7d9cf785571165e9b39c26305c606532b265186d5fbe4485836aad5d2"},
-    {file = "pygfx-0.1.12.tar.gz", hash = "sha256:616f28a6a36343353ccf2036c8d0da7ec0b1bd7ea7215d5a654e11a19f53537e"},
+    {file = "pygfx-0.1.13-py3-none-any.whl", hash = "sha256:a8b117b32d936af9339b0e92383158b6d507d5885cf830ed6f3007e0c2c68569"},
+    {file = "pygfx-0.1.13.tar.gz", hash = "sha256:35cfcd9f1b2ac3ecd78a24fbd19acb969b8aad6f085af9bd3eb2d0d7a52a3e64"},
 ]
 
 [package.dependencies]
 freetype-py = "*"
 Jinja2 = "*"
 numpy = "*"
+pylinalg = ">=0.4.0,<0.5.0"
 uharfbuzz = "*"
 wgpu = ">=0.9.4,<0.10.0"
 
@@ -945,6 +946,21 @@ files = [
 
 [package.extras]
 plugins = ["importlib-metadata"]
+
+[[package]]
+name = "pylinalg"
+version = "0.4.0"
+description = "Linear algebra utilities for Python"
+category = "main"
+optional = true
+python-versions = ">=3.8"
+files = [
+    {file = "pylinalg-0.4.0-py3-none-any.whl", hash = "sha256:b00890a57f3f8d5760ea03213383255b9150a1e014ca5e4a0519a70687a20f23"},
+    {file = "pylinalg-0.4.0.tar.gz", hash = "sha256:dabd8d6908c27ceb5a056176f6ed4f03e0ce19d20f72d8e668369d7a40c06e32"},
+]
+
+[package.dependencies]
+numpy = ">=1.20.0"
 
 [[package]]
 name = "pyparsing"
@@ -1507,4 +1523,4 @@ pyside = ["pyside6_essentials"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9"
-content-hash = "a2cac28d1a9bd1a56705483de879d58caa4543717ab579a2386946c23585034a"
+content-hash = "955f2b89a098c46ab4083a1aa3246ec7773be4dc8dad037a858a27af0d00256b"

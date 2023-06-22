@@ -36,7 +36,7 @@ def PointCloud(props):
             {
                 "geometry": sphere_geom,
                 "material": material,
-                "position": [
+                "local.position": [
                     random.randint(-10, 10),
                     random.randint(-10, 10),
                     random.randint(-10, 10),
