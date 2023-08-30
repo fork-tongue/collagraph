@@ -2,8 +2,12 @@ from typing import Union
 
 from PySide6.QtCore import QItemSelectionModel
 from PySide6.QtGui import QStandardItemModel
+from PySide6.QtWidgets import QListView, QTableView, QTreeView
+
+from ... import PySideRenderer
 
 
+@PySideRenderer.register_insert(QListView, QTableView, QTreeView)
 def insert(self, el: Union[QStandardItemModel, QItemSelectionModel], anchor=None):
     if isinstance(el, QStandardItemModel):
         self.setModel(el)
@@ -21,6 +25,7 @@ def insert(self, el: Union[QStandardItemModel, QItemSelectionModel], anchor=None
     el.setParent(self)
 
 
+@PySideRenderer.register_remove(QListView, QTableView, QTreeView)
 def remove(self, el: Union[QStandardItemModel, QItemSelectionModel]):
     if isinstance(el, QStandardItemModel):
         self.setModel(None)

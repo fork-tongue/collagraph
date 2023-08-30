@@ -82,3 +82,7 @@ except ImportError:  # pragma: no cover
     pass
 else:
     from .pyside_renderer import PySideRenderer
+    from .pyside_renderer import LAYOUT_MAPPING
+
+    # Need to import the objects in order to register their methods
+    from .pyside import objects  # noqa: F401

@@ -1,113 +1,77 @@
 from collections import defaultdict
+from functools import lru_cache
 import logging
 from typing import Any, Callable
+from warnings import warn
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from collagraph.types import EventLoopType
 from . import Renderer
-from .pyside.objects import (
-    combobox,
-    dialogbuttonbox,
-    dockwidget,
-    itemmodel,
-    listview,
-    menu,
-    menubar,
-    qobject,
-    splitter,
-    standarditem,
-    statusbar,
-    tab,
-    toolbar,
-    treewidget,
-    treewidgetitem,
-    widget,
-    window,
-)
-from .pyside.utils import (
-    attr_name_to_method_name,
-    camel_case,
-    DEFAULT_ARGS,
-    name_to_type,
-    TYPE_MAPPING,
-)
+from .pyside import attr_name_to_method_name, camel_case
 
 
 logger = logging.getLogger(__name__)
 
 
-def sorted_on_class_hierarchy(value):
-    # __mro__ is a tuple of all the classes that an class inherits. The longer the
-    # __mro__, the 'deeper' the subclass is, so we can use that to sort the classes
-    # to make the deepest class come first.
-    return dict(sorted(value.items(), key=lambda x: -len(x[0].__mro__)))
+# Pre-populated cache for types, mapping from string to type
+TYPE_MAPPING = {
+    "button": QtWidgets.QPushButton,
+    "checkbox": QtWidgets.QCheckBox,
+    "combobox": QtWidgets.QComboBox,
+    "label": QtWidgets.QLabel,
+    "lineedit": QtWidgets.QLineEdit,
+    "menu": QtWidgets.QMenu,
+    "menubar": QtWidgets.QMenuBar,
+    "radiobutton": QtWidgets.QRadioButton,
+    "dialogbuttonbox": QtWidgets.QDialogButtonBox,
+    "groupbox": QtWidgets.QGroupBox,
+    "progessbar": QtWidgets.QProgressBar,
+    "slider": QtWidgets.QSlider,
+    "spinbox": QtWidgets.QSpinBox,
+    "statusbar": QtWidgets.QStatusBar,
+    "textedit": QtWidgets.QTextEdit,
+    "toolbar": QtWidgets.QToolBar,
+    "treeview": QtWidgets.QTreeView,
+    "treewidget": QtWidgets.QTreeWidget,
+    "treewidgetitem": QtWidgets.QTreeWidgetItem,
+    "widget": QtWidgets.QWidget,
+    "window": QtWidgets.QMainWindow,
+    "action": QtGui.QAction,
+    "dock": QtWidgets.QDockWidget,
+    "itemmodel": QtGui.QStandardItemModel,
+    "itemselectionmodel": QtCore.QItemSelectionModel,
+    "standarditem": QtGui.QStandardItem,
+}
 
+# Mapping from type to func (list of tuples actually instead of dict)
+INSERT_MAPPING = []
+REMOVE_MAPPING = []
+SET_ATTR_MAPPING = []
+LAYOUT_MAPPING = {}
 
-INSERT_MAPPING = sorted_on_class_hierarchy(
-    {
-        QtWidgets.QWidget: widget.insert,
-        QtWidgets.QMainWindow: window.insert,
-        QtWidgets.QDialogButtonBox: dialogbuttonbox.insert,
-        QtWidgets.QTabWidget: tab.insert,
-        QtWidgets.QMenuBar: menubar.insert,
-        QtWidgets.QMenu: menu.insert,
-        QtWidgets.QListView: listview.insert,
-        QtWidgets.QTableView: listview.insert,
-        QtWidgets.QTreeView: listview.insert,
-        QtWidgets.QSplitter: splitter.insert,
-        QtGui.QStandardItemModel: itemmodel.insert,
-        QtGui.QStandardItem: standarditem.insert,
-        QtWidgets.QStatusBar: statusbar.insert,
-        QtWidgets.QToolBar: toolbar.insert,
-        QtWidgets.QDockWidget: dockwidget.insert,
-        QtWidgets.QTreeWidget: treewidget.insert,
-        QtWidgets.QTreeWidgetItem: treewidgetitem.insert,
-    }
-)
-REMOVE_MAPPING = sorted_on_class_hierarchy(
-    {
-        QtWidgets.QWidget: widget.remove,
-        QtWidgets.QTabWidget: tab.remove,
-        QtWidgets.QListView: listview.remove,
-        QtWidgets.QTableView: listview.remove,
-        QtWidgets.QTreeView: listview.remove,
-        QtWidgets.QMenuBar: menubar.remove,
-        QtWidgets.QMenu: menu.remove,
-        QtGui.QStandardItemModel: itemmodel.remove,
-        QtGui.QStandardItem: standarditem.remove,
-        QtWidgets.QStatusBar: statusbar.remove,
-        QtWidgets.QToolBar: toolbar.remove,
-        QtWidgets.QDockWidget: dockwidget.remove,
-        QtWidgets.QTreeWidget: treewidget.remove,
-        QtWidgets.QTreeWidgetItem: treewidgetitem.remove,
-    }
-)
-SET_ATTR_MAPPING = sorted_on_class_hierarchy(
-    {
-        QtWidgets.QWidget: widget.set_attribute,
-        QtGui.QAction: qobject.set_attribute,
-        QtGui.QStandardItem: standarditem.set_attribute,
-        QtGui.QStandardItemModel: qobject.set_attribute,
-        QtCore.QItemSelectionModel: qobject.set_attribute,
-        QtWidgets.QDialogButtonBox: dialogbuttonbox.set_attribute,
-        QtWidgets.QComboBox: combobox.set_attribute,
-        QtWidgets.QStatusBar: statusbar.set_attribute,
-        QtWidgets.QTreeWidgetItem: treewidgetitem.set_attribute,
-    }
-)
+# Default arguments for types that need
+# constructor arguments
+DEFAULT_ARGS = {
+    QtGui.QAction: (("",), {}),
+    QtWidgets.QBoxLayout: ((QtWidgets.QBoxLayout.Direction.TopToBottom,), {}),
+}
 
 # Cache for wrapped types
 WRAPPED_TYPES = {}
 
+# Default values for attributes. Used when an attribute
+# is 'removed', then the default value (if one exists)
+# is restored.
 DEFAULT_VALUES = {}
 
 
-def not_implemented(self, *args, **kwargs):
-    raise NotImplementedError(type(self).__name__)
-
-
 class EventFilter(QtCore.QObject):
+    """
+    Event filter that is registered with PySide to
+    make it possible to subscribe to PySide signals
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._event_handlers = defaultdict(set)
@@ -126,13 +90,6 @@ class EventFilter(QtCore.QObject):
         return super().eventFilter(obj, event)
 
 
-def create_instance(pyside_type):
-    """Creates an instance of the given type with the any default
-    arguments (if any) passed into the constructor."""
-    args, kwargs = DEFAULT_ARGS.get(pyside_type, ((), {}))
-    return pyside_type(*args, **kwargs)
-
-
 class PySideRenderer(Renderer):
     """PySide6 renderer."""
 
@@ -143,14 +100,117 @@ class PySideRenderer(Renderer):
     def preferred_event_loop_type(self):
         return EventLoopType.QT
 
-    def register(self, type_name, custom_type):
+    @classmethod
+    def register_element(cls, type_name, typ=None):
+        """Register a typ that can be created as an element"""
+        if typ is None:
+
+            def wrapper(typ):
+                cls.register_element(type_name, typ=typ)
+                return typ
+
+            return wrapper
+
+        type_name = normalize_name(type_name)
+        if type_name in TYPE_MAPPING:
+            warn(f"{type_name} element already registered")
         # Check that the custom type is a subclass of QWidget.
         # This ensures that the custom widget can be properly wrapped
         # and will get the `insert`, `remove` and `set_attribute`
         # methods.
-        if QtWidgets.QWidget not in custom_type.__mro__:
-            raise TypeError(f"Specified type '{custom_type}' not a subclass of QWidget")
-        TYPE_MAPPING[type_name.lower()] = custom_type
+        if QtWidgets.QWidget not in typ.__mro__:
+            raise TypeError(f"Specified type '{typ}' not a subclass of QWidget")
+
+        TYPE_MAPPING[type_name] = typ
+
+    @classmethod
+    def register_layout(cls, layout_name, typ=None):
+        """Register a typ that can be used as a layout type"""
+        if typ is None:
+
+            def wrapper(typ):
+                cls.register_layout(layout_name, typ=typ)
+                return typ
+
+            return wrapper
+
+        layout_name = normalize_name(layout_name)
+        if layout_name in LAYOUT_MAPPING:
+            warn(f"{layout_name} layout already registered")
+        # Check that the custom type is a subclass of QLayout.
+        # This ensures that the custom layout can be properly wrapped
+        # and will get the `insert`, `remove` and `set_attribute`
+        # methods.
+        if QtWidgets.QLayout not in typ.__mro__:
+            raise TypeError(f"Specified type '{typ}' not a subclass of QLayout")
+
+        LAYOUT_MAPPING[layout_name] = typ
+
+    @classmethod
+    def register_insert(cls, *typ, func=None):
+        if len(typ) >= 1 and func is None:
+
+            def wrapper(func):
+                cls.register_insert(*typ, func=func)
+                return func
+
+            return wrapper
+
+        if func is None:
+            *typ, func = typ
+
+        for t in typ:
+            for index, mapping in enumerate(INSERT_MAPPING):
+                if mapping[0] == t:
+                    warn(f"{t} already registered for 'insert'")
+                    break
+
+            INSERT_MAPPING.append((t, func))
+            INSERT_MAPPING.sort(key=class_hierarchy)
+
+    @classmethod
+    def register_remove(cls, *typ, func=None):
+        if len(typ) >= 1 and func is None:
+
+            def wrapper(func):
+                cls.register_remove(*typ, func=func)
+                return func
+
+            return wrapper
+
+        if func is None:
+            *typ, func = typ
+
+        for t in typ:
+            for index, mapping in enumerate(REMOVE_MAPPING):
+                if mapping[0] == t:
+                    warn(f"{t} already registered for 'remove'")
+                    break
+
+            REMOVE_MAPPING.append((t, func))
+            REMOVE_MAPPING.sort(key=class_hierarchy)
+
+    @classmethod
+    def register_set_attr(cls, *typ, func=None):
+        if len(typ) >= 1 and func is None:
+
+            def wrapper(func):
+                cls.register_set_attr(*typ, func=func)
+                return func
+
+            return wrapper
+
+        if func is None:
+            *typ, func = typ
+
+        for t in typ:
+            for index, mapping in enumerate(SET_ATTR_MAPPING):
+                if mapping[0] == t:
+                    warn(f"{t} already registered for 'set_attribute'")
+                    break
+
+            SET_ATTR_MAPPING.append((t, func))
+            SET_ATTR_MAPPING.sort(key=class_hierarchy)
 
     def create_element(self, type_name: str) -> Any:
         """Create an element for the given type."""
@@ -160,6 +220,11 @@ class PySideRenderer(Renderer):
         if not hasattr(self, "_app"):
             self._app = QtCore.QCoreApplication.instance() or QtWidgets.QApplication()
 
+        return self.create_object(type_name)
+
+    @classmethod
+    def create_object(cls, type_name: str) -> Any:
+        """Create an element for the given type."""
         # Create dynamic subclasses which implement `insert`, `set_attribute`
         # and `remove` methods.
         # The generated types are cached in WRAPPED_TYPES so they only have
@@ -175,8 +240,8 @@ class PySideRenderer(Renderer):
             "remove": REMOVE_MAPPING,
             "set_attribute": SET_ATTR_MAPPING,
         }
-        for key, map in maps.items():
-            for cls, method in map.items():
+        for key, mapping in maps.items():
+            for (cls, method) in mapping:
                 if issubclass(original_type, cls):
                     attrs[key] = method
                     break
@@ -331,3 +396,68 @@ class PySideRenderer(Renderer):
                 signal.disconnect(slot)
                 el.slots[event_type].remove(slot)
                 break
+
+
+def not_implemented(self, *args, **kwargs):
+    """Default 'not implemented' error for wrapped types"""
+    raise NotImplementedError(type(self).__name__)
+
+
+def create_instance(pyside_type):
+    """Creates an instance of the given type with the any default
+    arguments (if any) passed into the constructor."""
+    args, kwargs = DEFAULT_ARGS.get(pyside_type, ((), {}))
+    return pyside_type(*args, **kwargs)
+
+
+def normalize_name(name):
+    """Transforms given name to lower case and removes underscores and dashes"""
+    return name.lower().replace("_", "").replace("-", "")
+
+
+def class_hierarchy(value):
+    """Returns the (negated) count of all the classes that a class inherits."""
+    # __mro__ is a tuple of all the classes that a class inherits. The longer the
+    # __mro__, the 'deeper' the subclass is, so we can use that to sort the classes
+    # to make the deepest class come first.
+    return -len(value[0].__mro__)
+
+
+@lru_cache(maxsize=None)
+def name_to_type(name, modules=None, orig=None):
+    """Lookup a class/type from PySide6 for the given name.
+
+    See TYPE_MAPPING for some default names that you can use for
+    DOM elements. It is also possible to use the complete PySide6
+    class name instead, such as 'QWidget', 'QLine' or
+    'QBoxLayout.Direction.TopToBottom'. As long as the name can
+    be found in the QtWidget, QtGui, QtCore or QtCore.Qt module.
+    """
+    normalized_name = normalize_name(name)
+    if normalized_name in TYPE_MAPPING:
+        return TYPE_MAPPING[normalized_name]
+    if normalized_name in LAYOUT_MAPPING:
+        return LAYOUT_MAPPING[normalized_name]
+    if modules is None:
+        modules = [QtWidgets, QtGui, QtCore, QtCore.Qt]
+    parts = name.split(".")
+    for module in modules:
+        # Try the get the attribute as-is from the module
+        element_class = getattr(module, parts[0], None)
+        if element_class is None:
+            # If that fails, try to do a case insensitive search
+            # through the `dir` of the module
+            part = parts[0].lower()
+            for attribute in dir(module):
+                if part == attribute.lower():
+                    element_class = getattr(module, attribute)
+                    break
+
+        if element_class is not None:
+            if len(parts) > 1:
+                return name_to_type(
+                    ".".join(parts[1:]), modules=[element_class], orig=name
+                )
+            return element_class
+
+    raise TypeError(f"Couldn't find type for name: '{name}' ({orig})")

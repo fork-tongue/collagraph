@@ -8,15 +8,14 @@ pytest.importorskip("PySide6")
 
 from PySide6 import QtCore, QtWidgets
 
-from collagraph import Collagraph, create_element as h, EventLoopType
-from collagraph.renderers import PySideRenderer
+import collagraph as cg
 
 
 def test_simple_widget():
-    renderer = PySideRenderer(autoshow=False)
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+    renderer = cg.PySideRenderer(autoshow=False)
+    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.SYNC)
 
-    element = h("Widget", {"layout": {"type": "Box", "direction": "RightToLeft"}})
+    element = cg.h("Widget", {"layout": {"type": "Box", "direction": "RightToLeft"}})
     container = renderer.create_element("Widget")
     gui.render(element, container)
 
@@ -28,10 +27,12 @@ def test_simple_widget():
 
 
 def test_label(qtbot):
-    renderer = PySideRenderer(autoshow=False)
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
+    renderer = cg.PySideRenderer(autoshow=False)
+    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
 
-    element = h("Widget", {"layout": {"type": "Box"}}, h("Label", {"text": "Foo"}))
+    element = cg.h(
+        "Widget", {"layout": {"type": "Box"}}, cg.h("Label", {"text": "Foo"})
+    )
     container = renderer.create_element("Window")
     gui.render(element, container)
 
@@ -43,38 +44,144 @@ def test_label(qtbot):
     qtbot.waitUntil(check_label, timeout=500)
 
 
-def test_register_custom_type():
+def test_register_custom_widget_subclass():
+    @cg.PySideRenderer.register_element("Foo")
     class CustomWidget(QtWidgets.QWidget):
         pass
-
-    renderer = PySideRenderer(autoshow=False)
-    renderer.register("Foo", CustomWidget)
-
-    foo = renderer.create_element("Foo")
-    assert isinstance(foo, CustomWidget)
 
     class NonWidget:
         pass
 
+    renderer = cg.PySideRenderer(autoshow=False)
+    # renderer.register_element("Foo", typ=CustomWidget)
+
+    foo = renderer.create_element("Foo")
+    assert isinstance(foo, CustomWidget)
+
     with pytest.raises(TypeError):
-        renderer.register("Bar", NonWidget)
+        renderer.register_element("Bar", NonWidget)
 
     with pytest.raises(TypeError):
         renderer.create_element("Bar")
+
+
+def test_register_custom_layout_subclass():
+    class FlowLayout(QtWidgets.QLayout):
+        def __init__(self, parent=None):
+            super().__init__(parent)
+
+            if parent is not None:
+                self.setContentsMargins(QtWidgets.QMargins(0, 0, 0, 0))
+
+            self._item_list = []
+
+        def __del__(self):
+            item = self.takeAt(0)
+            while item:
+                item = self.takeAt(0)
+
+        def addItem(self, item):
+            self._item_list.append(item)
+
+        def count(self):
+            return len(self._item_list)
+
+        def itemAt(self, index):
+            if 0 <= index < len(self._item_list):
+                return self._item_list[index]
+
+            return None
+
+        def takeAt(self, index):
+            if 0 <= index < len(self._item_list):
+                return self._item_list.pop(index)
+
+            return None
+
+        def expandingDirections(self):
+            return QtCore.Qt.Orientation(0)
+
+        def hasHeightForWidth(self):
+            return True
+
+        def heightForWidth(self, width):
+            height = self._do_layout(QtCore.QRect(0, 0, width, 0), True)
+            return height
+
+        def setGeometry(self, rect):
+            super(FlowLayout, self).setGeometry(rect)
+            self._do_layout(rect, False)
+
+        def sizeHint(self):
+            return self.minimumSize()
+
+        def minimumSize(self):
+            size = QtCore.QSize()
+
+            for item in self._item_list:
+                size = size.expandedTo(item.minimumSize())
+
+            size += QtCore.QSize(
+                2 * self.contentsMargins().top(), 2 * self.contentsMargins().top()
+            )
+            return size
+
+        def _do_layout(self, rect, test_only):
+            x = rect.x()
+            y = rect.y()
+            line_height = 0
+            spacing = self.spacing()
+
+            for item in self._item_list:
+                style = item.widget().style()
+                layout_spacing_x = style.layoutSpacing(
+                    QtWidgets.QSizePolicy.PushButton,
+                    QtWidgets.QSizePolicy.PushButton,
+                    QtCore.Qt.Horizontal,
+                )
+                layout_spacing_y = style.layoutSpacing(
+                    QtWidgets.QSizePolicy.PushButton,
+                    QtWidgets.QSizePolicy.PushButton,
+                    QtCore.Qt.Vertical,
+                )
+                space_x = spacing + layout_spacing_x
+                space_y = spacing + layout_spacing_y
+                next_x = x + item.sizeHint().width() + space_x
+                if next_x - space_x > rect.right() and line_height > 0:
+                    x = rect.x()
+                    y = y + line_height + space_y
+                    next_x = x + item.sizeHint().width() + space_x
+                    line_height = 0
+
+                if not test_only:
+                    item.setGeometry(QtCore.QRect(QtCore.QPoint(x, y), item.sizeHint()))
+
+                x = next_x
+                line_height = max(line_height, item.sizeHint().height())
+
+            return y + line_height - rect.y()
+
+    renderer = cg.PySideRenderer(autoshow=False)
+    renderer.register_layout("flow", FlowLayout)
+
+    widget = renderer.create_element("widget")
+    renderer.set_attribute(widget, "layout", {"type": "Flow"})
+
+    assert isinstance(widget.layout(), FlowLayout)
 
 
 def test_widget_add_remove(qtbot):
     def Example(props):
         children = []
         if props["label"]:
-            children.append(h("Label", {}))
-        return h("Widget", {}, *children)
+            children.append(cg.h("Label", {}))
+        return cg.h("Widget", {}, *children)
 
-    renderer = PySideRenderer(autoshow=False)
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
+    renderer = cg.PySideRenderer(autoshow=False)
+    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
 
     state = reactive({"label": True})
-    element = h(Example, state)
+    element = cg.h(Example, state)
     container = renderer.create_element("Widget")
     gui.render(element, container)
 
@@ -92,7 +199,7 @@ def test_widget_add_remove(qtbot):
 
 
 def test_not_implemented():
-    renderer = PySideRenderer(autoshow=False)
+    renderer = cg.PySideRenderer(autoshow=False)
 
     # QAbstractAnimation is a type that we'll likely not
     # support so is a good candidate for checking for
@@ -105,7 +212,7 @@ def test_not_implemented():
 
 
 def test_removing_attribute_not_supported():
-    renderer = PySideRenderer(autoshow=False)
+    renderer = cg.PySideRenderer(autoshow=False)
 
     rect = QtCore.QRect(0, 0, 20, 20)
 
@@ -139,16 +246,16 @@ def test_pyside_event_listeners(qapp, qtbot):
     def Example(props):
         children = []
         if props["label"] is True:
-            children.append(h("Label", {"text": "Foo"}))
-            children.append(h("Button", {"on_clicked": button_clicked}))
+            children.append(cg.h("Label", {"text": "Foo"}))
+            children.append(cg.h("Button", {"on_clicked": button_clicked}))
         else:
-            children.append(h("Label", {"text": "Bar"}))
-            children.append(h("Button"))
+            children.append(cg.h("Label", {"text": "Bar"}))
+            children.append(cg.h("Button"))
 
-        return h("Widget", {}, *children)
+        return cg.h("Widget", {}, *children)
 
-    renderer = PySideRenderer(autoshow=False)
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
+    renderer = cg.PySideRenderer(autoshow=False)
+    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
 
     container = renderer.create_element("Widget")
     state = reactive({"label": True})
@@ -159,7 +266,7 @@ def test_pyside_event_listeners(qapp, qtbot):
         state["label"] = False
 
     # Define Qt structure and map state to the structure
-    element = h(Example, state)
+    element = cg.h(Example, state)
 
     # Pass in the app as a container. Can actually be any truthy object
     gui.render(element, container)
@@ -190,10 +297,10 @@ def test_pyside_event_listeners(qapp, qtbot):
 
 
 def test_cleanup_collagraph_instance(qapp):
-    element = h("widget")
-    gui = Collagraph(
-        renderer=PySideRenderer(autoshow=False),
-        event_loop_type=EventLoopType.QT,
+    element = cg.h("widget")
+    gui = cg.Collagraph(
+        renderer=cg.PySideRenderer(autoshow=False),
+        event_loop_type=cg.EventLoopType.QT,
     )
     gui.render(element, qapp)
 
@@ -212,9 +319,10 @@ def test_is_new_no_type_error(qapp):
     # Comparing a QtCore.Qt.ItemFlags with None results in a TypeError
     # This can happen during reconciliation so let's make sure we test for that
     state = reactive({"flags": QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable})
-    element = h("widget", state)
-    gui = Collagraph(
-        renderer=PySideRenderer(autoshow=False), event_loop_type=EventLoopType.SYNC
+    element = cg.h("widget", state)
+    gui = cg.Collagraph(
+        renderer=cg.PySideRenderer(autoshow=False),
+        event_loop_type=cg.EventLoopType.SYNC,
     )
     gui.render(element, qapp)
 

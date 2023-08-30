@@ -101,7 +101,7 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication()
 
     renderer = cg.PySideRenderer()
-    renderer.register("WgpuCanvas", WgpuCanvas)
+    renderer.register_element("WgpuCanvas", WgpuCanvas)
     gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
 
     state = reactive({"count": 50})

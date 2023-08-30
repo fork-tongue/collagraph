@@ -1,6 +1,9 @@
-from PySide6.QtWidgets import QMenu
+from PySide6.QtWidgets import QMenu, QMenuBar
+
+from ... import PySideRenderer
 
 
+@PySideRenderer.register_insert(QMenuBar)
 def insert(self, el: QMenu, anchor: QMenu = None):
     if anchor is not None:
         action = self.insertMenu(anchor, el)
@@ -16,6 +19,7 @@ def insert(self, el: QMenu, anchor: QMenu = None):
     action.setParent(self.window())
 
 
+@PySideRenderer.register_remove(QMenuBar)
 def remove(self, el: QMenu):
     el.clear()
     menu_action = el.menuAction()

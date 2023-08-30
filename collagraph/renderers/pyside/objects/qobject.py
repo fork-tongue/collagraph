@@ -1,11 +1,17 @@
 import logging
 
-from ..utils import attr_name_to_method_name, call_method
+from PySide6 import QtCore, QtGui
+
+from .. import attr_name_to_method_name, call_method
+from ... import PySideRenderer
 
 
 logger = logging.getLogger(__name__)
 
 
+@PySideRenderer.register_set_attr(
+    QtGui.QAction, QtGui.QStandardItemModel, QtCore.QItemSelectionModel
+)
 def set_attribute(self, attr, value):
     method_name = attr_name_to_method_name(attr, setter=True)
     method = getattr(self, method_name, None)

@@ -1,6 +1,9 @@
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QTabWidget, QWidget
+
+from ... import PySideRenderer
 
 
+@PySideRenderer.register_insert(QTabWidget)
 def insert(self, el: QWidget, anchor: QWidget = None):
     index = getattr(el, "tab_index", -1)
     label = getattr(el, "tab_label", "")
@@ -11,6 +14,7 @@ def insert(self, el: QWidget, anchor: QWidget = None):
         self.addTab(el, label)
 
 
+@PySideRenderer.register_remove(QTabWidget)
 def remove(self, el: QWidget):
     index = self.indexOf(el)
     if index >= 0:
