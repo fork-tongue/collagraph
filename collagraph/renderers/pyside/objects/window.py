@@ -1,6 +1,9 @@
-from PySide6.QtWidgets import QDockWidget, QMenuBar, QStatusBar, QToolBar
+from PySide6.QtWidgets import QDockWidget, QMainWindow, QMenuBar, QStatusBar, QToolBar
+
+from ... import PySideRenderer
 
 
+@PySideRenderer.register_insert(QMainWindow)
 def insert(self, el, anchor=None):
     # If the parent is a QMainWindow, then depending on the
     # type of child, we can add the element in special ways

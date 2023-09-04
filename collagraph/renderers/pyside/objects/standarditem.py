@@ -1,6 +1,10 @@
+from PySide6.QtGui import QStandardItem
+
 from .qobject import set_attribute as qobject_set_attribute
+from ... import PySideRenderer
 
 
+@PySideRenderer.register_insert(QStandardItem)
 def insert(self, el, anchor=None):
     if hasattr(el, "model_index"):
         row, column = getattr(el, "model_index")
@@ -20,6 +24,7 @@ def insert(self, el, anchor=None):
         self.appendRow(el)
 
 
+@PySideRenderer.register_remove(QStandardItem)
 def remove(self, el):
     if hasattr(el, "model_index"):
         # Only support removal of rows for now
@@ -34,6 +39,7 @@ def remove(self, el):
     self.takeRow(el.row())
 
 
+@PySideRenderer.register_set_attr(QStandardItem)
 def set_attribute(self, attr, value):
     if attr == "model_index":
         if model := self.model():
