@@ -1,10 +1,10 @@
-from PySide6 import QtWidgets
+from PySide6.QtWidgets import QStatusBar
 
 from . import widget
 from ... import PySideRenderer
 
 
-@PySideRenderer.register_insert(QtWidgets.QStatusBar)
+@PySideRenderer.register_insert(QStatusBar)
 def insert(self, el, anchor=None):
     # TODO: support for anchor
     # Support for anchor would be tough: there is no API to get
@@ -22,13 +22,13 @@ def insert(self, el, anchor=None):
     el.setParent(self)
 
 
-@PySideRenderer.register_remove(QtWidgets.QStatusBar)
+@PySideRenderer.register_remove(QStatusBar)
 def remove(self, el):
     self.removeWidget(el)
     el.setParent(None)
 
 
-@PySideRenderer.register_set_attr(QtWidgets.QStatusBar)
+@PySideRenderer.register_set_attr(QStatusBar)
 def set_attribute(self, attr, value):
     if attr == "text":
         if isinstance(value, tuple):
