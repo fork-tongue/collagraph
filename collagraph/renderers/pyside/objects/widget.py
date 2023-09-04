@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 
 from .qobject import set_attribute as qobject_set_attribute
 from .. import attr_name_to_method_name, call_method
-from ... import LAYOUT_MAPPING, PySideRenderer
+from ...pyside_renderer import LAYOUT_MAPPING, PySideRenderer
 
 logger = logging.getLogger(__name__)
 
