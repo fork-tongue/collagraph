@@ -74,13 +74,25 @@ def insert(self, el, anchor=None):
 @PySideRenderer.register_remove(QWidget)
 def remove(self, el):
     layout = self.layout()
-    # FIXME: register?
-    if isinstance(layout, QFormLayout):
-        # Layout also deletes 'el' so no need to unset parent
-        layout.removeRow(el)
+    if hasattr(layout, "remove"):
+        layout.remove(el)
     else:
-        layout.removeWidget(el)
-        el.setParent(None)
+        # Some layouts in the hierarchy are not wrapped
+        # because PySide creates them internally, hence
+        # the need to have a fallback
+        remove_layout(layout, el)
+
+
+@PySideRenderer.register_remove(QLayout)
+def remove_layout(self, el):
+    self.removeWidget(el)
+    el.setParent(None)
+
+
+@PySideRenderer.register_remove(QFormLayout)
+def remove_form(self, el):
+    # Layout also deletes 'el' so no need to unset parent
+    self.removeRow(el)
 
 
 @PySideRenderer.register_set_attr(QLayout)
