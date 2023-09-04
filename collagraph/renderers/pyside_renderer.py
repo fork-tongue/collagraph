@@ -50,6 +50,7 @@ REMOVE_MAPPING = []
 SET_ATTR_MAPPING = []
 LAYOUT_MAPPING = {}
 
+
 # Default arguments for types that need
 # constructor arguments
 DEFAULT_ARGS = {
@@ -64,6 +65,9 @@ WRAPPED_TYPES = {}
 # is 'removed', then the default value (if one exists)
 # is restored.
 DEFAULT_VALUES = {}
+
+# Custom methods that are registered for specific attribute names
+CUSTOM_ATTRIBUTES = {}
 
 
 class EventFilter(QtCore.QObject):
@@ -147,19 +151,38 @@ class PySideRenderer(Renderer):
         LAYOUT_MAPPING[layout_name] = typ
 
     @classmethod
-    def register_insert(cls, *typ, func=None):
-        if len(typ) >= 1 and func is None:
+    def register_custom_attribute(cls, *names, func=None):
+        """Register a custom method to run for the given attribute names"""
+        if len(names) >= 1 and func is None:
 
             def wrapper(func):
-                cls.register_insert(*typ, func=func)
+                cls.register_custom_attribute(*names, func=func)
                 return func
 
             return wrapper
 
         if func is None:
-            *typ, func = typ
+            *names, func = names
 
-        for t in typ:
+        for name in names:
+            CUSTOM_ATTRIBUTES[name] = func
+
+    @classmethod
+    def register_insert(cls, *types, func=None):
+        """Register a function for given types for inserting an item
+        into the hierarchy"""
+        if len(types) >= 1 and func is None:
+
+            def wrapper(func):
+                cls.register_insert(*types, func=func)
+                return func
+
+            return wrapper
+
+        if func is None:
+            *types, func = types
+
+        for t in types:
             for index, mapping in enumerate(INSERT_MAPPING):
                 if mapping[0] == t:
                     warn(f"{t} already registered for 'insert'")
@@ -169,19 +192,21 @@ class PySideRenderer(Renderer):
             INSERT_MAPPING.sort(key=class_hierarchy)
 
     @classmethod
-    def register_remove(cls, *typ, func=None):
-        if len(typ) >= 1 and func is None:
+    def register_remove(cls, *types, func=None):
+        """Register a function for the given types for removing an
+        item from the hierarchy"""
+        if len(types) >= 1 and func is None:
 
             def wrapper(func):
-                cls.register_remove(*typ, func=func)
+                cls.register_remove(*types, func=func)
                 return func
 
             return wrapper
 
         if func is None:
-            *typ, func = typ
+            *types, func = types
 
-        for t in typ:
+        for t in types:
             for index, mapping in enumerate(REMOVE_MAPPING):
                 if mapping[0] == t:
                     warn(f"{t} already registered for 'remove'")
@@ -192,6 +217,8 @@ class PySideRenderer(Renderer):
 
     @classmethod
     def register_set_attr(cls, *typ, func=None):
+        """Register a function for the given types for setting
+        an attribute"""
         if len(typ) >= 1 and func is None:
 
             def wrapper(func):
@@ -322,8 +349,11 @@ class PySideRenderer(Renderer):
                 else:
                     logger.debug(f"'{attr}' is not a Qt property on {type(el)}")
 
-        # Support a custom attribute 'layout_direction' so that we can
-        # set the layout direction of the layout of the given element
+        # Check for registered methods for custom attributes
+        if set_attr := CUSTOM_ATTRIBUTES.get(attr):
+            set_attr(el, attr, value)
+            return
+
         el.set_attribute(attr, value)
 
     def remove_attribute(self, el: Any, attr: str, value: Any):
