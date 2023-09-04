@@ -1,9 +1,20 @@
-import importlib
-from pathlib import Path
-
-
-for module in Path(__file__).parent.glob("*.py"):
-    if module.name.startswith("_"):
-        continue
-
-    importlib.import_module(f".{module.stem}", "collagraph.renderers.pyside.objects")
+from . import (
+    combobox,
+    dialogbuttonbox,
+    dockwidget,
+    itemmodel,
+    layouts,
+    listview,
+    menu,
+    menubar,
+    qobject,
+    splitter,
+    standarditem,
+    statusbar,
+    tab,
+    toolbar,
+    treewidget,
+    treewidgetitem,
+    widget,
+    window,
+)
