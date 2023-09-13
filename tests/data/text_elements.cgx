@@ -3,6 +3,7 @@
     <p>Static content</p>
     <p>Dynamic {{content}}</p>
     <p>Even {{more}} dyna{}mic\{} {{content}}</p>
+    <p>Split<!--by a comment--> and split by <span>an</span> element</p>
   </div>
 </template>
 
