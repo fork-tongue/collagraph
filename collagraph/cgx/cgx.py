@@ -118,14 +118,13 @@ def construct_ast(path, template=None):
 
     # Create render function as AST and inject into the ClassDef
     template_node = parser.root.child_with_tag("template")
-    if len(template_node.children) != 1:
+    elements = [el for el in template_node.children if isinstance(el, Element)]
+    if len(elements) != 1:
         raise ValueError(
             "There should be precisely one root element defined in "
-            f"the template. Found {len(template_node.children)}."
+            f"the template. Found {len(elements)}."
         )
-    render_tree = create_ast_render_function(
-        template_node.children[0], names=imported_names.names
-    )
+    render_tree = create_ast_render_function(elements[0], names=imported_names.names)
     ast.fix_missing_locations(render_tree)
 
     # Put location of render function outside of the script tag
@@ -150,7 +149,8 @@ def get_script_ast(parser, path):
     """
     # Read the data from script block
     script_node = parser.root.child_with_tag("script")
-    script = script_node.data
+    assert isinstance(script_node.children[0], TextElement)
+    script = script_node.children[0].content
     line, _ = script_node.location
 
     # Create an AST from the script
@@ -346,6 +346,14 @@ def convert_node_to_args(node, *, names=None):
     slots = {}
     control_flow = []
     for child in node.children:
+        if isinstance(child, Comment):
+            # Ignore comments
+            continue
+
+        if isinstance(child, TextElement):
+            children_args.extend(args_for_text_element(child, names=names))
+            continue
+
         directive = None
 
         # Handle for-directives
@@ -385,11 +393,13 @@ def convert_node_to_args(node, *, names=None):
         # treat them as the content for the default slot
         if node.tag[0].isupper() or "." in node.tag:
             default_slot_content = [
-                child for child in node.children if child.tag != "template"
+                child
+                for child in node.children
+                if isinstance(child, Element) and child.tag != "template"
             ]
 
             if default_slot_content:
-                virtual_template_node = Node("template")
+                virtual_template_node = Element("template")
                 virtual_template_node.children = default_slot_content
                 slots["default"] = virtual_template_node
 
@@ -412,81 +422,6 @@ def convert_node_to_args(node, *, names=None):
     if control_flow:
         children_args.append(create_control_flow_ast(control_flow, names=names))
         control_flow = []
-
-    if node.data:
-        groups = [match for match in MOUSTACHES.finditer(node.data)]
-        if not groups:
-            children_args.append(ast.Constant(value=node.data))
-        else:
-            offset = 0
-            string_parts = []
-            expressions = []
-            for group in groups:
-                span = group.span()
-                string_parts.append(ast.Constant(value=node.data[offset : span[0]]))
-                expr = (node.data[span[0] + 2 : span[1] - 2]).strip()
-                expressions.append(
-                    RewriteName(skip=names).visit(ast.parse(expr, mode="eval")).body
-                )
-                offset = span[1]
-
-            string_suffix = ast.Constant(value=node.data[offset:])
-
-            children_args.append(
-                # The following tree is the ast of the following expression:
-                # "".join(
-                #     [x + str(y) for x, y in zip(string_parts, expressions)]
-                #     + [string_suffix]
-                # )
-                ast.Call(
-                    func=ast.Attribute(
-                        value=ast.Constant(value=""), attr="join", ctx=ast.Load()
-                    ),
-                    args=[
-                        ast.BinOp(
-                            left=ast.ListComp(
-                                elt=ast.BinOp(
-                                    left=ast.Name(id="x", ctx=ast.Load()),
-                                    op=ast.Add(),
-                                    right=ast.Call(
-                                        func=ast.Name(id="str", ctx=ast.Load()),
-                                        args=[ast.Name(id="y", ctx=ast.Load())],
-                                        keywords=[],
-                                    ),
-                                ),
-                                generators=[
-                                    ast.comprehension(
-                                        target=ast.Tuple(
-                                            elts=[
-                                                ast.Name(id="x", ctx=ast.Store()),
-                                                ast.Name(id="y", ctx=ast.Store()),
-                                            ],
-                                            ctx=ast.Store(),
-                                        ),
-                                        iter=ast.Call(
-                                            func=ast.Name(id="zip", ctx=ast.Load()),
-                                            args=[
-                                                ast.List(
-                                                    elts=string_parts, ctx=ast.Load()
-                                                ),
-                                                ast.List(
-                                                    elts=expressions, ctx=ast.Load()
-                                                ),
-                                            ],
-                                            keywords=[],
-                                        ),
-                                        ifs=[],
-                                        is_async=0,
-                                    )
-                                ],
-                            ),
-                            op=ast.Add(),
-                            right=ast.List(elts=[string_suffix], ctx=ast.Load()),
-                        )
-                    ],
-                    keywords=[],
-                )
-            )
 
     # Create a starred list comprehension that when called, will generate
     # all child elements
@@ -582,6 +517,84 @@ def convert_node_to_args(node, *, names=None):
     if not slots and not children_args:
         return [type_arg, attr_expression]
     return [type_arg, attr_expression, starred_expr]
+
+
+def args_for_text_element(child, names):
+    args = []
+    groups = [match for match in MOUSTACHES.finditer(child.content)]
+    if not groups:
+        args.append(ast.Constant(value=child.content))
+    else:
+        offset = 0
+        string_parts = []
+        expressions = []
+        for group in groups:
+            span = group.span()
+            string_parts.append(ast.Constant(value=child.content[offset : span[0]]))
+            expr = (child.content[span[0] + 2 : span[1] - 2]).strip()
+            expressions.append(
+                RewriteName(skip=names).visit(ast.parse(expr, mode="eval")).body
+            )
+            offset = span[1]
+
+        string_suffix = ast.Constant(value=child.content[offset:])
+
+        args.append(
+            # The following tree is the ast of the following expression:
+            # "".join(
+            #     [x + str(y) for x, y in zip(string_parts, expressions)]
+            #     + [string_suffix]
+            # )
+            ast.Call(
+                func=ast.Attribute(
+                    value=ast.Constant(value=""), attr="join", ctx=ast.Load()
+                ),
+                args=[
+                    ast.BinOp(
+                        left=ast.ListComp(
+                            elt=ast.BinOp(
+                                left=ast.Name(id="x", ctx=ast.Load()),
+                                op=ast.Add(),
+                                right=ast.Call(
+                                    func=ast.Name(id="str", ctx=ast.Load()),
+                                    args=[ast.Name(id="y", ctx=ast.Load())],
+                                    keywords=[],
+                                ),
+                            ),
+                            generators=[
+                                ast.comprehension(
+                                    target=ast.Tuple(
+                                        elts=[
+                                            ast.Name(id="x", ctx=ast.Store()),
+                                            ast.Name(id="y", ctx=ast.Store()),
+                                        ],
+                                        ctx=ast.Store(),
+                                    ),
+                                    iter=ast.Call(
+                                        func=ast.Name(id="zip", ctx=ast.Load()),
+                                        args=[
+                                            ast.List(
+                                                elts=string_parts,
+                                                ctx=ast.Load(),
+                                            ),
+                                            ast.List(elts=expressions, ctx=ast.Load()),
+                                        ],
+                                        keywords=[],
+                                    ),
+                                    ifs=[],
+                                    is_async=0,
+                                )
+                            ],
+                        ),
+                        op=ast.Add(),
+                        right=ast.List(elts=[string_suffix], ctx=ast.Load()),
+                    )
+                ],
+                keywords=[],
+            )
+        )
+
+    return args
 
 
 def create_control_flow_ast(control_flow, *, names):
@@ -700,7 +713,17 @@ class ImportsCollector(ast.NodeVisitor):
             self.names.add(alias.asname or alias.name)
 
 
-class Node:
+class TextElement:
+    def __init__(self, content, location=None):
+        self.content = content
+
+
+class Comment:
+    def __init__(self, content, location=None):
+        self.content = content
+
+
+class Element:
     """Node that represents an element from a CGX file."""
 
     def __init__(self, tag, attrs=None, location=None):
@@ -708,7 +731,6 @@ class Node:
         self.attrs = attrs or {}
         self.location = location
         self.end = None
-        self.data = None
         self.children = []
 
     def control_flow(self):
@@ -732,7 +754,7 @@ class CGXParser(HTMLParser):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.root = Node("root")
+        self.root = Element("root")
         self.stack = [self.root]
 
     def handle_starttag(self, tag, attrs):
@@ -746,7 +768,7 @@ class CGXParser(HTMLParser):
         complete_tag = self.get_starttag_text()
         index = complete_tag.lower().index(tag)
         original_tag = complete_tag[index : index + len(tag)]
-        node = Node(original_tag, dict(attrs), self.getpos())
+        node = Element(original_tag, dict(attrs), location=self.getpos())
 
         # Cast attributes that have no value to boolean (True)
         # so that they function like flags
@@ -768,7 +790,17 @@ class CGXParser(HTMLParser):
 
     def handle_data(self, data):
         if data.strip():
-            self.stack[-1].data = data.strip()
+            # Add item as child to the last on the stack
+            self.stack[-1].children.append(
+                TextElement(content=data, location=self.getpos())
+            )
+
+    def handle_comment(self, comment):
+        if comment.strip():
+            # Add item as child to the last on the stack
+            self.stack[-1].children.append(
+                Comment(content=comment, location=self.getpos())
+            )
 
 
 def _print_ast_tree_as_code(tree):  # pragma: no cover
