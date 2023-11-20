@@ -1,3 +1,9 @@
+<!--
+  Run this example (standalone) as follows:
+  poetry run collagraph --state '{"items": [0, 1, 2]}' examples/pyside/dialog_example.cgx
+
+  See the dialog_example_window.cgx for how to integrate this component.
+ -->
 <template>
   <!--
     When specifying a 'modal' dialog, use window-modality
