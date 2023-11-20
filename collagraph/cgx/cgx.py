@@ -716,11 +716,13 @@ class ImportsCollector(ast.NodeVisitor):
 class TextElement:
     def __init__(self, content, location=None):
         self.content = content
+        self.location = location
 
 
 class Comment:
     def __init__(self, content, location=None):
         self.content = content
+        self.location = location
 
 
 class Element:
