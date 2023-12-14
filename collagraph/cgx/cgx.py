@@ -744,6 +744,8 @@ class Element:
 
     def child_with_tag(self, tag):
         for child in self.children:
+            if not isinstance(child, Element):
+                continue
             if child.tag == tag:
                 return child
 
