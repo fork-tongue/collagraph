@@ -16,6 +16,7 @@ TYPE_MAPPING = {
     "dialogbuttonbox": QtWidgets.QDialogButtonBox,
     "groupbox": QtWidgets.QGroupBox,
     "progessbar": QtWidgets.QProgressBar,
+    "scrollarea": QtWidgets.QScrollArea,
     "slider": QtWidgets.QSlider,
     "spinbox": QtWidgets.QSpinBox,
     "statusbar": QtWidgets.QStatusBar,

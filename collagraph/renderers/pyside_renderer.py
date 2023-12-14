@@ -15,6 +15,7 @@ from .pyside.objects import (
     menu,
     menubar,
     qobject,
+    scrollarea,
     splitter,
     standarditem,
     statusbar,
@@ -63,6 +64,7 @@ INSERT_MAPPING = sorted_on_class_hierarchy(
         QtWidgets.QDockWidget: dockwidget.insert,
         QtWidgets.QTreeWidget: treewidget.insert,
         QtWidgets.QTreeWidgetItem: treewidgetitem.insert,
+        QtWidgets.QScrollArea: scrollarea.insert,
     }
 )
 REMOVE_MAPPING = sorted_on_class_hierarchy(
@@ -81,6 +83,7 @@ REMOVE_MAPPING = sorted_on_class_hierarchy(
         QtWidgets.QDockWidget: dockwidget.remove,
         QtWidgets.QTreeWidget: treewidget.remove,
         QtWidgets.QTreeWidgetItem: treewidgetitem.remove,
+        QtWidgets.QScrollArea: scrollarea.remove,
     }
 )
 SET_ATTR_MAPPING = sorted_on_class_hierarchy(
@@ -240,7 +243,6 @@ class PySideRenderer(Renderer):
 
     def set_attribute(self, el: Any, attr: str, value: Any):
         """Set the attribute `attr` of the element `el` to the value `value`."""
-
         key = f"{type(el).__name__}.{attr}"
         if key not in DEFAULT_VALUES:
             if not hasattr(el, "metaObject"):
