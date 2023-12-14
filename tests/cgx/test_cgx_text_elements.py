@@ -11,11 +11,12 @@ def test_text_elements():
 
     result.type == "div"
 
-    static_p, dynamic_p, multiple_p = result.children
+    static_p, dynamic_p, multiple_p, split_p = result.children
 
     assert static_p.type == "p"
     assert dynamic_p.type == "p"
     assert multiple_p.type == "p"
+    assert split_p.type == "p"
 
     assert (
         len(static_p.children)
@@ -35,3 +36,12 @@ def test_text_elements():
     assert static.props["content"] == "Static content"
     assert dynamic.props["content"] == "Dynamic foo"
     assert multiple.props["content"] == r"Even bar dyna{}mic\{} foo"
+
+    assert len(split_p.children) == 4
+    assert split_p.children[0].type == "TEXT_ELEMENT"
+    assert split_p.children[1].type == "TEXT_ELEMENT"
+    assert split_p.children[2].type == "span"
+    assert split_p.children[3].type == "TEXT_ELEMENT"
+    assert split_p.children[0].props["content"] == "Split"
+    assert split_p.children[1].props["content"] == " and split by "
+    assert split_p.children[3].props["content"] == " element"
