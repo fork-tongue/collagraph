@@ -76,6 +76,11 @@ Which looks something like this:
 
 ![collagraph example](https://github.com/fork-tongue/collagraph/assets/1000968/4ebae92e-d7be-48ea-b76a-c6eab8d62112)
 
+Instead of using a python file as an entry point to run components, you can run them directly using the collagraph CLI:
+```sh
+poetry run collagraph examples/pyside/counter.cgx
+```
+
 For more examples, please take a look at the [examples folder](examples).
 
 Currently there are three renderers:

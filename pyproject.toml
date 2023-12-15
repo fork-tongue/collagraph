@@ -42,6 +42,9 @@ pytest-xvfb = "*"
 [tool.poetry.plugins.pyinstaller40]
 hook-dirs = "collagraph.__pyinstaller:get_hook_dirs"
 
+[tool.poetry.scripts]
+collagraph = "collagraph.__main__:run"
+
 [build-system]
 requires = ["poetry>=1.0.0"]
 build-backend = "poetry.masonry.api"

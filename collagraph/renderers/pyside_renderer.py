@@ -259,8 +259,6 @@ class PySideRenderer(Renderer):
                 else:
                     logger.debug(f"'{attr}' is not a Qt property on {type(el)}")
 
-        # Support a custom attribute 'layout_direction' so that we can
-        # set the layout direction of the layout of the given element
         el.set_attribute(attr, value)
 
     def remove_attribute(self, el: Any, attr: str, value: Any):
