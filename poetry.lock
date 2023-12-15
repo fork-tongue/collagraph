@@ -877,14 +877,14 @@ files = [
 
 [[package]]
 name = "observ"
-version = "0.14.0"
+version = "0.14.1"
 description = "Reactive state management for Python"
 category = "main"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "observ-0.14.0-py3-none-any.whl", hash = "sha256:cf9df4c222cd798104dcd626d306a35a9a6a0ea25415a1f56715f415f044e59e"},
-    {file = "observ-0.14.0.tar.gz", hash = "sha256:0803f81c38d5bfb2f51cc2010ce8e785f5d4b7f5f7ac8b357e542f9188329912"},
+    {file = "observ-0.14.1-py3-none-any.whl", hash = "sha256:1532c44749c1bcc6e197c0eb94cad55a42c967df67c38fd5217d3355ee9fd660"},
+    {file = "observ-0.14.1.tar.gz", hash = "sha256:66329ce79b6520a67433b68d452d6d9fc7faed8cade0b48623d42d0e03c3a3c2"},
 ]
 
 [package.dependencies]
@@ -1608,4 +1608,4 @@ pyside = ["pyside6_essentials"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9"
-content-hash = "5d28d04488f81b50a9326ecae2386f46802bcceb7caf5a399184c7d1bf9f3421"
+content-hash = "0f1dad7fb047b9ad3ef64fae8d46da3673ddfd91cbb37457962607bb79c67261"
