@@ -1,0 +1,27 @@
+<!--
+  Run this example as follows:
+  poetry run collagraph --renderer pygfx examples/pygfx/pygfx-component.cgx
+-->
+<template>
+  <group>
+  	<ambient-light />
+  	<directional-light />
+  	<mesh
+  	  :material="red"
+  	  :geometry="sphere"
+  	/>
+  </group>
+</template>
+
+<script>
+import pygfx as gfx
+import collagraph as cg
+
+
+sphere = gfx.sphere_geometry(radius=3)
+red = gfx.MeshPhongMaterial(color=(1, 0.2, 0.2))
+
+
+class Ball(cg.Component):
+	pass
+</script>
