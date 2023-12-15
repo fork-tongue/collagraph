@@ -744,7 +744,7 @@ class Element:
 
     def child_with_tag(self, tag):
         for child in self.children:
-            if child.tag == tag:
+            if getattr(child, "tag", None) == tag:
                 return child
 
 
