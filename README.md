@@ -77,6 +77,7 @@ Which looks something like this:
 ![collagraph example](https://github.com/fork-tongue/collagraph/assets/1000968/4ebae92e-d7be-48ea-b76a-c6eab8d62112)
 
 Instead of using a python file as an entry point to run components, you can run them directly using the collagraph CLI:
+
 ```sh
 poetry run collagraph examples/pyside/counter.cgx
 ```
@@ -102,7 +103,7 @@ poetry install
 # Full dev setup
 poetry install --with pyside --extras pyside --extras pygfx
 # Run example:
-poetry run python examples/layout-example.py
+poetry run python examples/pyside/layout-example.py
 # Run test suite:
 poetry run pytest
 # Install git pre-commit hooks to make sure tests/linting passes before committing
