@@ -22,10 +22,7 @@ class RenderWidget(cg.Component):
         controls = gfx.OrbitController(camera)
         controls.register_events(renderer)
 
-        self.gui = cg.Collagraph(
-            renderer=cg.PygfxRenderer(),
-            event_loop_type=cg.EventLoopType.QT,
-        )
+        self.gui = cg.Collagraph(renderer=cg.PygfxRenderer())
         element = h(
             "Group",
             {
@@ -103,7 +100,7 @@ if __name__ == "__main__":
 
     renderer = cg.PySideRenderer()
     renderer.register("WgpuCanvas", WgpuCanvas)
-    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
+    gui = cg.Collagraph(renderer=renderer)
 
     state = reactive({"count": 50})
 

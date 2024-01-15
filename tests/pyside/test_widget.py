@@ -35,7 +35,7 @@ def test_widget_close():
 
 def test_widget_as_window(qapp, qtbot):
     renderer = cg.PySideRenderer(autoshow=False)
-    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
+    gui = cg.Collagraph(renderer=renderer)
     gui.render(cg.h("widget", {}), qapp)
 
     def check_widget_as_window():
@@ -52,7 +52,7 @@ def test_widget_switch_layouts(qapp, qtbot):
     state = reactive({"layout": {"type": "box"}})
 
     renderer = cg.PySideRenderer(autoshow=False)
-    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
+    gui = cg.Collagraph(renderer=renderer)
     gui.render(cg.h(SwitchLayouts, state), qapp)
 
     widget = None

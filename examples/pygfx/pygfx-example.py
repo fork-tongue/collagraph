@@ -17,10 +17,7 @@ if __name__ == "__main__":
     controls = gfx.OrbitController(camera)
     controls.register_events(renderer)
 
-    gui = cg.Collagraph(
-        renderer=cg.PygfxRenderer(),
-        event_loop_type=cg.EventLoopType.QT,
-    )
+    gui = cg.Collagraph(renderer=cg.PygfxRenderer())
 
     element = h(
         "Group",

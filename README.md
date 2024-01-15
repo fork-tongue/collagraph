@@ -61,10 +61,7 @@ from counter import Counter
 
 # Create a Collagraph instance with a PySide renderer
 # and register with the Qt event loop
-gui = cg.Collagraph(
-    renderer=cg.PySideRenderer(),
-    event_loop_type=cg.EventLoopType.QT,
-)
+gui = cg.Collagraph(renderer=cg.PySideRenderer())
 # Render the component into a container
 # (in this case the app but can be another widget)
 app = QtWidgets.QApplication()

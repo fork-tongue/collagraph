@@ -144,7 +144,7 @@ class PySideRenderer(Renderer):
         self.autoshow = autoshow
 
     def preferred_event_loop_type(self):
-        return EventLoopType.QT
+        return EventLoopType.DEFAULT
 
     def register(self, type_name, custom_type):
         # Check that the custom type is a subclass of QWidget.

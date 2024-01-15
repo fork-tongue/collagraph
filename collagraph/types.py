@@ -5,7 +5,6 @@ from typing import Any, Callable, Dict, List, Union
 
 class EventLoopType(Enum):
     DEFAULT = "asyncio"
-    QT = "Qt"
     SYNC = "sync"
 
 

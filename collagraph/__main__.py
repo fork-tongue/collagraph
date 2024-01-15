@@ -48,10 +48,7 @@ def init_collagraph(renderer_type: str, component_path: Path, state: dict = None
             controls.update_camera(camera)
             wgpu_renderer.render(container, camera)
 
-        gui = cg.Collagraph(
-            renderer=cg.PygfxRenderer(),
-            event_loop_type=cg.EventLoopType.QT,
-        )
+        gui = cg.Collagraph(renderer=cg.PygfxRenderer())
         gui.render(
             cg.h(Component, props),
             container,
