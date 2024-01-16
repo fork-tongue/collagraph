@@ -17,7 +17,6 @@ def qapp(qapp_args, qapp_cls, pytestconfig, qtbot):
         name = pytestconfig.getini("qt_qapp_name")
         app.setApplicationName(name)
     else:
-        print("REUSING APP INSTANCE")
         # Check that there are not left-over widgets from other tests
         assert len(app.topLevelWidgets()) == 0
 
