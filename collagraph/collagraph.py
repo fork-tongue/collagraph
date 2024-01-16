@@ -94,6 +94,7 @@ class Collagraph:
         self.event_loop_type = event_loop_type
         if self.event_loop_type is EventLoopType.DEFAULT:
             scheduler.register_asyncio()
+            renderer.register_asyncio()
         else:
             scheduler.register_request_flush(scheduler.flush)
 

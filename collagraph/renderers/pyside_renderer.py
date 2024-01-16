@@ -146,6 +146,14 @@ class PySideRenderer(Renderer):
     def preferred_event_loop_type(self):
         return EventLoopType.DEFAULT
 
+    def register_asyncio(self):
+        import asyncio
+        from PySide6.QtAsyncio import QAsyncioEventLoopPolicy
+
+        policy = asyncio.get_event_loop_policy()
+        if not isinstance(policy, QAsyncioEventLoopPolicy):
+            asyncio.set_event_loop_policy(QAsyncioEventLoopPolicy())
+
     def register(self, type_name, custom_type):
         # Check that the custom type is a subclass of QWidget.
         # This ensures that the custom widget can be properly wrapped
