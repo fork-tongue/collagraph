@@ -24,10 +24,7 @@ state = reactive(
 )
 
 
-gui = cg.Collagraph(
-    renderer=cg.PySideRenderer(),
-    event_loop_type=cg.EventLoopType.QT,
-)
+gui = cg.Collagraph(renderer=cg.PySideRenderer())
 gui.render(
     cg.h(
         "widget",

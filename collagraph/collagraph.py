@@ -4,7 +4,6 @@ from operator import xor
 from queue import SimpleQueue
 import time
 from typing import Any, Callable, Dict, Iterable, List, Optional
-from weakref import ref
 
 from observ import reactive, scheduler, to_raw
 from observ.watcher import Watcher
@@ -93,16 +92,9 @@ class Collagraph:
                 renderer.preferred_event_loop_type() or EventLoopType.DEFAULT
             )
         self.event_loop_type = event_loop_type
-        if self.event_loop_type is EventLoopType.QT:
-            scheduler.register_qt()  # pragma: no cover
-        elif self.event_loop_type is EventLoopType.DEFAULT:
-            import asyncio
-
-            def request_flush():
-                loop = asyncio.get_event_loop_policy().get_event_loop()
-                loop.call_soon(scheduler.flush)
-
-            scheduler.register_request_flush(request_flush)
+        if self.event_loop_type is EventLoopType.DEFAULT:
+            scheduler.register_asyncio()
+            renderer.register_asyncio()
         else:
             scheduler.register_request_flush(scheduler.flush)
 
@@ -155,28 +147,6 @@ class Collagraph:
                 def start(deadline):
                     loop = asyncio.get_event_loop_policy().get_event_loop()
                     loop.call_soon(self.work_loop, deadline)
-
-                self._request = start
-            if self.event_loop_type is EventLoopType.QT:
-                from PySide6 import QtCore
-
-                self._qt_timer = QtCore.QTimer()
-                self._qt_timer.setSingleShot(True)
-                self._qt_timer.setInterval(0)
-
-                self._qt_first_run = True
-
-                def start(deadline):
-                    if not self._qt_first_run:
-                        self._qt_timer.timeout.disconnect()
-                    else:
-                        self._qt_first_run = False
-
-                    weak_self = ref(self)
-                    self._qt_timer.timeout.connect(
-                        lambda: weak_self() and weak_self().work_loop(deadline=deadline)
-                    )
-                    self._qt_timer.start()
 
                 self._request = start
 

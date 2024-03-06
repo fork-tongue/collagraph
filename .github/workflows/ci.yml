@@ -38,6 +38,10 @@ jobs:
             pyversion: '3.9'
           - name: Linux py310
             pyversion: '3.10'
+          - name: Linux py311
+            pyversion: '3.11'
+          - name: Linux py312
+            pyversion: '3.12'
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.pyversion }}

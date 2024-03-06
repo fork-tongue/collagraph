@@ -7,12 +7,12 @@ from PySide6 import QtCore, QtWidgets
 import collagraph as cg
 
 
-def test_pyside_sfc_event_handlers(qapp, qtbot):
+def test_pyside_sfc_event_handlers(qtbot):
     """Test that class methods can work as event handlers in PySide."""
     from tests.data.directive_on import Buttons
 
     renderer = cg.PySideRenderer(autoshow=False)
-    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
+    gui = cg.Collagraph(renderer=renderer)
     container = renderer.create_element("widget")
     gui.render(cg.h(Buttons, {}), container)
 

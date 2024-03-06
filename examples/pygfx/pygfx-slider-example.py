@@ -38,7 +38,7 @@ class Scrubber(cg.Component):
         self._captured = False
         self._sphere = None
         self._mouse_pos = (0, 0)
-        self.state["position"] = [0, 0, 0]
+        self.state["local.position"] = [0, 0, 0]
 
     def mouse_down(self, event):
         if not self._sphere:
@@ -51,14 +51,15 @@ class Scrubber(cg.Component):
         if not self._captured:
             return
 
-        pos = event.x, event.y
-        diff = (
-            pos[0] - self._mouse_pos[0],
-            pos[1] - self._mouse_pos[1],
+        diff_x = event.x - self._mouse_pos[0]
+
+        self.state["local.position"] = (
+            0,
+            0,
+            min(5, max(-5, self.state["local.position"][2] - diff_x / 40)),
         )
 
-        self.state["position"][2] -= diff[0] / 40
-        self._mouse_pos = pos
+        self._mouse_pos = event.x, event.y
 
     def mouse_up(self, event):
         self._captured = False
@@ -83,16 +84,8 @@ class Slider(cg.Component):
         return h(
             "Group",
             self.state,
-            h(Track, {"scale": [0.5, 0.5, 10]}),
+            h(Track, {"local.scale": [0.5, 0.5, 10]}),
             h(Scrubber, {}),
-            h("AmbientLight"),
-            h(
-                "PointLight",
-                {
-                    "position": [20, 40, 50],
-                    "cast_shadow": True,
-                },
-            ),
         )
 
 
@@ -101,21 +94,21 @@ if __name__ == "__main__":
     renderer = gfx.renderers.WgpuRenderer(canvas)
 
     camera = gfx.PerspectiveCamera(60, 16 / 9)
-    camera.position.x = 15
+    camera.local.x = 15
+    camera.show_pos((0, 0, 0))
 
     # Controls are only used to 'reset' the camera
-    controls = gfx.OrbitController(camera.position.clone())
-    controls.add_default_event_handlers(renderer, camera)
+    controls = gfx.OrbitController(camera)
+    controls.register_events(renderer)
 
-    gui = cg.Collagraph(
-        renderer=cg.PygfxRenderer(), event_loop_type=cg.EventLoopType.QT
-    )
+    gui = cg.Collagraph(renderer=cg.PygfxRenderer())
 
     element = h(Slider, {})
     container = gfx.Scene()
-
-    # Make sure the camera points to the slider
-    controls.update_camera(camera)
+    container.add(gfx.AmbientLight())
+    point_light = gfx.PointLight()
+    point_light.local.position = (0, 10, 10)
+    container.add(point_light)
 
     def animate():
         renderer.render(container, camera)
