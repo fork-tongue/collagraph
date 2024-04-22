@@ -1,14 +1,15 @@
 import textwrap
 from functools import partial
 
-from observ import reactive
 import pytest
+from observ import reactive
 
 PySide6 = pytest.importorskip("PySide6")
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from collagraph import Collagraph, create_element as h
+from collagraph import Collagraph
+from collagraph import create_element as h
 from collagraph.cgx.cgx import load_from_string
 from collagraph.renderers import PySideRenderer
 
@@ -518,7 +519,7 @@ def test_scroll_area(qapp, qtbot):
             for widget in qapp.topLevelWidgets()
             if isinstance(widget, QtWidgets.QScrollArea)
         ]
-        assert len(windows) == 1
+        assert len(windows) == 1, windows
         scroll_area = windows[0]
 
     qtbot.waitUntil(check, timeout=500)

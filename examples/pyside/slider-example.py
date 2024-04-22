@@ -2,6 +2,7 @@
 Example that shows slider, progress bar and spinbox that
 are connected to the same value.
 """
+
 from observ import reactive
 from PySide6 import QtCore, QtWidgets
 

@@ -1,6 +1,7 @@
 """
 Example of how to render lists, tables and trees.
 """
+
 from observ import reactive
 from PySide6 import QtCore, QtWidgets
 

@@ -5,9 +5,10 @@ import pytest
 def qapp(qapp_args, qapp_cls, pytestconfig, qtbot):
     # workaround for https://bugreports.qt.io/browse/PYSIDE-2575
     import asyncio
-    from PySide6.QtWidgets import QMainWindow
-    from PySide6.QtAsyncio import QAsyncioEventLoopPolicy
+
     from PySide6 import QtCore
+    from PySide6.QtAsyncio import QAsyncioEventLoopPolicy
+    from PySide6.QtWidgets import QMainWindow
     from pytestqt.qt_compat import qt_api
 
     app = qt_api.QtWidgets.QApplication.instance()

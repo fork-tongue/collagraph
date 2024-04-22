@@ -2,6 +2,7 @@
 Example of how to render to PySide6 UI and utilize
 the layout of widgets.
 """
+
 from observ import reactive
 from PySide6 import QtWidgets
 

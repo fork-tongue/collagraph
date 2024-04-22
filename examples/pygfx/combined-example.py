@@ -2,9 +2,9 @@
 Example of how to render lists, tables and trees.
 """
 
-import pygfx as gfx
 from observ import reactive
-from point_cloud import PointCloud, materials, sphere_geom
+from point_cloud import materials, PointCloud, sphere_geom
+import pygfx as gfx
 from PySide6 import QtWidgets
 from wgpu.gui.qt import WgpuCanvas
 

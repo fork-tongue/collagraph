@@ -7,6 +7,7 @@ in the `Collagraph.state_updated(self, fiber)` method.
 
 Please excuse the barely working slider ;)
 """
+
 import pygfx as gfx
 from wgpu.gui.auto import run, WgpuCanvas
 

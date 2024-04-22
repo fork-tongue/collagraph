@@ -1,13 +1,12 @@
-import logging
 from collections import defaultdict
 from functools import lru_cache
+import logging
 from typing import Any, Callable
 from warnings import warn
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from collagraph.types import EventLoopType
-
 from . import Renderer
 from .pyside import attr_name_to_method_name, camel_case
 
@@ -27,6 +26,7 @@ TYPE_MAPPING = {
     "dialogbuttonbox": QtWidgets.QDialogButtonBox,
     "groupbox": QtWidgets.QGroupBox,
     "progessbar": QtWidgets.QProgressBar,
+    "scrollarea": QtWidgets.QScrollArea,
     "slider": QtWidgets.QSlider,
     "spinbox": QtWidgets.QSpinBox,
     "statusbar": QtWidgets.QStatusBar,

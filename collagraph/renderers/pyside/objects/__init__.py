@@ -8,6 +8,7 @@ from . import (
     menu,
     menubar,
     qobject,
+    scrollarea,
     splitter,
     standarditem,
     statusbar,
