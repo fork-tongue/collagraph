@@ -1,15 +1,15 @@
+import logging
 from collections import defaultdict
 from functools import lru_cache
-import logging
 from typing import Any, Callable
 from warnings import warn
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from collagraph.types import EventLoopType
+
 from . import Renderer
 from .pyside import attr_name_to_method_name, camel_case
-
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,16 @@ class PySideRenderer(Renderer):
         self.autoshow = autoshow
 
     def preferred_event_loop_type(self):
-        return EventLoopType.QT
+        return EventLoopType.DEFAULT
+
+    def register_asyncio(self):
+        import asyncio
+
+        from PySide6.QtAsyncio import QAsyncioEventLoopPolicy
+
+        policy = asyncio.get_event_loop_policy()
+        if not isinstance(policy, QAsyncioEventLoopPolicy):
+            asyncio.set_event_loop_policy(QAsyncioEventLoopPolicy())
 
     @classmethod
     def register_element(cls, type_name, typ=None):
@@ -268,7 +277,7 @@ class PySideRenderer(Renderer):
             "set_attribute": SET_ATTR_MAPPING,
         }
         for key, mapping in maps.items():
-            for (cls, method) in mapping:
+            for cls, method in mapping:
                 if issubclass(original_type, cls):
                     attrs[key] = method
                     break
@@ -332,7 +341,6 @@ class PySideRenderer(Renderer):
 
     def set_attribute(self, el: Any, attr: str, value: Any):
         """Set the attribute `attr` of the element `el` to the value `value`."""
-
         key = f"{type(el).__name__}.{attr}"
         if key not in DEFAULT_VALUES:
             if not hasattr(el, "metaObject"):

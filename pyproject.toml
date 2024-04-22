@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "collagraph"
-version = "0.6.0"
+version = "0.7.0"
 description = "Reactive user interfaces"
 authors = ["Berend Klein Haneveld <berendkleinhaneveld@gmail.com>", "Korijn van Golen <korijn@gmail.com>"]
 license = "MIT"
@@ -13,9 +13,9 @@ pyside = ["pyside6_essentials"]
 
 [tool.poetry.dependencies]
 python = ">=3.9"
-observ = ">=0.9.5"
-pygfx = { version = ">=0.1.12", optional = true }
-pyside6_essentials = { version = "~6.4", python = "<3.12", optional = true }
+observ = ">=0.14.1"
+pygfx = { version = ">=0.1.17", optional = true }
+pyside6_essentials = { version = "~6.6", python = "<3.13", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 black = "*"
@@ -41,6 +41,9 @@ pytest-xvfb = "*"
 
 [tool.poetry.plugins.pyinstaller40]
 hook-dirs = "collagraph.__pyinstaller:get_hook_dirs"
+
+[tool.poetry.scripts]
+collagraph = "collagraph.__main__:run"
 
 [build-system]
 requires = ["poetry>=1.0.0"]

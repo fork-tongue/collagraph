@@ -8,7 +8,15 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
     """Abstract base class for renderers"""
 
     def preferred_event_loop_type(self) -> Optional[EventLoopType]:
+        """Indicate the preferred default event loop type"""
         return None
+
+    def register_asyncio(self) -> None:
+        """
+        Called by collagraph instance when registering the scheduler with
+        asyncio so that the renderer can perform any additional setup.
+        """
+        pass
 
     @abstractmethod
     def create_element(self, type: str) -> Any:

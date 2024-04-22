@@ -10,16 +10,14 @@ if __name__ == "__main__":
     canvas = WgpuCanvas(size=(600, 400))
     renderer = gfx.renderers.WgpuRenderer(canvas)
 
-    camera = gfx.PerspectiveCamera(70, 16 / 9)
-    camera.position.z = 15
+    camera = gfx.PerspectiveCamera(60, 16 / 9)
+    camera.local.z = 15
+    camera.show_pos((0, 0, 0))
 
-    controls = gfx.OrbitController(camera.position.clone())
-    controls.add_default_event_handlers(renderer, camera)
+    controls = gfx.OrbitController(camera)
+    controls.register_events(renderer)
 
-    gui = cg.Collagraph(
-        renderer=cg.PygfxRenderer(),
-        event_loop_type=cg.EventLoopType.QT,
-    )
+    gui = cg.Collagraph(renderer=cg.PygfxRenderer())
 
     element = h(
         "Group",
@@ -27,7 +25,7 @@ if __name__ == "__main__":
             "name": "Landmarks",
         },
         h("AmbientLight"),
-        h("PointLight", {"position": [0, 70, 70], "cast_shadow": True}),
+        h("PointLight", {"local.position": (0, 70, 70), "cast_shadow": True}),
         h(
             PointCloud,
             # When increasing this number, it will take longer
@@ -39,7 +37,7 @@ if __name__ == "__main__":
             "Mesh",
             {
                 "name": "Hip",
-                "position": [2, 2, 2],
+                "local.position": (2, 2, 2),
                 "geometry": sphere_geom,
                 "material": materials["other"],
             },
@@ -49,7 +47,6 @@ if __name__ == "__main__":
     container = gfx.Scene()
 
     def animate():
-        controls.update_camera(camera)
         renderer.render(container, camera)
 
     gui.render(element, container, callback=lambda: canvas.request_draw(animate))

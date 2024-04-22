@@ -1,8 +1,8 @@
 import gc
 from weakref import ref
 
-from observ import reactive
 import pytest
+from observ import reactive
 
 pytest.importorskip("PySide6")
 
@@ -11,24 +11,31 @@ from PySide6 import QtCore, QtWidgets
 import collagraph as cg
 
 
-def test_simple_widget():
+def test_simple_widget(qtbot):
     renderer = cg.PySideRenderer(autoshow=False)
-    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.SYNC)
+    gui = cg.Collagraph(renderer=renderer)
 
     element = cg.h("Widget", {"layout": {"type": "Box", "direction": "RightToLeft"}})
     container = renderer.create_element("Widget")
     gui.render(element, container)
 
-    # Test the default direction of box layout
-    assert container.layout().direction() == QtWidgets.QBoxLayout.Direction.TopToBottom
-    el = container.findChild(QtWidgets.QWidget)
-    # Test the custom direction for the widget
-    assert el.layout().direction() == QtWidgets.QBoxLayout.Direction.RightToLeft
+    def check_layout():
+        # Test the default direction of box layout
+        assert (
+            container.layout()
+            and container.layout().direction()
+            == QtWidgets.QBoxLayout.Direction.TopToBottom
+        )
+        el = container.findChild(QtWidgets.QWidget)
+        # Test the custom direction for the widget
+        assert el.layout().direction() == QtWidgets.QBoxLayout.Direction.RightToLeft
+
+    qtbot.waitUntil(check_layout, timeout=500)
 
 
 def test_label(qtbot):
     renderer = cg.PySideRenderer(autoshow=False)
-    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
+    gui = cg.Collagraph(renderer=renderer)
 
     element = cg.h(
         "Widget", {"layout": {"type": "Box"}}, cg.h("Label", {"text": "Foo"})
@@ -38,8 +45,7 @@ def test_label(qtbot):
 
     def check_label():
         label = container.findChild(QtWidgets.QLabel)
-        assert label
-        assert label.text() == "Foo"
+        assert label and label.text() == "Foo"
 
     qtbot.waitUntil(check_label, timeout=500)
 
@@ -93,7 +99,7 @@ def test_widget_add_remove(qtbot):
         return cg.h("Widget", {}, *children)
 
     renderer = cg.PySideRenderer(autoshow=False)
-    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
+    gui = cg.Collagraph(renderer=renderer)
 
     state = reactive({"label": True})
     element = cg.h(Example, state)
@@ -155,7 +161,7 @@ def test_removing_attribute_not_supported():
     renderer.remove_attribute(widget, "geometry", rect)
 
 
-def test_pyside_event_listeners(qapp, qtbot):
+def test_pyside_event_listeners(qtbot):
     clicked = 0
 
     def Example(props):
@@ -170,7 +176,7 @@ def test_pyside_event_listeners(qapp, qtbot):
         return cg.h("Widget", {}, *children)
 
     renderer = cg.PySideRenderer(autoshow=False)
-    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
+    gui = cg.Collagraph(renderer=renderer)
 
     container = renderer.create_element("Widget")
     state = reactive({"label": True})
@@ -201,7 +207,7 @@ def test_pyside_event_listeners(qapp, qtbot):
     def check_wait():
         nonlocal button
         label = container.findChild(QtWidgets.QLabel)
-        assert label.text() == "Bar"
+        assert label and label.text() == "Bar"
         button = container.findChild(QtWidgets.QPushButton)
 
     qtbot.waitUntil(check_wait, timeout=500)
@@ -213,16 +219,15 @@ def test_pyside_event_listeners(qapp, qtbot):
 
 def test_cleanup_collagraph_instance(qapp):
     element = cg.h("widget")
-    gui = cg.Collagraph(
-        renderer=cg.PySideRenderer(autoshow=False),
-        event_loop_type=cg.EventLoopType.QT,
-    )
+    gui = cg.Collagraph(renderer=cg.PySideRenderer(autoshow=False))
     gui.render(element, qapp)
 
     # Create a weak ref to gui
     gui_ref = ref(gui)
     # Set the collagraph instance to None
     gui = None
+    # Give Pyside/Qt a chance to cleanup
+    qapp.processEvents()
     # Force garbage collection
     gc.collect()
 

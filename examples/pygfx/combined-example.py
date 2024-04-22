@@ -1,9 +1,10 @@
 """
 Example of how to render lists, tables and trees.
 """
-from observ import reactive
-from point_cloud import materials, PointCloud, sphere_geom
+
 import pygfx as gfx
+from observ import reactive
+from point_cloud import PointCloud, materials, sphere_geom
 from PySide6 import QtWidgets
 from wgpu.gui.qt import WgpuCanvas
 
@@ -16,14 +17,13 @@ class RenderWidget(cg.Component):
         renderer = gfx.renderers.WgpuRenderer(self.element)
 
         camera = gfx.PerspectiveCamera(60, 16 / 9)
-        camera.position.z = 15
+        camera.local.z = 15
+        camera.show_pos((0, 0, 0))
 
-        controls = gfx.OrbitController(camera.position.clone())
-        controls.add_default_event_handlers(renderer, camera)
+        controls = gfx.OrbitController(camera)
+        controls.register_events(renderer)
 
-        self.gui = cg.Collagraph(
-            renderer=cg.PygfxRenderer(), event_loop_type=cg.EventLoopType.QT
-        )
+        self.gui = cg.Collagraph(renderer=cg.PygfxRenderer())
         element = h(
             "Group",
             {
@@ -42,7 +42,7 @@ class RenderWidget(cg.Component):
                 "Mesh",
                 {
                     "name": "Hip",
-                    "position": [2, 2, 2],
+                    "local.position": [2, 2, 2],
                     "geometry": sphere_geom,
                     "material": materials["other"],
                 },
@@ -52,7 +52,6 @@ class RenderWidget(cg.Component):
         container = gfx.Scene()
 
         def animate():
-            controls.update_camera(camera)
             renderer.render(container, camera)
 
         self.gui.render(
@@ -102,7 +101,7 @@ if __name__ == "__main__":
 
     renderer = cg.PySideRenderer()
     renderer.register_element("WgpuCanvas", WgpuCanvas)
-    gui = cg.Collagraph(renderer=renderer, event_loop_type=cg.EventLoopType.QT)
+    gui = cg.Collagraph(renderer=renderer)
 
     state = reactive({"count": 50})
 

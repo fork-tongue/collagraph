@@ -1,3 +1,4 @@
+import textwrap
 from functools import partial
 
 from observ import reactive
@@ -7,11 +8,12 @@ PySide6 = pytest.importorskip("PySide6")
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from collagraph import Collagraph, create_element as h, EventLoopType
+from collagraph import Collagraph, create_element as h
+from collagraph.cgx.cgx import load_from_string
 from collagraph.renderers import PySideRenderer
 
 
-def current_window(app):
+def get_current_window(app):
     """Returns the first instance of a window within the topLevelWidgets."""
     windows = []
     for widget in app.topLevelWidgets():
@@ -22,9 +24,9 @@ def current_window(app):
     return windows[0] if windows else None
 
 
-def test_simple_structure(qtbot, qapp):
+def test_simple_structure(qtbot):
     renderer = PySideRenderer(autoshow=False)
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
+    gui = Collagraph(renderer=renderer)
 
     container = renderer.create_element("Window")
 
@@ -43,7 +45,7 @@ def test_simple_structure(qtbot, qapp):
 
 def test_layouts(qapp, qtbot):
     renderer = PySideRenderer(autoshow=False)
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
+    gui = Collagraph(renderer=renderer)
 
     def LayoutExample(props):
         # Data to fill the box layout
@@ -132,7 +134,7 @@ def test_layouts(qapp, qtbot):
 
     def get_window():
         nonlocal window
-        result = current_window(qapp)
+        result = get_current_window(qapp)
         assert result
         window = result
 
@@ -209,7 +211,7 @@ def test_lists(qapp, qtbot, qtmodeltester):
         )
 
     renderer = PySideRenderer(autoshow=False)
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
+    gui = Collagraph(renderer=renderer)
 
     state = reactive(
         {
@@ -232,7 +234,7 @@ def test_lists(qapp, qtbot, qtmodeltester):
         nonlocal window
         nonlocal model
 
-        window = current_window(qapp)
+        window = get_current_window(qapp)
         assert window
 
         list_view = window.findChild(QtWidgets.QListView)
@@ -305,7 +307,7 @@ def test_menu(qapp, qtbot):
         )
 
     renderer = PySideRenderer(autoshow=False)
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
+    gui = Collagraph(renderer=renderer)
     gui.render(h(MenuExample, {}), qapp)
 
     def check_file_menu():
@@ -334,7 +336,7 @@ def test_menu_extensively(qapp, qtbot):
         }
     )
     renderer = PySideRenderer(autoshow=False)
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
+    gui = Collagraph(renderer=renderer)
     gui.render(h(MenuBarTest, state), qapp)
 
     def check(menubar, menu, item, submenu, subitem):
@@ -378,7 +380,7 @@ def test_app(qapp, qtbot):
     from tests.data.app import Window
 
     renderer = PySideRenderer(autoshow=False)
-    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.QT)
+    gui = Collagraph(renderer=renderer)
     gui.render(h(Window), qapp)
 
     window = None
@@ -472,5 +474,70 @@ def test_app(qapp, qtbot):
 
     qtbot.waitUntil(
         partial(check_name, type=QtWidgets.QDockWidget, name="dock", show=False),
+        timeout=500,
+    )
+
+
+def test_scroll_area(qapp, qtbot):
+    App, _ = load_from_string(
+        textwrap.dedent(
+            """
+            <template>
+              <scrollarea>
+                <label
+                  v-if="label"
+                />
+                <textedit
+                  v-else-if="edit"
+                />
+              </scrollarea>
+            </template>
+
+            <script>
+            import collagraph as cg
+
+            class App(cg.Component):
+                pass
+            </script>
+            """
+        )
+    )
+
+    state = reactive({"label": True, "edit": True})
+
+    renderer = PySideRenderer(autoshow=False)
+    gui = Collagraph(renderer=renderer)
+    gui.render(h(App, state), qapp)
+
+    scroll_area = None
+
+    def check():
+        nonlocal scroll_area
+        windows = [
+            widget
+            for widget in qapp.topLevelWidgets()
+            if isinstance(widget, QtWidgets.QScrollArea)
+        ]
+        assert len(windows) == 1
+        scroll_area = windows[0]
+
+    qtbot.waitUntil(check, timeout=500)
+
+    qtbot.waitUntil(
+        lambda: isinstance(scroll_area.widget(), QtWidgets.QLabel),
+        timeout=500,
+    )
+
+    state["label"] = False
+
+    qtbot.waitUntil(
+        lambda: isinstance(scroll_area.widget(), QtWidgets.QTextEdit),
+        timeout=500,
+    )
+
+    state["edit"] = False
+
+    qtbot.waitUntil(
+        lambda: scroll_area.widget() is None,
         timeout=500,
     )

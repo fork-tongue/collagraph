@@ -42,24 +42,18 @@ class PygfxRenderer(Renderer):
         raise NotImplementedError
 
     def set_attribute(self, obj, attr, value):
-        if isinstance(obj, gfx.WorldObject):
-            if attr in {"position", "scale"}:
-                if attr == "scale" and isinstance(value, (int, float)):
-                    value = gfx.linalg.Vector3(value, value, value)
-                else:
-                    value = gfx.linalg.Vector3(*value)
-            elif attr == "rotation":
-                value = gfx.linalg.Quaternion(*value)
-            elif attr == "matrix":
-                value = gfx.linalg.Matrix4(*value)
-
         key = f"{type(obj).__name__}.{attr}"
+
+        # Split the given attr on dots to allow for
+        # local.position for instance to be set
+        *attrs, attr = attr.split(".")
+        for attribute in attrs:
+            obj = getattr(obj, attribute)
+
         if key not in DEFAULT_ATTR_CACHE:
             if hasattr(obj, attr):
                 default_value = getattr(obj, attr)
-                if hasattr(default_value, "clone"):
-                    DEFAULT_ATTR_CACHE[key] = default_value.clone()
-                elif hasattr(default_value, "copy"):
+                if hasattr(default_value, "copy"):
                     DEFAULT_ATTR_CACHE[key] = default_value.copy()
                 else:
                     DEFAULT_ATTR_CACHE[key] = default_value
@@ -68,11 +62,16 @@ class PygfxRenderer(Renderer):
 
     def remove_attribute(self, obj, attr, value):
         key = f"{type(obj).__name__}.{attr}"
+
+        # Split the given attr on dots to allow for
+        # local.position for instance to be set
+        *attrs, attr = attr.split(".")
+        for attribute in attrs:
+            obj = getattr(obj, attribute)
+
         if key in DEFAULT_ATTR_CACHE:
             default_value = DEFAULT_ATTR_CACHE[key]
-            if hasattr(default_value, "clone"):
-                val = default_value.clone()
-            elif hasattr(default_value, "copy"):
+            if hasattr(default_value, "copy"):
                 val = default_value.copy()
             else:
                 val = default_value

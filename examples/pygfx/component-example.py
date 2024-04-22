@@ -42,8 +42,8 @@ class Button(cg.Component):
         return h(
             "Mesh",
             {
-                "position": self.props["position"],
-                "scale": self.state["scale"],
+                "local.position": self.props["position"],
+                "local.scale": self.state["scale"],
                 "geometry": Button.geometry,
                 "material": material,
                 "on_click": self.pressed,
@@ -80,15 +80,14 @@ if __name__ == "__main__":
     renderer = gfx.renderers.WgpuRenderer(canvas)
 
     camera = gfx.PerspectiveCamera(60, 16 / 9)
-    camera.position.z = 7
-    camera.position.y = -2
+    camera.local.z = 7
+    camera.local.y = -2
+    camera.show_pos((0, 0, 0))
 
-    controls = gfx.OrbitController(camera.position.clone())
-    controls.add_default_event_handlers(renderer, camera)
+    controls = gfx.OrbitController(camera)
+    controls.register_events(renderer)
 
-    gui = cg.Collagraph(
-        renderer=cg.PygfxRenderer(), event_loop_type=cg.EventLoopType.QT
-    )
+    gui = cg.Collagraph(renderer=cg.PygfxRenderer())
 
     element = h(
         "Group",
@@ -98,9 +97,10 @@ if __name__ == "__main__":
         h("PointLight", {"position": [10, 30, 40]}),
     )
     container = gfx.Scene()
+    container.add(gfx.AmbientLight())
+    container.add(gfx.DirectionalLight())
 
     def animate():
-        controls.update_camera(camera)
         renderer.render(container, camera)
 
     gui.render(element, container, callback=lambda: canvas.request_draw(animate))

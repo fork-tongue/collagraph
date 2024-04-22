@@ -49,9 +49,7 @@ def Example(props):
 if __name__ == "__main__":
     app = QtWidgets.QApplication()
 
-    gui = cg.Collagraph(
-        renderer=cg.PySideRenderer(), event_loop_type=cg.EventLoopType.QT
-    )
+    gui = cg.Collagraph(renderer=cg.PySideRenderer())
 
     state = reactive({"tab_count": 2})
 
