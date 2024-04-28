@@ -186,10 +186,8 @@ def test_pyside_event_listeners(qtbot):
         clicked += 1
         state["label"] = False
 
-    # Define Qt structure and map state to the structure
     element = cg.h(Example, state)
 
-    # Pass in the app as a container. Can actually be any truthy object
     gui.render(element, container)
 
     button = None
