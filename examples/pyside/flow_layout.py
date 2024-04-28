@@ -95,3 +95,29 @@ class FlowLayout(QtWidgets.QLayout):
             line_height = max(line_height, item.sizeHint().height())
 
         return y + line_height - rect.y()
+
+
+if __name__ == "__main__":
+    import collagraph as cg
+
+    app = QtWidgets.QApplication()
+
+    renderer = cg.PySideRenderer()
+    renderer.register_layout("flow", FlowLayout)
+    gui = cg.Collagraph(renderer=renderer)
+
+    element = cg.h(
+        "window",
+        {},
+        cg.h(
+            "widget",
+            {"layout": {"type": "flow"}},
+            *[
+                cg.h("label", {"text": text})
+                for text in ["Item a", "Item b", "Item c", "Item d"]
+            ],
+        ),
+    )
+
+    gui.render(element, app)
+    app.exec()
