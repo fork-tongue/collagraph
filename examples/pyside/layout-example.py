@@ -9,8 +9,7 @@ from PySide6 import QtWidgets
 import collagraph as cg
 from collagraph import h
 
-from pyside.flow_layout import FlowLayout  # noqa: I100
-
+from examples.pyside.flow_layout import FlowLayout  # noqa: I100
 
 cg.PySideRenderer.register_layout("flow", FlowLayout)
 
@@ -74,7 +73,7 @@ def LayoutExample(props):
         stacked.append(("Label", {"text": f"Stack {i}"}))
 
     flow = []
-    for i in range(1, 5):
+    for i in range(1, 10):
         flow.append(("label", {"text": f"Flow {i}"}))
 
     return h(
