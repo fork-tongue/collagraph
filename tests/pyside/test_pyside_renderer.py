@@ -1,22 +1,21 @@
 import gc
 from weakref import ref
 
-from observ import reactive
 import pytest
+from observ import reactive
 
 pytest.importorskip("PySide6")
 
 from PySide6 import QtCore, QtWidgets
 
-from collagraph import Collagraph, create_element as h, EventLoopType
-from collagraph.renderers import PySideRenderer
+import collagraph as cg
 
 
 def test_simple_widget(qtbot):
-    renderer = PySideRenderer(autoshow=False)
-    gui = Collagraph(renderer=renderer)
+    renderer = cg.PySideRenderer(autoshow=False)
+    gui = cg.Collagraph(renderer=renderer)
 
-    element = h("Widget", {"layout": {"type": "Box", "direction": "RightToLeft"}})
+    element = cg.h("Widget", {"layout": {"type": "Box", "direction": "RightToLeft"}})
     container = renderer.create_element("Widget")
     gui.render(element, container)
 
@@ -35,10 +34,12 @@ def test_simple_widget(qtbot):
 
 
 def test_label(qtbot):
-    renderer = PySideRenderer(autoshow=False)
-    gui = Collagraph(renderer=renderer)
+    renderer = cg.PySideRenderer(autoshow=False)
+    gui = cg.Collagraph(renderer=renderer)
 
-    element = h("Widget", {"layout": {"type": "Box"}}, h("Label", {"text": "Foo"}))
+    element = cg.h(
+        "Widget", {"layout": {"type": "Box"}}, cg.h("Label", {"text": "Foo"})
+    )
     container = renderer.create_element("Window")
     gui.render(element, container)
 
@@ -49,38 +50,59 @@ def test_label(qtbot):
     qtbot.waitUntil(check_label, timeout=500)
 
 
-def test_register_custom_type():
+def test_register_custom_widget_subclass():
+    # Register the class CustomWidget as element Foo
+    @cg.PySideRenderer.register_element("Foo")
     class CustomWidget(QtWidgets.QWidget):
         pass
-
-    renderer = PySideRenderer(autoshow=False)
-    renderer.register("Foo", CustomWidget)
-
-    foo = renderer.create_element("Foo")
-    assert isinstance(foo, CustomWidget)
 
     class NonWidget:
         pass
 
+    renderer = cg.PySideRenderer(autoshow=False)
+
+    with pytest.warns(UserWarning):
+        # It's also possible to register the element with the following line
+        # However, there is already an element registered for Foo, so
+        # a warning will be issued
+        renderer.register_element("Foo", CustomWidget)
+
+    foo = renderer.create_element("Foo")
+    assert isinstance(foo, CustomWidget)
+
     with pytest.raises(TypeError):
-        renderer.register("Bar", NonWidget)
+        renderer.register_element("Bar", NonWidget)
 
     with pytest.raises(TypeError):
         renderer.create_element("Bar")
+
+
+def test_register_custom_layout_subclass():
+    class HorizontalLayout(QtWidgets.QBoxLayout):
+        def __init__(self, parent=None):
+            super().__init__(QtWidgets.QBoxLayout.Direction.LeftToRight, parent)
+
+    renderer = cg.PySideRenderer(autoshow=False)
+    renderer.register_layout("horizontal", HorizontalLayout)
+
+    widget = renderer.create_element("widget")
+    renderer.set_attribute(widget, "layout", {"type": "Horizontal"})
+
+    assert isinstance(widget.layout(), HorizontalLayout)
 
 
 def test_widget_add_remove(qtbot):
     def Example(props):
         children = []
         if props["label"]:
-            children.append(h("Label", {}))
-        return h("Widget", {}, *children)
+            children.append(cg.h("Label", {}))
+        return cg.h("Widget", {}, *children)
 
-    renderer = PySideRenderer(autoshow=False)
-    gui = Collagraph(renderer=renderer)
+    renderer = cg.PySideRenderer(autoshow=False)
+    gui = cg.Collagraph(renderer=renderer)
 
     state = reactive({"label": True})
-    element = h(Example, state)
+    element = cg.h(Example, state)
     container = renderer.create_element("Widget")
     gui.render(element, container)
 
@@ -98,7 +120,7 @@ def test_widget_add_remove(qtbot):
 
 
 def test_not_implemented():
-    renderer = PySideRenderer(autoshow=False)
+    renderer = cg.PySideRenderer(autoshow=False)
 
     # QAbstractAnimation is a type that we'll likely not
     # support so is a good candidate for checking for
@@ -111,7 +133,7 @@ def test_not_implemented():
 
 
 def test_removing_attribute_not_supported():
-    renderer = PySideRenderer(autoshow=False)
+    renderer = cg.PySideRenderer(autoshow=False)
 
     rect = QtCore.QRect(0, 0, 20, 20)
 
@@ -145,16 +167,16 @@ def test_pyside_event_listeners(qtbot):
     def Example(props):
         children = []
         if props["label"] is True:
-            children.append(h("Label", {"text": "Foo"}))
-            children.append(h("Button", {"on_clicked": button_clicked}))
+            children.append(cg.h("Label", {"text": "Foo"}))
+            children.append(cg.h("Button", {"on_clicked": button_clicked}))
         else:
-            children.append(h("Label", {"text": "Bar"}))
-            children.append(h("Button"))
+            children.append(cg.h("Label", {"text": "Bar"}))
+            children.append(cg.h("Button"))
 
-        return h("Widget", {}, *children)
+        return cg.h("Widget", {}, *children)
 
-    renderer = PySideRenderer(autoshow=False)
-    gui = Collagraph(renderer=renderer)
+    renderer = cg.PySideRenderer(autoshow=False)
+    gui = cg.Collagraph(renderer=renderer)
 
     container = renderer.create_element("Widget")
     state = reactive({"label": True})
@@ -164,10 +186,8 @@ def test_pyside_event_listeners(qtbot):
         clicked += 1
         state["label"] = False
 
-    # Define Qt structure and map state to the structure
-    element = h(Example, state)
+    element = cg.h(Example, state)
 
-    # Pass in the app as a container. Can actually be any truthy object
     gui.render(element, container)
 
     button = None
@@ -196,8 +216,8 @@ def test_pyside_event_listeners(qtbot):
 
 
 def test_cleanup_collagraph_instance(qapp):
-    element = h("widget")
-    gui = Collagraph(renderer=PySideRenderer(autoshow=False))
+    element = cg.h("widget")
+    gui = cg.Collagraph(renderer=cg.PySideRenderer(autoshow=False))
     gui.render(element, qapp)
 
     # Create a weak ref to gui
@@ -217,10 +237,10 @@ def test_is_new_no_type_error(qapp):
     # Comparing a QtCore.Qt.ItemFlags with None results in a TypeError
     # This can happen during reconciliation so let's make sure we test for that
     state = reactive({"flags": QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable})
-    element = h("widget", state)
-    gui = Collagraph(
-        renderer=PySideRenderer(autoshow=False),
-        event_loop_type=EventLoopType.SYNC,
+    element = cg.h("widget", state)
+    gui = cg.Collagraph(
+        renderer=cg.PySideRenderer(autoshow=False),
+        event_loop_type=cg.EventLoopType.SYNC,
     )
     gui.render(element, qapp)
 

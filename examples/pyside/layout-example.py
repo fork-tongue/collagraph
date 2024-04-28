@@ -2,17 +2,48 @@
 Example of how to render to PySide6 UI and utilize
 the layout of widgets.
 """
+
+from observ import reactive
 from PySide6 import QtWidgets
 
 import collagraph as cg
 from collagraph import h
 
+from examples.pyside.flow_layout import FlowLayout  # noqa: I100
+
+cg.PySideRenderer.register_layout("flow", FlowLayout)
+
 
 def LayoutExample(props):
+    index = props.get("index", 0)
+
+    def accepted():
+        print("accepted")  # noqa: T201
+
+    def rejected():
+        print("rejected")  # noqa: T201
+
+    def select_all():
+        print("select all")  # noqa: T201
+
+    def clicked(btn):
+        print("clicked:", btn)  # noqa: T201
+
+    def set_index(number):
+        props["index"] = number - 1
+
     # Data to fill the box layout
     box = []
     for i in range(1, 5):
-        box.append(("Button", {"text": f"Button {i}"}))
+        box.append(
+            (
+                "Button",
+                {
+                    "text": f"Button {i}",
+                    "on_clicked": lambda _=None, x=i: set_index(x),
+                },
+            )
+        )
 
     # Data to fill the grid layout
     grid = []
@@ -37,17 +68,13 @@ def LayoutExample(props):
             text = "Line 2, long text:"
         form.append((widget, {"form_label": text, "form_index": i}))
 
-    def accepted():
-        print("accepted")  # noqa: T201
+    stacked = []
+    for i in range(1, 5):
+        stacked.append(("Label", {"text": f"Stack {i}"}))
 
-    def rejected():
-        print("rejected")  # noqa: T201
-
-    def select_all():
-        print("select all")  # noqa: T201
-
-    def clicked(btn):
-        print("clicked:", btn)  # noqa: T201
+    flow = []
+    for i in range(1, 10):
+        flow.append(("label", {"text": f"Flow {i}"}))
 
     return h(
         "Window",
@@ -76,6 +103,27 @@ def LayoutExample(props):
                     },
                 },
                 *[h(item[0], item[1]) for item in box],
+            ),
+            h(
+                "GroupBox",
+                {
+                    "title": "Stacked layout",
+                    "layout": {
+                        "type": "Stacked",
+                        "current_index": index,
+                    },
+                },
+                *[h(item[0], item[1]) for item in stacked],
+            ),
+            h(
+                "GroupBox",
+                {
+                    "title": "Flow layout (custom)",
+                    "layout": {
+                        "type": "flow",
+                    },
+                },
+                *[h(item[0], item[1]) for item in flow],
             ),
             h(
                 "GroupBox",
@@ -143,8 +191,9 @@ if __name__ == "__main__":
 
     gui = cg.Collagraph(renderer=cg.PySideRenderer())
 
+    state = reactive({})
     # Define Qt structure and map state to the structure
-    element = h(LayoutExample, {})
+    element = h(LayoutExample, state)
 
     # Pass in the app as a container. Can actually be any truthy object
     gui.render(element, app)

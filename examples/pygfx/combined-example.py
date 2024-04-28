@@ -1,6 +1,7 @@
 """
 Example of how to render lists, tables and trees.
 """
+
 from observ import reactive
 from point_cloud import materials, PointCloud, sphere_geom
 import pygfx as gfx
@@ -99,7 +100,7 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication()
 
     renderer = cg.PySideRenderer()
-    renderer.register("WgpuCanvas", WgpuCanvas)
+    renderer.register_element("WgpuCanvas", WgpuCanvas)
     gui = cg.Collagraph(renderer=renderer)
 
     state = reactive({"count": 50})

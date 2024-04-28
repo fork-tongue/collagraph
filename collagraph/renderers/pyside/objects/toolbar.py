@@ -1,7 +1,10 @@
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QToolBar, QWidget
+
+from ... import PySideRenderer
 
 
+@PySideRenderer.register_insert(QToolBar)
 def insert(self, el, anchor=None):
     if isinstance(el, QWidget):
         if anchor is not None:
@@ -17,6 +20,7 @@ def insert(self, el, anchor=None):
         el.setParent(self.window())
 
 
+@PySideRenderer.register_remove(QToolBar)
 def remove(self, el):
     if isinstance(el, QAction):
         self.removeAction(el)

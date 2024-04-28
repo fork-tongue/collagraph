@@ -1,8 +1,10 @@
 from PySide6.QtWidgets import QTreeWidgetItem
 
 from .qobject import set_attribute as qobject_set_attribute
+from ... import PySideRenderer
 
 
+@PySideRenderer.register_insert(QTreeWidgetItem)
 def insert(self, el: QTreeWidgetItem, anchor=None):
     if not isinstance(el, QTreeWidgetItem):
         raise NotImplementedError(f"No insert defined for: {type(el).__name__}")
@@ -26,10 +28,12 @@ def insert(self, el: QTreeWidgetItem, anchor=None):
         delattr(el, "_selected")
 
 
+@PySideRenderer.register_remove(QTreeWidgetItem)
 def remove(self, el: QTreeWidgetItem):
     self.removeChild(el)
 
 
+@PySideRenderer.register_set_attr(QTreeWidgetItem)
 def set_attribute(self, attr, value):
     if attr == "content":
         for col, data in value.items():
