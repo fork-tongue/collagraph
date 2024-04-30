@@ -1030,14 +1030,14 @@ files = [
 
 [[package]]
 name = "pygfx"
-version = "0.1.17"
+version = "0.2.0"
 description = "A threejs-like render engine based on wgpu"
 category = "main"
 optional = true
 python-versions = ">=3.8.0"
 files = [
-    {file = "pygfx-0.1.17-py3-none-any.whl", hash = "sha256:78482d52d34ae2bc2fd4df1b72264dbab872a605fd2259d417ff8bd2343f7e98"},
-    {file = "pygfx-0.1.17.tar.gz", hash = "sha256:344eef8770407593d7fe3547dc20e185d1bf6cd03b4b4fc2b01114b7d52ef9ae"},
+    {file = "pygfx-0.2.0-py3-none-any.whl", hash = "sha256:3ef14fc66c5aa1d83d0269dae78c6943b944ded08f98f8cf295ed9efe7aecaa5"},
+    {file = "pygfx-0.2.0.tar.gz", hash = "sha256:8f3b0453e70e4e76424099b9bd55a33057d817afc35bdba7a828040e63868625"},
 ]
 
 [package.dependencies]
@@ -1046,10 +1046,10 @@ Jinja2 = "*"
 numpy = "*"
 pylinalg = ">=0.4.1,<0.5.0"
 uharfbuzz = "*"
-wgpu = ">=0.13.0,<0.14.0"
+wgpu = ">=0.15.1,<0.16.0"
 
 [package.extras]
-dev = ["black", "flake8", "flake8-black", "imageio", "pep8-naming", "psutil", "pyinstaller (>=4)", "pytest", "setuptools", "twine", "wheel"]
+dev = ["black", "flake8", "flake8-black", "httpx", "imageio", "pep8-naming", "psutil", "pyinstaller (>=4)", "pytest", "setuptools", "trimesh", "twine", "wheel"]
 docs = ["imageio", "imageio-ffmpeg (>=0.4.7)", "jinja2", "matplotlib", "numpy", "pytest", "scikit-image", "sphinx (>7.2)", "sphinx-gallery", "trimesh", "wgpu"]
 examples = ["PySide6-Essentials", "imageio", "imageio-ffmpeg (>=0.4.7)", "pytest", "scikit-image", "trimesh"]
 
@@ -1561,19 +1561,19 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 
 [[package]]
 name = "wgpu"
-version = "0.13.1"
+version = "0.15.1"
 description = "Next generation GPU API for Python"
 category = "main"
 optional = true
 python-versions = ">=3.8.0"
 files = [
-    {file = "wgpu-0.13.1-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:17d6348071c0b50e3627b629260a09a0138173a51215abd4d96a6af6ba0d1d9f"},
-    {file = "wgpu-0.13.1-py3-none-macosx_11_0_arm64.whl", hash = "sha256:fb22d89ab981be7475e453cf4e5532544c19eb8618aef4063e1597ca5d7dc772"},
-    {file = "wgpu-0.13.1-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:7c9eb44be95a3d9b050f6a88eca34d5b29137eb1a0fbad2360008bd33fdc5576"},
-    {file = "wgpu-0.13.1-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:6feb803359d70ce4c43d38f1a289a159e1236834a9a65e748296a9ce1509d410"},
-    {file = "wgpu-0.13.1-py3-none-win32.whl", hash = "sha256:904aa612db78212d3728f88de62cb92a55d8bce6f94dff2430073cc588f811a8"},
-    {file = "wgpu-0.13.1-py3-none-win_amd64.whl", hash = "sha256:ae9e133673645b4c07145ace5ddf8296a368c9fee1ae6b6b5a8af0ebf6218e3f"},
-    {file = "wgpu-0.13.1.tar.gz", hash = "sha256:a93d78910c9b5fa29562854d5f2c076f11b1c3a3df7acfc9ca9bdf95a142da4c"},
+    {file = "wgpu-0.15.1-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:6b1a9430c3103e3cf71e5a69d1de37a899b7278806b5890daa30c78f7735df4b"},
+    {file = "wgpu-0.15.1-py3-none-macosx_11_0_arm64.whl", hash = "sha256:e3b4fae125dc5de4a864f689ba78b76158a42ec999526c40a53ecbb918ed81c4"},
+    {file = "wgpu-0.15.1-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:c6a7fd827582086c8eaca14d9b8a841adb3340fe8f5ad97d0818c3e4c0de7eaf"},
+    {file = "wgpu-0.15.1-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:ec969e813f82da8d480ed0811990172c9a298210930e33494d2858a62107bf88"},
+    {file = "wgpu-0.15.1-py3-none-win32.whl", hash = "sha256:3c2179d810a40aa3f13484d0332616e5deb78cf2e07b53d23b14a19c261adcbc"},
+    {file = "wgpu-0.15.1-py3-none-win_amd64.whl", hash = "sha256:1ba03baeb4635d52539f1ed54feedd220618b80c24b819f71435de17b5318c5a"},
+    {file = "wgpu-0.15.1.tar.gz", hash = "sha256:6d018048f2ca33442a5fe85fc21788f8ea87948c8c9e63fd5cbc6cc03aa7a86f"},
 ]
 
 [package.dependencies]
@@ -1608,4 +1608,4 @@ pyside = ["pyside6_essentials"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9"
-content-hash = "0f1dad7fb047b9ad3ef64fae8d46da3673ddfd91cbb37457962607bb79c67261"
+content-hash = "63facd3252352477f58ce066519ee6aac4f7073abce4b8b572d98512065defe5"

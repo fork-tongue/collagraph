@@ -1,0 +1,14 @@
+<Node>
+  <template>
+    <content v-if="show_content" />
+  </template>
+</Node>
+
+<script lang="python">
+import collagraph
+from tests.data.slots.node import Node
+
+
+class Tree(collagraph.Component):
+    pass
+</script>

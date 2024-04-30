@@ -1,0 +1,23 @@
+<Layout>
+  <template v-slot:header>
+    <label text="header content" />
+  </template>
+
+  <template v-slot:default>
+    <label text="content" />
+    <label text="even more content" />
+  </template>
+
+  <template v-slot:footer>
+    <label text="footer content" />
+  </template>
+</Layout>
+
+<script lang="python">
+import collagraph
+from tests.data.slots.widget_with_slots import Layout
+
+
+class Template(collagraph.Component):
+    pass
+</script>

@@ -18,11 +18,9 @@ class Buttons(cg.Component):
         self.state["count"] = 0
 
     def increase(self):
-        print('increase')
         self.state["count"] += 1
 
     def decrease(self):
-        print('decrease')
         self.state["count"] -= 1
 
     def counter_text(self):

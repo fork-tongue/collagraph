@@ -1,0 +1,15 @@
+<Node>
+  <content
+    v-for="item in content"
+    :value="item"
+  />
+</Node>
+
+<script lang="python">
+import collagraph
+from tests.data.slots.node import Node
+
+
+class Tree(collagraph.Component):
+    pass
+</script>

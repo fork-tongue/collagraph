@@ -1,0 +1,10 @@
+<node :name="props.get('name')">
+  <slot />
+</node>
+
+<script lang="python">
+import collagraph
+
+class Node(collagraph.Component):
+    pass
+</script>

@@ -1,16 +1,15 @@
 from abc import abstractmethod
 from collections import defaultdict
+from typing import ClassVar
 from weakref import ref
 
 from observ import reactive, readonly
-
-from collagraph import render_slot
 
 
 class Component:
     """Abstract base class for components"""
 
-    __lookup_cache__ = defaultdict(dict)
+    __lookup_cache__: ClassVar = defaultdict(dict)
 
     def __init__(self, props=None, parent=None):
         self._props = readonly({} if props is None else props)
@@ -49,7 +48,7 @@ class Component:
 
     @element.setter
     def element(self, value):
-        """Prevent overwriting the element attribute."""
+        """Prevent overwriting the element attributes."""
         raise RuntimeError("Not allowed to override element attribute")
 
     @property
@@ -64,12 +63,6 @@ class Component:
     def parent(self, value):
         """Prevent overwriting the parent attribute."""
         raise RuntimeError("Not allowed to override parent attribute")
-
-    def render_slot(self, name, props=None):
-        return render_slot(name, props, self._slots)
-
-    # Provide shortcut to render_slot method
-    s = render_slot
 
     def mounted(self):
         """Called after the component has been mounted.
@@ -102,7 +95,7 @@ class Component:
         pass
 
     @abstractmethod
-    def render():  # pragma: no cover
+    def render(self, renderer):  # pragma: no cover
         pass
 
     def provide(self, key: str, value):
