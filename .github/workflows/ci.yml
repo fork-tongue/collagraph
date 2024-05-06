@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: poetry install
       - name: Lint
-        run: poetry run flake8
+        run: poetry run ruff check .
   
   test:
     name: Test on ${{ matrix.name }}
