@@ -9,13 +9,13 @@ readme = "README.md"
 
 [tool.poetry.extras]
 pygfx = ["pygfx"]
-pyside = ["pyside6_essentials"]
+pyside = ["pyside6"]
 
 [tool.poetry.dependencies]
 python = ">=3.9"
 observ = ">=0.14.1"
 pygfx = { version = ">=0.2.0", optional = true }
-pyside6_essentials = { version = "~6.6", python = "<3.13", optional = true }
+pyside6 = { version = ">=6.6", python = "<3.13", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 black = "*"
