@@ -332,7 +332,6 @@ def test_menu(qapp, qtbot, parse_source):
     qtbot.waitUntil(check_file_menu, timeout=500)
 
 
-@pytest.mark.skip("Segfaults")
 def test_menu_extensively(qapp, qtbot, parse_source):
     MenuBarTest, _ = parse_source(
         """

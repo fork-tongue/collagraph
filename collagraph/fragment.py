@@ -317,6 +317,12 @@ class Fragment:
             self._watchers = None
             self._condition = None
             self.tag = None
+        else:
+            self.element = None
+            for watcher in self._watchers.values():
+                watcher.fn = lambda: ()
+            self._watchers = {}
+
 
         # TODO: maybe control flow fragments needs another custom 'parenting'
         # solution where the control flow fragment keeps references to the
@@ -327,9 +333,6 @@ class Fragment:
 
 
 class ControlFlowFragment(Fragment):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     def mount(self, target: DomElement, anchor: DomElement | None = None):
         if self._mounted:
             return
@@ -345,22 +348,23 @@ class ControlFlowFragment(Fragment):
                     anch = self.anchor()
                 new.mount(self.target, anch)
 
+        @weak(self)
+        def active_child(self):
+            for child in self.children:
+                if child._condition is not None:
+                    # if and else-if blocks
+                    if child._condition():
+                        return child
+                else:
+                    # else block
+                    return child
+
         self._watchers["control_flow"] = watch(
-            self._active_child,
+            active_child,
             update_fragment,
             deep=True,
             immediate=True,
         )
-
-    def _active_child(self) -> Fragment | None:
-        for child in self.children:
-            if child._condition is not None:
-                # if and else-if blocks
-                if child._condition():
-                    return child
-            else:
-                # else block
-                return child
 
 
 class ListFragment(Fragment):
@@ -441,7 +445,7 @@ class ListFragment(Fragment):
         # which adds/removes/updates all the child fragments
         self._watchers["list"] = watch_effect(update_children)
 
-        # FIXME
+        # FIXME:
         # When re-mounting a list (so a v-for within a v-if), the fragments
         # might still exist so they need to be mounted again.
         # But the actual problem is that the control flow fragment should
