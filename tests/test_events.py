@@ -1,8 +1,14 @@
-from collagraph import EventLoopType, Collagraph
+import pytest
+
+from collagraph import Collagraph, EventLoopType
 from collagraph.renderers import DictRenderer
 
 
 def test_reactive_element_with_events(parse_source):
+    """
+    Events can either be method names, or they have to be
+    proper expressions.
+    """
     App, _ = parse_source(
         """
         <count
@@ -51,3 +57,36 @@ def test_reactive_element_with_events(parse_source):
         handler()
 
     assert count["attrs"]["count"] == 4
+
+
+def test_unsupported_syntax(parse_source):
+    """
+    Show unsupported syntax for events.
+    """
+    with pytest.raises(SyntaxError):
+        parse_source(
+            """
+            <node @bump="count += 1" />
+
+            <script>
+            import collagraph as cg
+
+            class Counter(cg.Component):
+                pass
+            </script>
+            """
+        )
+
+    with pytest.raises(SyntaxError):
+        parse_source(
+            """
+            <node @reset="count = 0" />
+
+            <script>
+            import collagraph as cg
+
+            class Counter(cg.Component):
+                pass
+            </script>
+            """
+        )

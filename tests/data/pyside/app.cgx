@@ -1,79 +1,77 @@
-<template>
-  <window unified-title-and-tool-bar-on-mac >
-    <menubar>
-      <menu title="File">
-        <action
-          v-for="toggle in ['dock', 'dock_content', 'dock_title', 'toolbar', 'action', 'statusbar']"
-          :text="f'Toggle {toggle}'"
-          :object-name="f'toggle_{toggle}'"
-          @triggered="partial(lambda toggle: toggle_item(toggle), toggle=toggle)"
-        />
-        <action separator />
-        <action
-          text="&Quit"
-          @triggered="quit"
-          :role="QtGui.QAction.QuitRole"
-        />
-      </menu>
-    </menubar>
-    <widget>
-      <label text="Main widget" />
-      <button @clicked="button_clicked" />
-      <qcombobox
-        :items="['foo', 'bar']"
-        @activated="on_combobox_changed"
-      />
-    </widget>
-    <dock
-      v-if="toggles['show_dock']"
-      :area="docks['dock']"
-      object-name="dock"
-      @dock-location-changed="on_dock_location_changed"
-    >
-      <widget
-        v-if="toggles['show_dock_title']"
-        object-name="dock_title"
-        title
-      >
-        <label text="Title" />
-      </widget>
-      <widget
-        v-if="toggles['show_dock_content']"
-        object-name="dock_content"
-      >
-        <treeview>
-          <itemmodel :horizontal-header-labels="['Foo', 'Bar']">
-            <standarditem
-              v-for="item in standard_items"
-              v-bind="item"
-            />
-          </itemmodel>
-        </treeview>
-      </widget>
-    </dock>
-    <dock :area="QtCore.Qt.RightDockWidgetArea">
-      <widget>
-        <label text="other" />
-      </widget>
-    </dock>
-    <toolbar
-      v-if="toggles['show_toolbar']"
-      object-name="toolbar"
-    >
+<window unified-title-and-tool-bar-on-mac >
+  <menubar>
+    <menu title="File">
       <action
-        v-if="toggles['show_action']"
-        text="New"
-        object-name="action"
-        @triggered="on_new"
+        v-for="toggle in ['dock', 'dock_content', 'dock_title', 'toolbar', 'action', 'statusbar']"
+        :text="f'Toggle {toggle}'"
+        :object-name="f'toggle_{toggle}'"
+        @triggered="partial(lambda toggle: toggle_item(toggle), toggle=toggle)()"
       />
-    </toolbar>
-    <statusbar
-      v-if="toggles['show_statusbar']"
-      object-name="statusbar"
-      :text="'Hello there', 2000"
+      <action separator />
+      <action
+        text="&Quit"
+        @triggered="quit"
+        :role="QtGui.QAction.QuitRole"
+      />
+    </menu>
+  </menubar>
+  <widget>
+    <label text="Main widget" />
+    <button @clicked="button_clicked" />
+    <qcombobox
+      :items="['foo', 'bar']"
+      @activated="on_combobox_changed"
     />
-  </window>
-</template>
+  </widget>
+  <dock
+    v-if="toggles['show_dock']"
+    :area="docks['dock']"
+    object-name="dock"
+    @dock-location-changed="on_dock_location_changed"
+  >
+    <widget
+      v-if="toggles['show_dock_title']"
+      object-name="dock_title"
+      title
+    >
+      <label text="Title" />
+    </widget>
+    <widget
+      v-if="toggles['show_dock_content']"
+      object-name="dock_content"
+    >
+      <treeview>
+        <itemmodel :horizontal-header-labels="['Foo', 'Bar']">
+          <standarditem
+            v-for="item in standard_items"
+            v-bind="item"
+          />
+        </itemmodel>
+      </treeview>
+    </widget>
+  </dock>
+  <dock :area="QtCore.Qt.RightDockWidgetArea">
+    <widget>
+      <label text="other" />
+    </widget>
+  </dock>
+  <toolbar
+    v-if="toggles['show_toolbar']"
+    object-name="toolbar"
+  >
+    <action
+      v-if="toggles['show_action']"
+      text="New"
+      object-name="action"
+      @triggered="on_new"
+    />
+  </toolbar>
+  <statusbar
+    v-if="toggles['show_statusbar']"
+    object-name="statusbar"
+    :text="'Hello there', 2000"
+  />
+</window>
 
 <script>
 from functools import partial
