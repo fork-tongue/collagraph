@@ -1,11 +1,12 @@
+from __future__ import annotations
+
 import ast
-import logging
 from collections import defaultdict
+import logging
 from os import environ
 from pathlib import Path
 
 from collagraph import Component
-
 from .parser import CGXParser, Node
 
 logger = logging.getLogger(__name__)
