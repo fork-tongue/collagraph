@@ -20,9 +20,9 @@ def test_for_simple(parse_source):
         />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -52,9 +52,9 @@ def test_for_with_children(parse_source):
         </node>
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -84,9 +84,9 @@ def test_for_between_other_tags(parse_source):
         <bar />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -152,9 +152,9 @@ def test_for_between_if_tags(parse_source):
         <bar v-if="bar" />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -198,9 +198,9 @@ def test_for_simple_reactive(parse_source):
         />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -232,9 +232,9 @@ def test_for_reactive(parse_source):
         />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -278,9 +278,9 @@ def test_for_reactive_pop(parse_source):
         <after />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -314,9 +314,9 @@ def test_for_keyed(parse_source):
         />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -365,9 +365,9 @@ def test_example(parse_source):
         </node>
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -402,9 +402,9 @@ def test_looped_example(parse_source):
         </node>
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -456,9 +456,9 @@ def test_consecutive_lists(parse_source):
         />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -514,8 +514,8 @@ def test_for_regression(parse_source):
           :count="count"
         />
         <script>
-        import collagraph
-        class Counter(collagraph.Component):
+        import collagraph as cg
+        class Counter(cg.Component):
             pass
         </script>
         """
@@ -531,14 +531,14 @@ def test_for_regression(parse_source):
         </counters>
 
         <script>
-        import collagraph
+        import collagraph as cg
 
         try:
             import Counter
         except:
             pass
 
-        class Counters(collagraph.Component):
+        class Counters(cg.Component):
             pass
         </script>
         """,

@@ -1,6 +1,6 @@
 from observ import reactive
 
-from collagraph import EventLoopType, Collagraph
+from collagraph import Collagraph, EventLoopType
 from collagraph.renderers import DictRenderer
 
 
@@ -11,9 +11,9 @@ def test_directive_else_root(parse_source):
         <bar v-else />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -50,9 +50,9 @@ def test_directive_else_surrounded(parse_source):
         <after />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """

@@ -1,7 +1,7 @@
 import pytest
 from observ import reactive
 
-from collagraph import EventLoopType, Collagraph
+from collagraph import Collagraph, EventLoopType
 from collagraph.renderers import DictRenderer
 
 
@@ -11,9 +11,9 @@ def test_basic_dict_renderer(parse_source):
         <app/>
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -52,9 +52,9 @@ def test_reactive_element(parse_source):
         />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """

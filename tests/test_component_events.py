@@ -1,10 +1,13 @@
-import collagraph
+import collagraph as cg
 
 
 def test_components_events():
     from tests.data.component.events_parent import Parent
 
-    gui = collagraph.Collagraph(collagraph.DictRenderer(), event_loop_type=collagraph.EventLoopType.SYNC)
+    gui = cg.Collagraph(
+        cg.DictRenderer(),
+        event_loop_type=cg.EventLoopType.SYNC,
+    )
     container = {"type": "root"}
     gui.render(Parent, container)
 

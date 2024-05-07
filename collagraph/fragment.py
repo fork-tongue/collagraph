@@ -323,7 +323,6 @@ class Fragment:
                 watcher.fn = lambda: ()
             self._watchers = {}
 
-
         # TODO: maybe control flow fragments needs another custom 'parenting'
         # solution where the control flow fragment keeps references to the
         # 'child' elements
@@ -451,6 +450,8 @@ class ListFragment(Fragment):
         # But the actual problem is that the control flow fragment should
         # maybe really destroy the underlying tree? But then how to build it
         # up again? :/ I guess that information should already be available, right???
+        # Should be just a matter of calling `create` again?
+        # ... I need to implement this...
         for child in self.children:
             if not child.element:
                 child.mount(target, anchor=self.anchor())

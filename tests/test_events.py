@@ -18,9 +18,9 @@ def test_reactive_element_with_events(parse_source):
         />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             def __init__(self, props):
                 super().__init__(props)
                 self.state["count"] = 0

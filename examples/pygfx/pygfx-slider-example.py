@@ -9,7 +9,7 @@ Please excuse the barely working slider ;)
 """
 
 import pygfx as gfx
-from wgpu.gui.auto import run, WgpuCanvas
+from wgpu.gui.auto import WgpuCanvas, run
 
 import collagraph as cg
 from collagraph import h

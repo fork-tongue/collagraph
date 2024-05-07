@@ -1,6 +1,6 @@
 from observ import reactive
 
-from collagraph import EventLoopType, Collagraph
+from collagraph import Collagraph, EventLoopType
 from collagraph.renderers import DictRenderer
 
 
@@ -10,10 +10,10 @@ def test_component_tag(parse_source):
         <SubComponent />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
 
-        class SubComponent(collagraph.Component):
+        class SubComponent(cg.Component):
             def render(self, renderer):
                 from collagraph.fragment import (
                     ControlFlowFragment,
@@ -27,7 +27,7 @@ def test_component_tag(parse_source):
                 return component
 
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -56,8 +56,8 @@ def test_component_tag_props_and_events(parse_source):
         />
 
         <script>
-        import collagraph
-        class SubComponent(collagraph.Component):
+        import collagraph as cg
+        class SubComponent(cg.Component):
             pass
         </script>
         """
@@ -77,14 +77,14 @@ def test_component_tag_props_and_events(parse_source):
         </el>
 
         <script>
-        import collagraph
+        import collagraph as cg
 
         try:
             import SubComponent
         except:
             pass
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
                 self.state["action_count"] = 0

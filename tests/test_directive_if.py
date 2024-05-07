@@ -1,6 +1,6 @@
 from observ import reactive
 
-from collagraph import EventLoopType, Collagraph
+from collagraph import Collagraph, EventLoopType
 from collagraph.renderers import DictRenderer
 
 
@@ -10,9 +10,9 @@ def test_directive_if_root(parse_source):
         <app v-if="foo" />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -51,9 +51,9 @@ def test_directive_if_non_root(parse_source):
         </app>
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -94,9 +94,9 @@ def test_directive_if_with_children(parse_source):
         </app>
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -141,9 +141,9 @@ def test_directive_if_surrounded(parse_source):
         <after />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -190,9 +190,9 @@ def test_directive_if_nested_if(parse_source):
         </app>
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -248,9 +248,9 @@ def test_directive_if_nested_for(parse_source):
         </app>
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """

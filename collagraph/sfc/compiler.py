@@ -31,23 +31,20 @@ def load(path):
     Loads and returns a component from a .cgx file.
 
     A subclass of Component will be created from the .cgx file
-    where the contents of the <template> tag will be used as
-    the `render` function, while the contents of the <script>
-    tag will be used to provide the rest of the functions of
-    the component.
+    where the contents of all tags in the root will be used as
+    the `render` function, except for the contents of the <script>
+    tag, which will be used to provide the body of the component.
 
     For example:
 
-        <template>
-          <item foo="bar">
-            <item baz="bla"/>
-          </item>
-        </template
+        <item foo="bar">
+          <item baz="bla"/>
+        </item>
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class Foo(collagraph.Component):
+        class Foo(cg.Component):
             pass
         </script>
 
@@ -865,6 +862,7 @@ def check_parsed_tree(node: Node):
 def _print_ast_tree_as_code(tree):  # pragma: no cover
     """Handy function for debugging an ast tree"""
     try:
+        # TODO: call `ruff format` instead
         import black
     except ImportError:
         return

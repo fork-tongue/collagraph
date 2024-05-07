@@ -1,4 +1,4 @@
-from collagraph import EventLoopType, Collagraph
+from collagraph import Collagraph, EventLoopType
 from collagraph.renderers import DictRenderer
 
 
@@ -8,9 +8,9 @@ def test_static_attributes(parse_source):
         <app foo="bar" baz />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -36,9 +36,9 @@ def test_static_attributes_nested_elements(parse_source):
         </app>
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -64,9 +64,9 @@ def test_static_bool_attribute(parse_source):
         <app foo />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """

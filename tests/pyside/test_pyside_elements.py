@@ -89,7 +89,8 @@ def test_layouts(qapp, qtbot, parse_source):
                 v-bind="attrs"
               />
             </groupbox>
-            <textedit text="This widget takes up all the remaining space in the top-level layout" />
+            <textedit text="This widget takes up all the remaining
+                space in the top-level layout" />
             <dialogbuttonbox :buttons="('Ok', 'Cancel')">
               <button text="Custom" role="ActionRole" />
             </dialogbuttonbox>
@@ -110,13 +111,16 @@ def test_layouts(qapp, qtbot, parse_source):
                 # Data to fill the grid layout
                 self.grid = []
                 for i in range(1, 5):
-                    self.grid.append(("label", {"text": f"Line {i}", "grid_index": (i, 0)}))
+                    self.grid.append(
+                        ("label", {"text": f"Line {i}", "grid_index": (i, 0)})
+                    )
                     self.grid.append(("lineedit", {"grid_index": (i, 1)}))
                 self.grid.append(
                     (
                         "TextEdit",
                         {
-                            "text": "This widget takes up about two thirds of the grid layout",
+                            "text": "This widget takes up about"
+                                "two thirds of the grid layout",
                             "grid_index": (1, 2, 4, 1),
                         },
                     )
@@ -189,7 +193,10 @@ def test_lists(qapp, qtbot, qtmodeltester, parse_source):
                 </qstandarditemmodel>
               </component>
             </qsplitter>
-            <widget :layout="{'type': 'box', 'direction': 'LeftToRight'}" :maximum-height="50">
+            <widget
+              :layout="{'type': 'box', 'direction': 'LeftToRight'}"
+              :maximum-height="50"
+            >
               <button text="Add" @clicked="add_item" object-name="add" />
               <button text="Remove" @clicked="remove_item" object-name="remove" />
             </widget>
@@ -458,7 +465,6 @@ def test_app(qapp, qtbot):
         timeout=500,
     )
     dock = window.findChild(QtGui.QAction, "toggle_dock_title")
-    print(dock)
     dock.triggered.emit()
 
     qtbot.waitUntil(

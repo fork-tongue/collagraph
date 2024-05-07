@@ -25,8 +25,10 @@ def available_renderers():
     return result
 
 
-def init_collagraph(renderer_type: str, component_path: Path, state: dict = None):
-    Component, _ = cg.sfc.compiler.load(component_path)
+def init_collagraph(
+    renderer_type: str, component_path: Path, state: dict | None = None
+):
+    componen_class, _ = cg.sfc.compiler.load(component_path)
     props = reactive(state or {})
 
     if renderer_type == "pygfx":
@@ -52,7 +54,7 @@ def init_collagraph(renderer_type: str, component_path: Path, state: dict = None
         renderer.add_on_change_handler(lambda: canvas.request_draw(animate))
 
         gui = cg.Collagraph(renderer=cg.PygfxRenderer())
-        gui.render(Component, container, state=props)
+        gui.render(componen_class, container, state=props)
 
         run()
     elif renderer_type == "pyside":
@@ -60,7 +62,7 @@ def init_collagraph(renderer_type: str, component_path: Path, state: dict = None
 
         app = QtWidgets.QApplication()
         gui = cg.Collagraph(renderer=cg.PySideRenderer())
-        gui.render(Component, app, state=props)
+        gui.render(componen_class, app, state=props)
         app.exec()
     elif renderer_type == "dict":
         container = {"root": None}
@@ -68,10 +70,10 @@ def init_collagraph(renderer_type: str, component_path: Path, state: dict = None
             renderer=cg.DictRenderer(),
             event_loop_type=cg.EventLoopType.SYNC,
         )
-        gui.render(Component, container, state=props)
+        gui.render(componen_class, container, state=props)
         # Start debugger to allow for inspection of container
         # and manipulation of props
-        breakpoint()
+        breakpoint()  # noqa: T100
 
 
 def existing_component_file(value):

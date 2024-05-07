@@ -9,10 +9,10 @@
 </parent>
 
 <script>
+import collagraph as cg
 from tests.data.component.events_child import Child
-import collagraph
 
-class Parent(collagraph.Component):
+class Parent(cg.Component):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.state["count"] = 0

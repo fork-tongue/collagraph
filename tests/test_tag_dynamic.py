@@ -1,6 +1,6 @@
 from observ import reactive
 
-from collagraph import EventLoopType, Collagraph
+from collagraph import Collagraph, EventLoopType
 from collagraph.renderers import DictRenderer
 from collagraph.renderers.dict_renderer import format_dict
 
@@ -11,9 +11,9 @@ def test_dynamic_component_tag(parse_source):
         <component :is="foo" />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -44,9 +44,9 @@ def test_dynamic_component_tag_anchor(parse_source):
         <last />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """

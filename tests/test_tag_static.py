@@ -1,4 +1,4 @@
-from collagraph import EventLoopType, Collagraph
+from collagraph import Collagraph, EventLoopType
 from collagraph.renderers import DictRenderer
 
 
@@ -8,9 +8,9 @@ def test_simple_tree(parse_source):
         <app/>
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -38,9 +38,9 @@ def test_hierarchical_tree(parse_source):
         </parent>
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -69,9 +69,9 @@ def test_tree_with_multiple_roots(parse_source):
         <other />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -95,8 +95,8 @@ def test_items_with_dashes(parse_source):
         <dashed-item :name="props.get('name')" />
 
         <script>
-        import collagraph
-        class App(collagraph.Component):
+        import collagraph as cg
+        class App(cg.Component):
             pass
         </script>
         """

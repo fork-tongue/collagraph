@@ -1,4 +1,4 @@
-from collagraph import DictRenderer, EventLoopType, Collagraph
+from collagraph import Collagraph, DictRenderer, EventLoopType
 
 
 def test_load_string(parse_source):
@@ -7,9 +7,9 @@ def test_load_string(parse_source):
         <item :value="value" />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class Item(collagraph.Component):
+        class Item(cg.Component):
             pass
         </script>
         """
@@ -22,7 +22,7 @@ def test_load_string(parse_source):
         </app>
 
         <script>
-        import collagraph
+        import collagraph as cg
         try:
             # Import Item will fail, but is needed
             # in order to 'register' it as a component
@@ -30,7 +30,7 @@ def test_load_string(parse_source):
         except:
             pass
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """,

@@ -3,7 +3,7 @@ from weakref import ref
 import pytest
 from observ import reactive
 
-from collagraph import EventLoopType, Collagraph
+from collagraph import Collagraph, EventLoopType
 from collagraph.renderers import Renderer
 
 
@@ -97,9 +97,9 @@ def test_reconcile_by_key(parse_source):
             </items>
 
             <script>
-            import collagraph
+            import collagraph as cg
 
-            class Items(collagraph.Component):
+            class Items(cg.Component):
                 pass
             </script>
         """

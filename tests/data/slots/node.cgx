@@ -3,8 +3,8 @@
 </node>
 
 <script lang="python">
-import collagraph
+import collagraph as cg
 
-class Node(collagraph.Component):
+class Node(cg.Component):
     pass
 </script>

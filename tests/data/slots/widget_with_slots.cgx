@@ -17,9 +17,9 @@
 </widget>
 
 <script lang="python">
-import collagraph
+import collagraph as cg
 
 
-class Layout(collagraph.Component):
+class Layout(cg.Component):
     pass
 </script>

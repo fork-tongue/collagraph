@@ -1,7 +1,7 @@
 import pytest
 from observ import reactive
 
-from collagraph import EventLoopType, Collagraph
+from collagraph import Collagraph, EventLoopType
 from collagraph.renderers import DictRenderer
 from collagraph.renderers.dict_renderer import format_dict
 

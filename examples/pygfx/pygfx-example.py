@@ -1,10 +1,9 @@
-from point_cloud import materials, PointCloud, sphere_geom
 import pygfx as gfx
-from wgpu.gui.auto import run, WgpuCanvas
+from point_cloud import PointCloud, materials, sphere_geom
+from wgpu.gui.auto import WgpuCanvas, run
 
 import collagraph as cg
 from collagraph import h
-
 
 if __name__ == "__main__":
     canvas = WgpuCanvas(size=(600, 400))

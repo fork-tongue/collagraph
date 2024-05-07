@@ -5,10 +5,10 @@
 </Node>
 
 <script lang="python">
-import collagraph
+import collagraph as cg
 from tests.data.slots.node import Node
 
 
-class Tree(collagraph.Component):
+class Tree(cg.Component):
     pass
 </script>

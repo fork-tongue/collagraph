@@ -1,5 +1,5 @@
 import pygfx as gfx
-from wgpu.gui.auto import call_later, run, WgpuCanvas
+from wgpu.gui.auto import WgpuCanvas, call_later, run
 
 import collagraph as cg
 from collagraph import h
@@ -7,7 +7,7 @@ from collagraph import h
 
 class Button(cg.Component):
     geometry = gfx.box_geometry()
-    materials = {
+    materials = {  # noqa: RUF012
         "default": gfx.MeshPhongMaterial(color=[1.0, 0.5, 0.0]),
         "pressed": gfx.MeshPhongMaterial(color=[0.0, 0.5, 0.0]),
         "hovered": gfx.MeshPhongMaterial(color=[1.0, 0.2, 0.0]),

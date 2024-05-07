@@ -1,6 +1,6 @@
 from observ import reactive
 
-import collagraph
+import collagraph as cg
 from collagraph.renderers.dict_renderer import format_dict
 
 
@@ -13,9 +13,9 @@ def test_component_basic_lifecycle(parse_source):
         />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class Counter(collagraph.Component):
+        class Counter(cg.Component):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
                 self.state["count"] = self.props.get("count", 0)
@@ -40,8 +40,6 @@ def test_component_basic_lifecycle(parse_source):
         </counter>
 
         <script>
-        import collagraph
-
         try:
             import Counter
         except:
@@ -77,23 +75,23 @@ def test_component_basic_lifecycle(parse_source):
         </counters>
 
         <script>
-        import collagraph
+        import collagraph as cg
 
         try:
             import SpecialCounter
         except:
             pass
 
-        class Counters(collagraph.Component):
+        class Counters(cg.Component):
             pass
         </script>
         """,
         namespace=namespace,
     )
 
-    gui = collagraph.Collagraph(
-        collagraph.DictRenderer(),
-        event_loop_type=collagraph.EventLoopType.SYNC,
+    gui = cg.Collagraph(
+        cg.DictRenderer(),
+        event_loop_type=cg.EventLoopType.SYNC,
     )
     container = {"type": "root"}
     state = reactive(

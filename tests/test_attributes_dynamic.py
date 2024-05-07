@@ -12,9 +12,9 @@ def test_dynamic_attribute_object_method(parse_source):
         <app v-bind:foo="bar()" />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             def bar(self):
                 return "baz"
         </script>
@@ -38,9 +38,9 @@ def test_dynamic_attribute_object_property(parse_source):
         <app :foo="bar" />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             def __init__(self, props):
                 super().__init__(props)
                 self.bar = "baz"
@@ -65,11 +65,11 @@ def test_dynamic_attribute_module_scope(parse_source):
         <app :foo="bar" />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
         bar = "baz"
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -92,9 +92,9 @@ def test_dynamic_attribute_state(parse_source):
         <app :foo="bar" />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             def __init__(self, props):
                 super().__init__(props)
                 self.state["bar"] = "baz"
@@ -119,9 +119,9 @@ def test_dynamic_attribute_props(parse_source):
         <app :foo="bar" />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -144,9 +144,9 @@ def test_dynamic_attribute_props_change(parse_source):
         <app :foo="bar" />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -174,9 +174,9 @@ def test_dynamic_attribute_dict(parse_source):
         <app v-bind="values" />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """
@@ -221,9 +221,9 @@ def test_dynamic_attribute_deep(parse_source):
         <app :values="values" />
 
         <script>
-        import collagraph
+        import collagraph as cg
 
-        class App(collagraph.Component):
+        class App(cg.Component):
             pass
         </script>
         """

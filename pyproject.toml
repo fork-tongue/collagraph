@@ -56,6 +56,16 @@ select = [
     "RUF", # ruff
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"collagraph/renderers/**/__init__.py" = ["F401"]
+"collagraph/renderers/__init__.py" = ["E402"]
+"tests/pyside/test_*.py" = ["E402"]
+"tests/*" = ["N806", "N802"]
+"collagraph/__pyinstaller/*" = ["N999"]
+"tests_legacy/*" = ["N"]
+"examples/*" = ["N999", "N802"]
+"examples/pyside/flow_layout.py" = ["N802"]
+
 [build-system]
 requires = ["poetry>=1.0.0"]
 build-backend = "poetry.masonry.api"

@@ -1,4 +1,4 @@
-from collagraph import DictRenderer, EventLoopType, Collagraph
+from collagraph import Collagraph, DictRenderer, EventLoopType
 
 
 def test_component_provide_inject():
