@@ -160,3 +160,67 @@ def test_component_basic_lifecycle(parse_source):
 
 # TODO: add tests with more complex component 'geometry' (more layers)
 # to really put the update system to the test
+
+
+def test_component_props_update(parse_source):
+    Counter, _ = parse_source(
+        """
+        <script>
+        import collagraph as cg
+
+        class Counter(cg.Component):
+            updates = 0
+
+            def updated(self):
+                Counter.updates += 1
+        </script>
+
+        <counter v-bind="props" />
+        """
+    )
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
+    container = {"type": "root"}
+    state = reactive({"prop": False})
+    gui.render(Counter, container, state=state)
+
+    counter = container["children"][0]
+
+    assert Counter.updates == 0
+    assert counter["attrs"]["prop"] is False
+
+    state["prop"] = True
+
+    assert Counter.updates == 1
+    assert counter["attrs"]["prop"] is True
+
+
+def test_component_props_deep_update(parse_source):
+    Counter, _ = parse_source(
+        """
+        <script>
+        import collagraph as cg
+
+        class Counter(cg.Component):
+            updates = 0
+
+            def updated(self):
+                Counter.updates += 1
+        </script>
+
+        <counter v-bind="props" />
+        """
+    )
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
+    container = {"type": "root"}
+    state = reactive({"prop": [0, 1]})
+    gui.render(Counter, container, state=state)
+
+    counter = container["children"][0]
+
+    assert Counter.updates == 0
+    assert counter["attrs"]["prop"] == [0, 1]
+
+    state["prop"].append(2)
+
+    assert Counter.updates == 1
+    assert counter["attrs"]["prop"] == [0, 1, 2]
