@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import ast
 import logging
+import sys
+import textwrap
 from collections import defaultdict
 from os import environ
 from pathlib import Path
@@ -25,6 +27,9 @@ CONTROL_FLOW_DIRECTIVES = (DIRECTIVE_IF, DIRECTIVE_ELSE_IF, DIRECTIVE_ELSE)
 SUFFIX = "cgx"
 
 DEBUG = bool(environ.get("CGX_DEBUG", False))
+# Adjust this setting to disable some runtime checks
+# Defaults to True, except when it is part of an installed application
+CGX_RUNTIME_WARNINGS = not getattr(sys, "frozen", False)
 
 
 def load(path):
@@ -420,6 +425,40 @@ def create_collagraph_render_function(node: Node, names: set[str]) -> ast.Functi
             level=0,
         )
     )
+
+    if CGX_RUNTIME_WARNINGS:
+        names_str = ", ".join([f"'{name}'" for name in names])
+        code = textwrap.dedent(
+            f"""
+            from warnings import warn as _warn
+
+            for name in {{{names_str}}}:
+                if name in self.state:
+                    _warn(
+                        f"Found imported name '{{name}}' "
+                        f"as key in self.state: {{self}}.\\n"
+                        "If the value from self.state is intended, please resolve by "
+                        f"replacing '{{name}}' with 'state['{{name}}']'"
+                    )
+                if name in self.props:
+                    _warn(
+                        f"Found imported name '{{name}}' "
+                        f"as key in self.props: {{self}}.\\n"
+                        "If the value from self.props is intended, please resolve by "
+                        f"replacing '{{name}}' with 'props['{{name}}']'"
+                    )
+                if hasattr(self, name):
+                    _warn(
+                        f"Found imported name '{{name}}' "
+                        f"as attribute on self: {{self}}.\\n"
+                        "If the attribute from self is intended, please resolve by "
+                        f"replacing '{{name}}' with 'self.{{name}}'"
+                    )
+            """
+        )
+        check_names = ast.parse(code)
+        body.extend(check_names.body)
+
 
     body.append(
         ast.Assign(

@@ -6,7 +6,7 @@ from collagraph.renderers import DictRenderer
 from collagraph.renderers.dict_renderer import format_dict
 
 
-def test_cgx_slots_dynamic_if_template():
+def test_slots_dynamic_if_template():
     from tests.data.slots.dynamic_if_template import Tree
 
     state = reactive({"show_content": False})
@@ -29,7 +29,7 @@ def test_cgx_slots_dynamic_if_template():
     assert "children" not in root, format_dict
 
 
-def test_cgx_slots_dynamic_for_template():
+def test_slots_dynamic_for_template():
     from tests.data.slots.dynamic_for_template import Tree
 
     state = reactive({"content": ["a", "b"]})
@@ -57,7 +57,7 @@ def test_cgx_slots_dynamic_for_template():
 
 
 @pytest.mark.xfail
-def test_cgx_slots_dynamic_if():
+def test_slots_dynamic_if():
     from tests.data.slots.dynamic_if import Tree
 
     state = reactive({"show_content": False})
@@ -81,7 +81,7 @@ def test_cgx_slots_dynamic_if():
 
 
 @pytest.mark.xfail
-def test_cgx_slots_dynamic_for():
+def test_slots_dynamic_for():
     from tests.data.slots.dynamic_for import Tree
 
     state = reactive({"content": ["a", "b"]})

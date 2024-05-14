@@ -5,11 +5,12 @@ from types import ModuleType
 import pytest
 from observ import reactive
 
-from collagraph.cgx import cgx
+import collagraph as cg
+from collagraph.sfc import compiler
 
 
 def test_warn_on_shadow_import():
-    cgx.CGX_RUNTIME_WARNINGS = True
+    compiler.CGX_RUNTIME_WARNINGS = True
 
     import tests.data.shadow_imports
 
@@ -20,21 +21,27 @@ def test_warn_on_shadow_import():
 
     state = reactive({"tests": "baz"})
 
-    example = tests.data.shadow_imports.Example(state)
+    gui = cg.Collagraph(
+        renderer=cg.DictRenderer(),
+        event_loop_type=cg.EventLoopType.SYNC,
+    )
+    container = {"type": "container"}
     with pytest.warns(UserWarning) as records:
-        result = example.render()
+        gui.render(tests.data.shadow_imports.Example, container, state=state)
+
+    result = container['children'][0]
 
     assert len(records) == 3
 
-    assert result.type == "widget"
-    assert result.props["data"] != "foo"
-    assert result.props["data"] != "bar"
-    assert result.props["data"] != "baz"
-    assert isinstance(result.props["data"], ModuleType)
+    assert result["type"] == "widget"
+    assert result["attrs"]["data"] != "foo"
+    assert result["attrs"]["data"] != "bar"
+    assert result["attrs"]["data"] != "baz"
+    assert isinstance(result["attrs"]["data"], ModuleType)
 
 
 def test_disable_warnings():
-    cgx.CGX_RUNTIME_WARNINGS = False
+    compiler.CGX_RUNTIME_WARNINGS = False
 
     import tests.data.shadow_imports
 
@@ -45,7 +52,12 @@ def test_disable_warnings():
 
     state = reactive({"tests": "bar"})
 
+    gui = cg.Collagraph(
+        renderer=cg.DictRenderer(),
+        event_loop_type=cg.EventLoopType.SYNC,
+    )
+    container = {"type": "container"}
+
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        example = tests.data.shadow_imports.Example(state)
-        example.render()
+        gui.render(tests.data.shadow_imports.Example, container, state=state)
