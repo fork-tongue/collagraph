@@ -34,13 +34,7 @@ class CGXImporter:
 
     def exec_module(self, module):
         """Executing the module means reading the cgx file"""
-        component, context = compiler.load(self.sfc_path)
-        # Add the default module keys to the context such that
-        # __file__, __name__ and such are available to the loaded module
-        context.update(module.__dict__)
-
-        module.__dict__.update(context)
-        module.__dict__[component.__name__] = component
+        compiler.load(self.sfc_path, namespace=module.__dict__)
 
 
 # Add the Cgx importer at the end of the list of finders

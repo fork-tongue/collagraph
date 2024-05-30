@@ -32,7 +32,7 @@ DEBUG = bool(environ.get("CGX_DEBUG", False))
 CGX_RUNTIME_WARNINGS = not getattr(sys, "frozen", False)
 
 
-def load(path):
+def load(path, namespace=None):
     """
     Loads and returns a component from a .cgx file.
 
@@ -57,7 +57,7 @@ def load(path):
     """
     template = path.read_text()
 
-    return load_from_string(template, path)
+    return load_from_string(template, path, namespace=namespace)
 
 
 def load_from_string(template, path=None, namespace=None):
@@ -75,19 +75,18 @@ def load_from_string(template, path=None, namespace=None):
     code = compile(tree, filename=str(path), mode="exec")
     # Execute the code as module and pass a dictionary that will capture
     # the global and local scope of the module
-    module_namespace = {}
-    if namespace is not None:
-        module_namespace = namespace
-    exec(code, module_namespace)
+    if namespace is None:
+        namespace = {}
+    exec(code, namespace)
 
     # Check that the class definition is an actual subclass of Component
-    component_class = module_namespace[name]
+    component_class = namespace[name]
     if not issubclass(component_class, Component):
         raise ValueError(
             f"The last class defined in {path} is not a subclass of "
             f"Component: {component_class}"
         )
-    return component_class, module_namespace
+    return component_class, namespace
 
 
 def construct_ast(path, template=None):
@@ -138,14 +137,6 @@ def construct_ast(path, template=None):
     render_tree = create_collagraph_render_function(
         parser.root, names=imported_names.names | class_names
     )
-    ast.fix_missing_locations(render_tree)
-
-    if DEBUG:
-        try:
-            print(f"---{component_def.name}---")  # noqa: T201
-            _print_ast_tree_as_code(render_tree)
-        except Exception as e:
-            logger.warning("Could not unparse AST", exc_info=e)
 
     # Put location of render function outside of the script tag
     # This makes sure that the render function can be excluded
@@ -153,12 +144,20 @@ def construct_ast(path, template=None):
     # Note that it's still possible to put code after the component
     # class at the end of the script node.
     line, _ = script_node.end
+    RewriteDots().visit(render_tree)
+    ast.fix_missing_locations(render_tree)
     ast.increment_lineno(render_tree, n=line)
     component_def.body.append(render_tree)
 
     # Because we modified the AST significantly we need to call an AST
     # method to fix any `lineno` and `col_offset` attributes of the nodes
     ast.fix_missing_locations(script_tree)
+
+    if DEBUG:
+        try:
+            _print_ast_tree_as_code(script_tree, path)
+        except Exception as e:
+            logger.warning("Could not unparse AST", exc_info=e)
     return script_tree, component_def.name
 
 
@@ -392,7 +391,7 @@ def ast_create_list_fragment(name: str, parent: str | None) -> ast.Assign:
 
 
 def safe_tag(tag):
-    return tag.replace("-", "_")
+    return tag.replace("-", "_").replace(".", "_")
 
 
 def create_collagraph_render_function(node: Node, names: set[str]) -> ast.FunctionDef:
@@ -458,7 +457,6 @@ def create_collagraph_render_function(node: Node, names: set[str]) -> ast.Functi
         )
         check_names = ast.parse(code)
         body.extend(check_names.body)
-
 
     body.append(
         ast.Assign(
@@ -723,11 +721,14 @@ def create_collagraph_render_function(node: Node, names: set[str]) -> ast.Functi
                     if parent_node.tag and parent_node.tag[0].isupper():
                         attributes.append(ast_set_slot_name(el, "default"))
 
+            is_component = (
+                child.tag in names or child.tag[0].isupper() or "." in child.tag
+            )
             result.append(
                 ast_create_fragment(
                     el,
                     child.tag,
-                    is_component=child.tag in names,
+                    is_component=is_component,
                     parent=control_flow_parent or parent,
                     node=child,
                 )
@@ -807,6 +808,11 @@ class LambdaNamesCollector(ast.NodeVisitor):
     def visit_Lambda(self, node):  # noqa: N802
         # For some reason the body of a lambda is not visited
         # so we need to do it manually.
+        # From the docs of ast.NodeVisitor:
+        # > Note that child nodes of nodes that have a custom visitor method
+        # > won't be visited unless the visitor calls generic_visit() or visits
+        # > them itself.
+        # So here we visit the children of the Lambda manually
         visitor = LambdaNamesCollector()
         visitor.visit(node.body)
         self.names.update(visitor.names)
@@ -861,6 +867,23 @@ class RewriteName(ast.NodeTransformer):
         )
 
 
+class RewriteDots(ast.NodeTransformer):
+    def visit_Name(self, node): # noqa: N802
+        parts = node.id.split(".")
+        if len(parts) == 1:
+            return node
+
+        first, *parts = parts
+        value = ast.Name(id=first, ctx=ast.Load())
+        for part in parts:
+            value=ast.Attribute(
+                value=value,
+                attr=part,
+                ctx=ast.Load(),
+            )
+        return value
+
+
 class ImportsCollector(ast.NodeVisitor):
     def __init__(self):
         self.names = set()
@@ -899,26 +922,29 @@ def check_parsed_tree(node: Node):
         )
 
 
-def _print_ast_tree_as_code(tree):  # pragma: no cover
+def _print_ast_tree_as_code(tree, path):  # pragma: no cover
     """Handy function for debugging an ast tree"""
-    try:
-        # TODO: call `ruff format` instead
-        import black
-    except ImportError:
-        return
-
     from rich.console import Console
     from rich.syntax import Syntax
 
-    try:
-        plain_result = ast.unparse(tree)
-        result = black.format_file_contents(
-            plain_result, fast=False, mode=black.mode.Mode()
-        )
-        console = Console()
-        syntax = Syntax(result, "python")
-        console.print(syntax)
-    except (black.parsing.InvalidInput, black.parsing.ASTSafetyError):
-        print(plain_result)  # noqa: T201
-    except TypeError:
-        pass
+    plain_result = ast.unparse(tree)
+    formatted = format_code(plain_result)
+    console = Console()
+    syntax = Syntax(formatted, "python")
+    console.print(f"---{path}---")
+    console.print(syntax)
+
+
+def format_code(code):
+    """
+    Format the given code string with ruff
+    """
+    from subprocess import run
+
+    result = run(
+        ["ruff", "format", "-"],
+        input=code,
+        encoding="utf-8",
+        capture_output=True,
+    )
+    return result.stdout
