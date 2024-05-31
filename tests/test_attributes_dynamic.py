@@ -325,7 +325,7 @@ def test_dynamic_attribute_full(parse_source):
         """
     )
 
-    state = reactive({"text": "foo", "other": "bar"})
+    state = reactive({"text": "foo", "other": "bar", "extra": "baz"})
     container = {"type": "root"}
     gui = Collagraph(
         renderer=DictRenderer(),
@@ -342,6 +342,11 @@ def test_dynamic_attribute_full(parse_source):
     assert first_label["attrs"]["text"] == "foo"
     assert second_label["attrs"]["text"] == "bar"
     assert third_label["attrs"]["text"] == "foo"
+    assert first_label["attrs"]["extra"] == "baz"
+
+    del state["extra"]
+
+    assert "extra" not in first_label["attrs"]
 
 
 def test_dynamic_attribute_typo(parse_source):
