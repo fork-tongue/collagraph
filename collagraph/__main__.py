@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import importlib
 import json
@@ -25,13 +27,15 @@ def available_renderers():
     return result
 
 
-def init_collagraph(renderer_type: str, component_path: Path, state: dict = None):
-    Component, _ = cg.cgx.cgx.load(component_path)
+def init_collagraph(
+    renderer_type: str, component_path: Path, state: dict | None = None
+):
+    componen_class, _ = cg.sfc.compiler.load(component_path)
     props = reactive(state or {})
 
     if renderer_type == "pygfx":
         import pygfx as gfx
-        from wgpu.gui.auto import run, WgpuCanvas
+        from wgpu.gui.auto import WgpuCanvas, run
 
         canvas = WgpuCanvas(size=(600, 400))
         wgpu_renderer = gfx.renderers.WgpuRenderer(canvas)
@@ -48,12 +52,11 @@ def init_collagraph(renderer_type: str, component_path: Path, state: dict = None
             controls.update_camera(camera)
             wgpu_renderer.render(container, camera)
 
+        renderer = cg.PygfxRenderer()
+        renderer.add_on_change_handler(lambda: canvas.request_draw(animate))
+
         gui = cg.Collagraph(renderer=cg.PygfxRenderer())
-        gui.render(
-            cg.h(Component, props),
-            container,
-            callback=lambda: canvas.request_draw(animate),
-        )
+        gui.render(componen_class, container, state=props)
 
         run()
     elif renderer_type == "pyside":
@@ -61,7 +64,7 @@ def init_collagraph(renderer_type: str, component_path: Path, state: dict = None
 
         app = QtWidgets.QApplication()
         gui = cg.Collagraph(renderer=cg.PySideRenderer())
-        gui.render(cg.h(Component, props), app)
+        gui.render(componen_class, app, state=props)
         app.exec()
     elif renderer_type == "dict":
         container = {"root": None}
@@ -69,10 +72,10 @@ def init_collagraph(renderer_type: str, component_path: Path, state: dict = None
             renderer=cg.DictRenderer(),
             event_loop_type=cg.EventLoopType.SYNC,
         )
-        gui.render(cg.h(Component, props), container)
+        gui.render(componen_class, container, state=props)
         # Start debugger to allow for inspection of container
         # and manipulation of props
-        breakpoint()
+        breakpoint()  # noqa: T100
 
 
 def existing_component_file(value):
