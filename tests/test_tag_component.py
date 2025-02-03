@@ -52,7 +52,7 @@ def test_component_tag_props_and_events(parse_source):
           :subval="val"
           :subvalue="value"
           :subother="other"
-          @subaction="emit('action')"
+          @subaction="lambda: emit('action')"
         />
 
         <script>

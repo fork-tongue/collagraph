@@ -304,15 +304,14 @@ def ast_set_event(
 
     # The event can be a method name, or a function
     # When it is not a function, then the args/kwargs will be passed
-    # to the provided method. Otherwise, the specified function is
-    # just wrapped in a lambda
+    # to the provided method.
     basic_source = ast.parse(value, mode="eval")
     if isinstance(basic_source.body, ast.Name):
         source = ast.parse(
             f"lambda *args, **kwargs: {value}(*args, **kwargs)", mode="eval"
         )
     else:
-        source = ast.parse(f"lambda: {value}", mode="eval")
+        source = ast.parse(value, mode="eval")
 
     # v-on directives allow for lambdas which define arguments
     # which need to be skipped by the RewriteName visitor

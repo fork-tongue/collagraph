@@ -5,7 +5,7 @@
         v-for="toggle in ['dock', 'dock_content', 'dock_title', 'toolbar', 'action', 'statusbar']"
         :text="f'Toggle {toggle}'"
         :object-name="f'toggle_{toggle}'"
-        @triggered="partial(lambda toggle: toggle_item(toggle), toggle=toggle)()"
+        @triggered="partial(lambda toggle: toggle_item(toggle), toggle=toggle)"
       />
       <action separator />
       <action

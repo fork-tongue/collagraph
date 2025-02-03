@@ -7,14 +7,14 @@ from collagraph.renderers import DictRenderer
 def test_reactive_element_with_events(parse_source):
     """
     Events can either be method names, or they have to be
-    proper expressions.
+    lambdas or functions that can be called.
     """
     App, _ = parse_source(
         """
         <count
           :count="count"
           @bump="bump"
-          @skip="skip(3)"
+          @skip="lambda: skip(3)"
         />
 
         <script>
@@ -57,6 +57,60 @@ def test_reactive_element_with_events(parse_source):
         handler()
 
     assert count["attrs"]["count"] == 4
+
+
+def test_events_outside_component(parse_source):
+    Example, _ = parse_source(
+        """
+        <button @clicked="clicked" />
+        <button @clicked="lambda ev: callback(ev, 'two')" />
+        <button @clicked="lambda ev: class_callback(ev, 'three')" />
+
+        <script>
+        from collagraph import Component
+
+        def callback(ev, name):
+            Example.callbacks.append((ev, name))
+
+        class Example(Component):
+            callbacks = []
+
+            def clicked(self):
+                Example.callbacks.append(('clicked', 'one'))
+
+            def class_callback(self, ev, name):
+                Example.callbacks.append((ev, name))
+        </script>
+        """
+    )
+
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+
+    gui.render(Example, container)
+
+    button_one, button_two, button_three = container["children"]
+
+    for handler in button_one["handlers"]["clicked"]:
+        handler()
+
+    assert len(Example.callbacks) == 1
+    assert Example.callbacks[-1] == ("clicked", "one")
+
+    for handler in button_two["handlers"]["clicked"]:
+        handler("clicked")
+
+    assert len(Example.callbacks) == 2
+    assert Example.callbacks[-1] == ("clicked", "two")
+
+    for handler in button_three["handlers"]["clicked"]:
+        handler("clicked")
+
+    assert len(Example.callbacks) == 3
+    assert Example.callbacks[-1] == ("clicked", "three")
 
 
 def test_unsupported_syntax(parse_source):
