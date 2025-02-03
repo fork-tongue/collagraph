@@ -5,12 +5,12 @@ import pytest
 from observ import scheduler
 from observ.proxy_db import proxy_db
 
-from collagraph import sfc
+from collagraph.sfc import compiler
 
 
 def load(source, namespace=None):
     source = textwrap.dedent(source)
-    return sfc.compiler.load_from_string(source, namespace=namespace)
+    return compiler.load_from_string(source, namespace=namespace)
 
 
 @pytest.fixture
