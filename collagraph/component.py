@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 from abc import abstractmethod
 from collections import defaultdict
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 from weakref import ref
 
 from observ import reactive, readonly
+
+if TYPE_CHECKING:
+    from collagraph.fragment import ComponentFragment
+    from collagraph.renderers import Renderer
 
 
 class Component:
@@ -95,7 +101,7 @@ class Component:
         pass
 
     @abstractmethod
-    def render(self, renderer):  # pragma: no cover
+    def render(self, renderer: Renderer) -> ComponentFragment:  # pragma: no cover
         pass
 
     def provide(self, key: str, value):

@@ -9,7 +9,9 @@ from collagraph.types import EventLoopType
 
 
 class Collagraph:
-    def __init__(self, renderer: Renderer, *, event_loop_type: EventLoopType = None):
+    def __init__(
+        self, renderer: Renderer, *, event_loop_type: EventLoopType | None = None
+    ):
         if not isinstance(renderer, Renderer):
             raise TypeError(f"Expected a Renderer but got a {type(renderer)}")
         self.renderer = renderer
@@ -26,9 +28,9 @@ class Collagraph:
 
     def render(
         self,
-        component_class: Callable[[dict], type[Component]],
+        component_class: Callable[[dict], Component],
         target: Any,
-        state=None,
+        state: dict | None = None,
     ):
         """
         target: DOM element/instance to render into.
@@ -39,6 +41,6 @@ class Collagraph:
 
         # component.render() returns a fragment which is then mounted
         # into the target (DOM) element
-        self.fragment = component.render(self.renderer)
+        self.fragment = component.render(renderer=self.renderer)
         self.fragment.component = component
         self.fragment.mount(target)

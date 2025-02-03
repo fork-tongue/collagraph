@@ -1,18 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any
 from weakref import ref
 
 from observ import computed, reactive, watch_effect
-from observ.proxy import Proxy
 from observ.watcher import Watcher, watch  # type: ignore
 
 from .component import Component
 from .renderers import Renderer
 from .weak import weak
-
-DomElement = TypeVar("DomElement")
 
 
 class Fragment:
@@ -33,16 +30,16 @@ class Fragment:
         super().__init__()
 
         # The tag for the fragment
-        self.tag: str | Callable = tag
+        self.tag: str | Callable[[], Component] | None = tag
         # Reference to the renderer
         # TODO: don't pass the renderer to the fragments...
         self.renderer = renderer
         # List of child fragments
         self.children: list[Fragment] = []
         # Dom element (if any)
-        self.element: DomElement | None = None
+        self.element: Any | None = None
         # Target dom-element to render in
-        self.target: DomElement | None = None
+        self.target: Any | None = None
         # Name of slot to be rendered into
         self.slot_name: str | None = None
 
@@ -105,7 +102,7 @@ class Fragment:
     def register_child(self, child: Fragment) -> None:
         self.children.append(child)
 
-    def first(self) -> DomElement | None:
+    def first(self) -> Any | None:
         """
         Returns the first DOM element (if any), from either itself, or its direct
         decendants, in case of virtual fragments. Should not be deeper since an
@@ -117,12 +114,13 @@ class Fragment:
             if child.element:
                 return child.element
 
-    def anchor(self) -> DomElement | None:
+    def anchor(self) -> Any | None:
         """
         Returns the fragment that serves as anchor for this fragment.
         Anchor is the first mounted item *after* the current item.
         """
         parent = self.parent
+        assert parent is not None
         idx = parent.children.index(self)
         length = len(parent.children) - 1
         while 0 <= idx < length:
@@ -261,7 +259,7 @@ class Fragment:
         # create on those instead. Might involve some reparenting
         # of the current child fragments???
 
-    def mount(self, target: DomElement, anchor: DomElement | None = None):
+    def mount(self, target: Any, anchor: Any | None = None):
         if self._mounted:
             return
 
@@ -308,13 +306,13 @@ class Fragment:
         if destroy:
             self.element = None
             self.target = None
-            self._attributes = None
-            self._events = None
+            self._attributes = {}
+            self._events = {}
             # Disable the fn of the watcher to disable
             # any 'false' hits
             for watcher in self._watchers.values():
                 watcher.fn = lambda: ()
-            self._watchers = None
+            self._watchers = {}
             self._condition = None
             self.tag = None
         else:
@@ -332,7 +330,7 @@ class Fragment:
 
 
 class ControlFlowFragment(Fragment):
-    def mount(self, target: DomElement, anchor: DomElement | None = None):
+    def mount(self, target: Any, anchor: Any | None = None):
         if self._mounted:
             return
         self.target = target
@@ -464,9 +462,9 @@ class ListFragment(Fragment):
 class ComponentFragment(Fragment):
     def __init__(self, *args, props=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.component: Component = None
-        self.fragment: Fragment = None
-        self.props: Proxy | None = props
+        self.component: Component | None = None
+        self.fragment: Fragment | None = None
+        self.props: dict[Any, Any] | None = props
         self.slots: dict = {}
         self.slot_contents = []
         assert "tag" not in kwargs or callable(kwargs["tag"])
@@ -493,6 +491,7 @@ class ComponentFragment(Fragment):
                 self.props[attr] = watcher.value
 
         parent = self._component_parent()
+        assert not isinstance(self.tag, str)
         self.component = self.tag(props=self.props, parent=parent)
         self.fragment = self.component.render(self.renderer)
         self.fragment.parent = self
@@ -502,7 +501,7 @@ class ComponentFragment(Fragment):
         for event, handler in self._events.items():
             self.component.add_event_handler(event, handler)
 
-    def mount(self, target: DomElement, anchor: DomElement | None = None):
+    def mount(self, target: Any, anchor: Any | None = None):
         if self._mounted:
             return
 
@@ -591,7 +590,7 @@ class SlotFragment(Fragment):
         if attr != "name":
             super().set_attribute(attr, value)
 
-    def mount(self, target: DomElement, anchor: DomElement | None = None):
+    def mount(self, target: Any, anchor: Any | None = None):
         # if self._mounted:
         #     return
 
