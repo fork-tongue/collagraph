@@ -102,7 +102,7 @@ class Component:
 
     @abstractmethod
     def render(self, renderer: Renderer) -> ComponentFragment:  # pragma: no cover
-        pass
+        raise NotImplementedError
 
     def provide(self, key: str, value):
         self._provided[key] = value
