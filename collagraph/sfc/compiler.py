@@ -206,7 +206,7 @@ def ast_create_fragment(
     if tag == "slot":
         # TODO: register this slot fragment with the parent component
         fragment_type = "SlotFragment"
-        slot_name = node and node.attrs.get("name", "default") or "default"
+        slot_name = (node and node.attrs.get("name", "default")) or "default"
         keywords.append(ast.keyword(arg="name", value=ast.Constant(value=slot_name)))
 
     return ast.Assign(
@@ -867,7 +867,7 @@ class RewriteName(ast.NodeTransformer):
 
 
 class RewriteDots(ast.NodeTransformer):
-    def visit_Name(self, node): # noqa: N802
+    def visit_Name(self, node):  # noqa: N802
         parts = node.id.split(".")
         if len(parts) == 1:
             return node
@@ -875,7 +875,7 @@ class RewriteDots(ast.NodeTransformer):
         first, *parts = parts
         value = ast.Name(id=first, ctx=ast.Load())
         for part in parts:
-            value=ast.Attribute(
+            value = ast.Attribute(
                 value=value,
                 attr=part,
                 ctx=ast.Load(),
@@ -907,10 +907,18 @@ def control_flow(element):
 def check_parsed_tree(node: Node):
     # Only check whole trees starting at the root
     assert node.tag == "root"
-
     if len(node.children) < 2:
+        if child := next(iter(node.children)):
+            if child.tag != "script":
+                raise ValueError(
+                    f"Only one tag found: {child.tag}. Missing 'script' tag."
+                )
+            else:
+                raise ValueError("Only script tag found. Missing other tags")
         raise ValueError(
-            f"Expected at least 2 closed tags, found: {len(node.children)}"
+            f"Expected at least 2 closed tags, found: {len(node.children)} "
+            "({[node.tag for node in node.children]})\n"
+            ""
         )
     number_of_script_tags_in_root = len(
         [child for child in node.children if child.tag == "script"]
