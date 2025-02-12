@@ -1,9 +1,14 @@
 from functools import wraps
 from inspect import signature
+from typing import Any, Callable, Concatenate, ParamSpec, TypeVar
 from weakref import ref
 
+T = TypeVar("T")
+U = TypeVar("U")
+R = TypeVar("R")
+P = ParamSpec("P")
 
-def weak(obj):
+def weak(obj: U) -> Callable[P, Callable[Concatenate[U, P], Any]]:
     """
     Prevent the strong capture of the given object
     by using a weakref.ref instead.
@@ -28,7 +33,7 @@ def weak(obj):
     """
     weak_obj = ref(obj)
 
-    def wrapper(method):
+    def wrapper(method: Callable[P, Any]) -> Callable[Concatenate[U, P], Any]:
         sig = signature(method)
         non_default_parameters = [
             par for par in sig.parameters.values() if par.default is par.empty
@@ -43,27 +48,27 @@ def weak(obj):
         elif nr_arguments == 1:
 
             @wraps(method)
-            def wrapped():
+            def wrapped_single_arg() -> Any | None:
                 if this := weak_obj():
                     return method(this)
 
-            return wrapped
+            return wrapped_single_arg
         elif nr_arguments == 2:
 
             @wraps(method)
-            def wrapped(new):
+            def wrapped_double_arg(new):
                 if this := weak_obj():
                     return method(this, new)
 
-            return wrapped
+            return wrapped_double_arg
         elif nr_arguments == 3:
 
             @wraps(method)
-            def wrapped(new, old):
+            def wrapped_triple_arg(new, old):
                 if this := weak_obj():
                     return method(this, new, old)
 
-            return wrapped
+            return wrapped_triple_arg
         else:
             raise NotImplementedError
 
