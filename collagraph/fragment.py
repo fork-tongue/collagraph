@@ -73,6 +73,12 @@ class Fragment:
     def __repr__(self):
         return f"<{type(self).__name__}({self.tag}-[{id(self)}])>"
 
+    def debug(self, indent: int = 0):
+        print(f"{'  ' * indent}<{self.tag}>")  # noqa: T201
+        for child in self.children:
+            if child._mounted:
+                child.debug(indent + 1)
+
     @property
     def parent(self) -> Fragment | None:
         return self._parent() if self._parent else None
@@ -362,6 +368,7 @@ class ControlFlowFragment(Fragment):
             deep=True,
             immediate=True,
         )
+        self._mounted = True
 
 
 class ListFragment(Fragment):
