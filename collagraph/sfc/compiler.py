@@ -938,7 +938,7 @@ def _print_ast_tree_as_code(tree, path):  # pragma: no cover
     formatted = format_code(plain_result)
     console = Console()
     syntax = Syntax(formatted, "python")
-    console.print(f"---{path}---")
+    console.print(f"#---{path}---")
     console.print(syntax)
 
 

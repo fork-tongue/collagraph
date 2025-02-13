@@ -56,17 +56,10 @@ class Fragment:
 
         self._mounted = False
 
-        # TODO: maybe this next line is a bit nasty, but
-        # on the other hand, it makes sure that the
-        # relationship between this item and its parent
-        # is set correctly
+        # Make sure that the relationship between this
+        # item and its parent is set correctly
         if parent:
-            if isinstance(parent, ComponentFragment) and parent.tag is not None:
-                # print("")
-                pass
-            #
             parent.register_child(self)
-            # parent.children.append(self)
 
         # FIXME: should fragments also be able to be 'anchored'???
 
@@ -604,7 +597,6 @@ class SlotFragment(Fragment):
         component_parent = self.parent_component.parent
         if component_parent.slot_contents:
             for item in component_parent.slot_contents:
-                # breakpoint()
                 if item.slot_name == self.name:
                     item.mount(target, anchor)
         else:
