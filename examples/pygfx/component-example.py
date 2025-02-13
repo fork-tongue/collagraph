@@ -16,8 +16,6 @@ if __name__ == "__main__":
     controls = gfx.OrbitController(camera)
     controls.register_events(renderer)
 
-    gui = cg.Collagraph(renderer=cg.PygfxRenderer())
-
     point_light = gfx.PointLight()
     point_light.local.position = [10, 30, 40]
     container = gfx.Scene()
@@ -28,6 +26,7 @@ if __name__ == "__main__":
     def animate():
         renderer.render(container, camera)
 
+    gui = cg.Collagraph(renderer=cg.PygfxRenderer())
     gui.renderer.add_on_change_handler(lambda: canvas.request_draw(animate))
     gui.render(NumberPad, container)
     run()
