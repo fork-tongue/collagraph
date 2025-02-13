@@ -267,10 +267,14 @@ def test_directive_if_nested_for(parse_source):
     app = container["children"][0]
     assert app["type"] == "app"
     assert len(app["children"]) == 2
+    for child, name in zip(app["children"], state["names"]):
+        assert child["attrs"]["text"] == name
 
     state["names"].append("c")
 
     assert len(app["children"]) == 3
+    for child, name in zip(app["children"], state["names"]):
+        assert child["attrs"]["text"] == name
 
     state["foo"] = False
 
@@ -282,3 +286,5 @@ def test_directive_if_nested_for(parse_source):
     assert "children" in app
     assert app["type"] == "app"
     assert len(app["children"]) == 3
+    for child, name in zip(app["children"], state["names"]):
+        assert child["attrs"]["text"] == name
