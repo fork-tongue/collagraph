@@ -281,7 +281,7 @@ def ast_set_bind(
     list_names: list[dict[str, set[str]]],
 ) -> ast.Expr:
     _, key = key.split(":")
-    source = ast.parse(f'{el}.set_bind("{key}", lambda: {value})', mode="eval")
+    source = ast.parse(f'{el}.set_bind("{key}", lambda: ({value}))', mode="eval")
     return ast_named_lambda(
         source, {"renderer", "new", el, "watch"} | names, list_names
     )
