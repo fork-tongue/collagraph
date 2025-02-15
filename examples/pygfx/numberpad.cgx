@@ -1,9 +1,7 @@
-<group>
-  <Button
-    v-for="position in locations"
-    :position="position"
-  />
-</group>
+<Button
+  v-for="position in locations"
+  :position="position"
+/>
 
 <script>
 import collagraph as cg
