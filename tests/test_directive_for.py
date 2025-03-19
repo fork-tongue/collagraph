@@ -484,9 +484,9 @@ def test_consecutive_lists(parse_source):
             child_idx = idx + len(state["a"])
             assert container["children"][child_idx]["type"] == "node_b"
             assert container["children"][child_idx]["attrs"]["index"] == idx
-            assert (
-                container["children"][child_idx]["attrs"]["text"] == value
-            ), format_dict(container)
+            assert container["children"][child_idx]["attrs"]["text"] == value, (
+                format_dict(container)
+            )
 
     assert_consistency()
 
@@ -606,7 +606,97 @@ def test_for_expression(parse_source):
             assert widget["children"][idx]["attrs"]["suffix"] == suffix
 
 
-@pytest.mark.xfail
 def test_for_event_handlers(parse_source):
-    # TODO: add directive_for_lambdas
-    raise NotImplementedError()
+    Buttons, _ = parse_source(
+        """
+        <button
+          v-for="name, callback in buttons"
+          :key="name"
+          @callback="callback"
+        />
+
+        <script>
+        import collagraph as cg
+
+        class Buttons(cg.Component):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.state["buttons"] = [
+                    ["first", self.on_first],
+                    ["second", self.on_second],
+                ]
+
+            def on_first(self):
+                self.props["callback"]("First")
+
+            def on_second(self):
+                self.props["callback"]("Second")
+        </script>
+        """
+    )
+
+    calls = []
+    state = {"callback": lambda value: calls.append(value)}
+
+    gui = Collagraph(DictRenderer())
+    container = {"type": "root"}
+    gui.render(Buttons, container, state)
+
+    first_button, second_button = container["children"]
+    assert first_button["attrs"]["key"] == "first"
+    assert second_button["attrs"]["key"] == "second"
+
+    for handler in first_button["handlers"]["callback"]:
+        handler()
+
+    assert calls == ["First"]
+
+    for handler in second_button["handlers"]["callback"]:
+        handler()
+
+    assert calls == ["First", "Second"]
+
+
+def test_for_lambdas(parse_source):
+    Buttons, _ = parse_source(
+        """
+        <button
+          v-for="name in buttons"
+          :key="name"
+          @callback="lambda: on_button(name)"
+        />
+
+        <script>
+        import collagraph as cg
+
+        class Buttons(cg.Component):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.state["buttons"] = ["first", "second"]
+
+            def on_button(self, value):
+                self.props["callback"](value)
+        </script>
+        """
+    )
+
+    calls = []
+    state = {"callback": lambda value: calls.append(value)}
+
+    gui = Collagraph(DictRenderer())
+    container = {"type": "root"}
+    gui.render(Buttons, container, state)
+
+    first_button, second_button = container["children"]
+    assert first_button["attrs"]["key"] == "first"
+    assert second_button["attrs"]["key"] == "second"
+
+    for handler in first_button["handlers"]["callback"]:
+        handler()
+
+    assert calls == ["first"]
+
+    for handler in second_button["handlers"]["callback"]:
+        handler()
+
+    assert calls == ["first", "second"]
