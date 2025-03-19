@@ -49,7 +49,11 @@ class Fragment:
         self._attributes: dict[str, str] = {}
         # Events for the DOM element
         self._events: dict[str, Callable] = {}
+        # Registered binds
+        self._binds: list[tuple] = []
         # Watchers associated with the DOM element
+        # TODO: add extra dict prop just for attributes:
+        # that saves on lookups like: 'bind:' in key
         self._watchers: dict[str, Watcher] = {}
         # Conditional expression for whether the DOM element should be rendered
         self._condition: Callable | None = None
@@ -134,28 +138,12 @@ class Fragment:
         """
         self._attributes[attr] = value
 
-    def set_bind(self, attr: str, expression: Callable, immediate=False):
+    def set_bind(self, attr: str, expression: Callable):
         """
         Set a bind (dynamic attribute) to the value of the expression.
-        This will wait to be applied when `create` is called, unless
-        `immediate` is True.
+        This will wait to be applied when `create` is called.
         """
-
-        @weak(self)
-        def update(self, new):
-            self._set_attr(attr, new)
-
-        self._watchers[f"bind:{attr}"] = watch(
-            expression,
-            update,
-            immediate=immediate,
-            deep=True,
-        )
-        # TODO: instead of watching deep on the expression, maybe it makes
-        # more sense to change to a watch_effect instead so that it actually
-        # is more fine-grained. Instead, the installation of the watch_effect
-        # should be wrapped in a lambda or something that can be triggered on
-        # `create`.
+        self._binds.append((attr, expression, True))
 
     def set_bind_dict(self, name: str, expression: Callable[[], dict[str, Any]]):
         """
@@ -167,30 +155,10 @@ class Fragment:
         `set_bind` is called to create a dynamic attribute for the value of that
         key. When a key is removed, then the specific watcher is removed and some
         cleanup performed.
+
+        This will wait to be applied when `create` is called.
         """
-
-        @weak(self)
-        def update(self, new: set[str], old: set[str] | None):
-            if old is None:
-                old = set()
-            for attr in new - old:
-                self.set_bind(
-                    attr,
-                    lambda: expression()[attr],
-                    immediate=bool(self._has_content()),
-                )
-
-            for attr in old - new:
-                del self._watchers[f"bind:{attr}"]
-                # Perform cleanup
-                self._rem_attr(attr)
-
-        self._watchers[f"bind_dict:{name}"] = watch(
-            lambda: set(expression().keys()),
-            update,
-            immediate=True,
-            deep=True,
-        )
+        self._binds.append((name, expression, False))
 
     def set_type(self, expression: Callable[[], str | Callable]):
         """
@@ -229,6 +197,46 @@ class Fragment:
         """
         self._events[event] = handler
 
+    def _watch_bind(self, attr, expression):
+        """
+        Install a watcher for a bound attribute with the given expression
+        """
+
+        @weak(self)
+        def update(self, new):
+            self._set_attr(attr, new)
+
+        self._watchers[f"bind:{attr}"] = watch(
+            expression,
+            update,
+            immediate=True,
+            deep=True,
+        )
+
+    def _watch_bind_dict(self, name, expression):
+        @weak(self)
+        def update(self, new: set[str], old: set[str] | None):
+            if old is None:
+                old = set()
+            for attr in new - old:
+                self._watch_bind(
+                    attr,
+                    lambda: expression()[attr],
+                )
+
+            for attr in old - new:
+                if f"bind:{attr}" in self._watchers:
+                    del self._watchers[f"bind:{attr}"]
+                    # Perform cleanup
+                    self._rem_attr(attr)
+
+        self._watchers[f"bind_dict:{name}"] = watch(
+            lambda: set(expression().keys()),
+            update,
+            immediate=True,
+            deep=True,
+        )
+
     def create(self):
         """
         Creates instance, depending on whether there is
@@ -242,17 +250,19 @@ class Fragment:
         # Set all static attributes
         for attr, value in self._attributes.items():
             self.renderer.set_attribute(self.element, attr, value)
-        # self._attributes.clear()
 
         # Add all event handlers
         # TODO: check what happens within v-for constructs?
         for event, handler in self._events.items():
             self.renderer.add_event_listener(self.element, event, handler)
+
         # Set all dynamic attributes
-        for key, watcher in self._watchers.items():
-            if key.startswith("bind:"):
-                _, attr = key.split(":")
-                self.renderer.set_attribute(self.element, attr, watcher.value)
+        for name, expression, singular in self._binds:
+            if singular:
+                self._watch_bind(name, expression)
+            else:
+                self._watch_bind_dict(name, expression)
+
         # IDEA/TODO: for v-for, don't create instances direct, but
         # instead, create child fragments first, then call
         # create on those instead. Might involve some reparenting
@@ -316,6 +326,8 @@ class Fragment:
             self.tag = None
         else:
             self.element = None
+            # Disable the fn of the watcher to disable
+            # any 'false' hits
             for watcher in self._watchers.values():
                 watcher.fn = lambda: ()
             self._watchers = {}
@@ -480,6 +492,13 @@ class ComponentFragment(Fragment):
             self.props = reactive({})
         # Set static attributes
         self.props.update(self._attributes)
+
+        # Apply all dynamic attributes
+        for name, expression, singular in self._binds:
+            if singular:
+                self._watch_bind(name, expression)
+            else:
+                self._watch_bind_dict(name, expression)
 
         # Set dynamic attributes
         for key, watcher in self._watchers.items():

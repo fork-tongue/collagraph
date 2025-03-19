@@ -552,3 +552,61 @@ def test_for_regression(parse_source):
 
     assert "children" in container["children"][0], format_dict(container)
     assert len(container["children"][0]["children"]) == 1, format_dict(container)
+
+
+def test_for_expression(parse_source):
+    # FIXME: renaming labl to label makes the compiler think it is a component tag
+    # Should at least warn, better yet: prevent this from being a problem...
+    Labels, _ = parse_source(
+        """
+        <widget>
+          <label
+            v-for="idx, (labl, suffix) in enumerate(zip(labels, suffixes))"
+            :key="idx"
+            :text="labl"
+            :suffix="suffix"
+          />
+        </widget>
+
+        <script lang="python">
+        import collagraph as cg
+
+        class Labels(cg.Component):
+            pass
+        </script>
+        """
+    )
+    state = reactive({"labels": [], "suffixes": []})
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    container = {"type": "root"}
+    gui.render(Labels, container, state=state)
+
+    widget = container["children"][0]
+    assert widget["type"] == "widget"
+
+    assert "children" not in widget
+
+    for labels, suffixes in (
+        (["Foo"], ["x"]),
+        (["Foo", "Bar"], ["x", "y"]),
+        ([], []),
+        (["a", "b", "c", "d"], ["1", "2", "3", "4"]),
+    ):
+        state["labels"], state["suffixes"] = labels, suffixes
+        if len(labels) > 0:
+            assert "children" in widget and len(widget["children"]) == len(labels), (
+                labels,
+                suffixes,
+            )
+        else:
+            assert "children" not in widget, (labels, suffixes)
+
+        for idx, (label, suffix) in enumerate(zip(labels, suffixes)):
+            assert widget["children"][idx]["attrs"]["text"] == label
+            assert widget["children"][idx]["attrs"]["suffix"] == suffix
+
+
+@pytest.mark.xfail
+def test_for_event_handlers(parse_source):
+    # TODO: add directive_for_lambdas
+    raise NotImplementedError()
