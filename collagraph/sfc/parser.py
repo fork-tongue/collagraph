@@ -4,39 +4,45 @@ from html.parser import HTMLParser
 from weakref import ref
 
 
-class Node:
-    """Node that represents an element from a .cgx file."""
+class TextElement:
+    def __init__(self, content, location=None):
+        self.content = content
+        self.location = location
 
-    def __init__(
-        self,
-        tag: str,
-        attrs: dict[str, str] | None = None,
-        location: tuple[int, int] | None = None,
-    ):
-        super().__init__()
+
+class Comment:
+    def __init__(self, content, location=None):
+        self.content = content
+        self.location = location
+
+
+class Element:
+    """Node that represents an element from a CGX file."""
+
+    def __init__(self, tag, attrs=None, location=None):
         self.tag = tag
         self.attrs = attrs or {}
         self.location = location
         self.end: tuple[int, int] | None = None
         self.data: str | None = None
-        self.children: list[Node] = []
+        self.children: list[Element | Comment | TextElement] = []
         self.parent: ref | None = None
 
     def child_with_tag(self, tag):
         for child in self.children:
-            if child.tag == tag:
+            if getattr(child, "tag", None) == tag:
                 return child
 
 
 class CGXParser(HTMLParser):
-    """Parser for .cgx files.
+    """Parser for CGX files.
 
     Creates a tree of Nodes with all encountered attributes and data.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.root = Node("root")
+        self.root = Element("root")
         self.stack = [self.root]
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):
@@ -50,12 +56,11 @@ class CGXParser(HTMLParser):
         complete_tag = self.get_starttag_text()
         index = complete_tag.lower().index(tag)
         original_tag = complete_tag[index : index + len(tag)]
-        node = Node(original_tag, attrs=dict(attrs), location=self.getpos())
+        node = Element(original_tag, attrs=dict(attrs), location=self.getpos())
 
         # Cast attributes that have no value to boolean (True)
         # so that they function like flags
         for key, value in node.attrs.items():
-            # TODO: check if the value should actually be an integer
             if value is None:
                 node.attrs[key] = True
 
@@ -78,4 +83,14 @@ class CGXParser(HTMLParser):
 
     def handle_data(self, data: str):
         if data.strip():
-            self.stack[-1].data = data.strip()
+            # Add item as child to the last on the stack
+            self.stack[-1].children.append(
+                TextElement(content=data, location=self.getpos())
+            )
+
+    def handle_comment(self, comment: str):
+        if comment.strip():
+            # Add item as child to the last on the stack
+            self.stack[-1].children.append(
+                Comment(content=comment, location=self.getpos())
+            )

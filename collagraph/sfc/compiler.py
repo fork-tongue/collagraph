@@ -10,7 +10,7 @@ from pathlib import Path
 
 from collagraph import Component
 
-from .parser import CGXParser, Node
+from .parser import CGXParser, Comment, Element, TextElement
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ def construct_ast(path, template=None):
     if not template:
         template = Path(path).read_text()
 
-    # Parse the file component into a tree of Node instances
+    # Parse the file component into a tree of Elements
     parser = CGXParser()
     parser.feed(template)
 
@@ -167,7 +167,8 @@ def get_script_ast(parser: CGXParser, path: Path) -> ast.Module:
     """
     # Read the data from script block
     script_node = parser.root.child_with_tag("script")
-    script = script_node.data
+    assert isinstance(script_node.children[0], TextElement)
+    script = script_node.children[0].content
     line, _ = script_node.location
 
     # Create an AST from the script
@@ -182,7 +183,7 @@ def ast_create_fragment(
     tag: str,
     is_component: bool,
     parent: str | None = None,
-    node: Node | None = None,
+    node: Element | None = None,
 ) -> ast.Assign:
     """
     Return AST for creating an element with `tag` and
@@ -393,7 +394,9 @@ def safe_tag(tag):
     return tag.replace("-", "_").replace(".", "_")
 
 
-def create_collagraph_render_function(node: Node, names: set[str]) -> ast.FunctionDef:
+def create_collagraph_render_function(
+    node: Element, names: set[str]
+) -> ast.FunctionDef:
     body: list[ast.stmt] = []
     body.append(
         ast.ImportFrom(
@@ -471,7 +474,7 @@ def create_collagraph_render_function(node: Node, names: set[str]) -> ast.Functi
     counter: dict[str, int] = defaultdict(int)
 
     def create_fragments_function(
-        node: Node,
+        node: Element,
         targets: ast.Name | ast.Tuple,
         names: set,
         list_names: list[dict[str, set[str]]],
@@ -555,7 +558,7 @@ def create_collagraph_render_function(node: Node, names: set[str]) -> ast.Functi
 
     # Create and add children
     def create_children(
-        nodes: list[Node],
+        nodes: list[Element],
         target: str | None,
         names: set,
         list_names: list[dict[str, set[str]]],
@@ -564,6 +567,14 @@ def create_collagraph_render_function(node: Node, names: set[str]) -> ast.Functi
         result: list[ast.stmt] = []
         control_flow_parent = None
         for child in nodes:
+            if isinstance(child, Comment):
+                # Ignore comments
+                continue
+            if isinstance(child, TextElement):
+                # children_args.extend(args_for_text_element(child, names=names))
+                # continue
+                raise NotImplementedError()
+
             # Create element name
             tag = safe_tag(child.tag)
             el = f"{tag}{counter[tag]}"
@@ -904,7 +915,7 @@ def control_flow(element):
             return attr
 
 
-def check_parsed_tree(node: Node):
+def check_parsed_tree(node: Element):
     # Only check whole trees starting at the root
     assert node.tag == "root"
     if len(node.children) < 2:
@@ -921,7 +932,11 @@ def check_parsed_tree(node: Node):
             ""
         )
     number_of_script_tags_in_root = len(
-        [child for child in node.children if child.tag == "script"]
+        [
+            child
+            for child in node.children
+            if hasattr(child, "tag") and child.tag == "script"
+        ]
     )
     if number_of_script_tags_in_root != 1:
         raise ValueError(
