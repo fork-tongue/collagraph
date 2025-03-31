@@ -220,7 +220,6 @@ def test_dynamic_attribute_basic_dict(parse_source):
     assert second_label["attrs"]["text"] == __version__
 
 
-
 def test_dynamic_attribute_dict(parse_source):
     App, _ = parse_source(
         """
@@ -376,4 +375,3 @@ def test_dynamic_attribute_typo(parse_source):
     )
     with pytest.raises(NameError):
         gui.render(App, container, state=state)
-

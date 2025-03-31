@@ -29,7 +29,7 @@ def test_warn_on_shadow_import():
     with pytest.warns(UserWarning) as records:
         gui.render(tests.data.shadow_imports.Example, container, state=state)
 
-    result = container['children'][0]
+    result = container["children"][0]
 
     assert len(records) == 3
 

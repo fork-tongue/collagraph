@@ -19,6 +19,7 @@ asyncio.set_event_loop(loop)
 async def miniloop():
     await asyncio.sleep(0)
 
+
 def load(source, namespace=None):
     source = textwrap.dedent(source)
     return compiler.load_from_string(source, namespace=namespace)
