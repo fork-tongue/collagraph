@@ -5,7 +5,7 @@
         v-for="toggle in ['dock', 'dock_content', 'dock_title', 'toolbar', 'action', 'statusbar']"
         :text="f'Toggle {toggle}'"
         :object-name="f'toggle_{toggle}'"
-        @triggered="partial(lambda toggle: toggle_item(toggle), toggle=toggle)"
+        @triggered="lambda: toggle_item(toggle)"
       />
       <action separator />
       <action
@@ -74,8 +74,6 @@
 </window>
 
 <script>
-from functools import partial
-
 from PySide6 import QtCore, QtGui, QtWidgets
 
 import collagraph as cg
