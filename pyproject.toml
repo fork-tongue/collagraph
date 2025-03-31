@@ -37,6 +37,9 @@ pyside = [
     "pytest-xvfb",
     "pyside6"
 ]
+ruff = [
+    "ruff"
+]
 
 [tool.uv]
 default-groups = [

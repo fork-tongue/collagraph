@@ -172,6 +172,9 @@ pyside = [
     { name = "pytest-qt" },
     { name = "pytest-xvfb" },
 ]
+ruff = [
+    { name = "ruff" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -194,6 +197,7 @@ pyside = [
     { name = "pytest-qt" },
     { name = "pytest-xvfb" },
 ]
+ruff = [{ name = "ruff" }]
 
 [[package]]
 name = "colorama"
