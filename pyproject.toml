@@ -1,45 +1,47 @@
-[tool.poetry]
+[project]
 name = "collagraph"
 version = "0.8.0"
 description = "Reactive user interfaces"
-authors = ["Berend Klein Haneveld <berendkleinhaneveld@gmail.com>", "Korijn van Golen <korijn@gmail.com>"]
-license = "MIT"
-homepage = "https://github.com/fork-tongue/collagraph"
+authors = [
+    { name = "Berend Klein Haneveld", email = "berendkleinhaneveld@gmail.com" },
+    { name = "Korijn van Golen", email = "korijn@gmail.com" },
+]
+requires-python = ">=3.9"
 readme = "README.md"
+license = "MIT"
+dependencies = ["observ>=0.14.1"]
 
-[tool.poetry.extras]
-pygfx = ["pygfx"]
-pyside = ["pyside6"]
+[project.optional-dependencies]
+pygfx = ["pygfx>=0.2.0"]
+pyside = ["pyside6>=6.6 ; python_version < '3.13'"]
 
-[tool.poetry.dependencies]
-python = ">=3.9"
-observ = ">=0.14.1"
-pygfx = { version = ">=0.2.0", optional = true }
-pyside6 = { version = ">=6.6", python = "<3.13", optional = true }
+[project.urls]
+Homepage = "https://github.com/fork-tongue/collagraph"
 
-[tool.poetry.group.dev.dependencies]
-ruff = "*"
-pre-commit = "*"
-pytest = "*"
-pytest-cov = "*"
-twine = "*"
+[project.scripts]
+collagraph = "collagraph.__main__:run"
 
-[tool.poetry.group.pyside]
-optional = true
-
-[tool.poetry.group.pyside.dependencies]
-# When PySide6 is not installed, then pytest-qt will break the test suite.
-# But pytest-qt can't be marked as an optional dev dependency. So instead
-# it is now part of a group which can be installed as follows:
-#  > poetry install --with pyside --extras pyside
-pytest-qt = "*"
-pytest-xvfb = "*"
-
-[tool.poetry.plugins.pyinstaller40]
+[project.entry-points.pyinstaller40]
 hook-dirs = "collagraph.__pyinstaller:get_hook_dirs"
 
-[tool.poetry.scripts]
-collagraph = "collagraph.__main__:run"
+[dependency-groups]
+dev = [
+    "ruff",
+    "pre-commit",
+    "pytest",
+    "pytest-cov",
+    "twine",
+]
+pyside = [
+    "pytest-qt",
+    "pytest-xvfb",
+    "pyside6"
+]
+
+[tool.uv]
+default-groups = [
+    "dev",
+]
 
 [tool.ruff.lint]
 select = [
@@ -66,5 +68,5 @@ select = [
 "examples/pyside/flow_layout.py" = ["N802"]
 
 [build-system]
-requires = ["poetry>=1.0.0"]
-build-backend = "poetry.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

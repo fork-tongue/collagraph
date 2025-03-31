@@ -10,15 +10,21 @@ repos:
 #     -   id: check-added-large-files
 - repo: local
   hooks:
-  - id: ruff
-    name: ruff
-    entry: poetry run ruff check
+  - id: lint
+    name: lint
+    entry: uv run ruff check
     language: system
     types: [python]
     require_serial: true
-  - id: pytest
+  - id: format
+    name: format
+    entry: uv run ruff format --check
+    language: system
+    types: [python]
+    require_serial: true
+  - id: test
     name: pytest
-    entry: poetry run pytest tests
+    entry: uv run pytest tests
     language: system
     types: [text]
     files: \.(py|cgx)$
