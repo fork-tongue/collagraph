@@ -27,7 +27,7 @@ jobs:
       - name: Lint
         run: uv run --no-sync ruff check .
       - name: Format
-        run: uv run --no-sync ruff format check .
+        run: uv run --no-sync ruff format --check .
 
   test:
     name: Test on ${{ matrix.name }}
