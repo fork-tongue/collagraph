@@ -16,7 +16,7 @@ if __name__ == "__main__":
     renderer.register_element("WgpuCanvas", WgpuCanvas)
     gui = cg.Collagraph(renderer=renderer)
 
-    state = reactive({"count": 1000})
+    state = reactive({"count": 500})
 
     # Define Qt structure and map state to the structure
     # Pass in the app as a container. Can actually be any truthy object

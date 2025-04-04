@@ -20,6 +20,7 @@ class RenderWidget(cg.Component):
     with the root collagraph renderer, like this:
         renderer.register_element("WgpuCanvas", WgpuCanvas)
     """
+
     def mounted(self):
         renderer = gfx.renderers.WgpuRenderer(self.element)
 
@@ -40,9 +41,5 @@ class RenderWidget(cg.Component):
             lambda: self.element.request_draw(animate)
         )
 
-        self.gui.render(
-            self.props["scene"],
-            container,
-            state=self.props,
-        )
+        self.gui.render(self.props["scene"], container, state=self.props)
 </script>

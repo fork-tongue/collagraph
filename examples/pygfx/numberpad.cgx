@@ -16,15 +16,11 @@ class NumberPad(cg.Component):
 
     @property
     def locations(self):
-        locations = []
-        for x in range(self.state["columns"]):
-            for y in range(self.state["rows"]):
-                locations.append(
-                    (
-                        x - (self.state["columns"] - 1) / 2,
-                        y - (self.state["rows"] - 1) / 2,
-                        0,
-                    )
-                )
-        return locations
+        columns = self.state["columns"]
+        rows = self.state["rows"]
+        return [
+            (x - (columns - 1) / 2, y - (rows - 1) / 2, 0)
+            for x in range(columns)
+            for y in range(rows)
+        ]
 </script>
