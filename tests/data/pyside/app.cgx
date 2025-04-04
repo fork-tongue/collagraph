@@ -104,7 +104,7 @@ class Window(cg.Component):
             [["Item", "Value"], False],
             [["Foo", "Bar"], False],
         ]
-        self.state['docks'] = {
+        self.state["docks"] = {
             "dock": QtCore.Qt.LeftDockWidgetArea,
         }
 
@@ -127,7 +127,7 @@ class Window(cg.Component):
         pass
 
     def on_dock_location_changed(self, area):
-        self.state['docks']['dock'] = area
+        self.state["docks"]["dock"] = area
 
     def on_new(self):
         pass

@@ -41,7 +41,7 @@ class TreeView(cg.Component):
     def remove_item(self):
         # Process selections in reverse so that it
         # works with multiple selections
-        selections = reversed(sorted(self.state['selected']))
+        selections = reversed(sorted(self.state["selected"]))
 
         for selection in selections:
             self.state["items"].pop(selection)
@@ -58,7 +58,7 @@ class TreeView(cg.Component):
             QtCore.QItemSelectionModel, "selection-model"
         )
         if selection_model:
-            self.state['selected'] = list(
+            self.state["selected"] = list(
                 [row.row() for row in selection_model.selectedRows()]
             )
 </script>

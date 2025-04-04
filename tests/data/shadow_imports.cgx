@@ -8,9 +8,9 @@ import tests
 class Example(cg.Component):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.state['tests'] = 'foo'
+        self.state["tests"] = "foo"
 
     @property
     def tests(self):
-        return 'bar'
+        return "bar"
 </script>
