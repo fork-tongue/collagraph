@@ -9,11 +9,16 @@ authors = [
 requires-python = ">=3.9"
 readme = "README.md"
 license = "MIT"
-dependencies = ["observ>=0.14.1"]
+dependencies = ["observ>=0.15.0"]
+
+[tool.uv.sources]
+# observ = { path = "../observ", editable = true }
+# pygfx = { path = "../pygfx", editable = true }
+pygfx = { git = "https://github.com/pygfx/pygfx" }
 
 [project.optional-dependencies]
-pygfx = ["pygfx>=0.2.0"]
-pyside = ["pyside6>=6.6 ; python_version < '3.13'"]
+pygfx = ["pygfx>=0.9.0"]
+pyside = ["pyside6>=6.6; python_version < '3.13'"]
 
 [project.urls]
 Homepage = "https://github.com/fork-tongue/collagraph"
@@ -36,6 +41,9 @@ pyside = [
     "pytest-qt",
     "pytest-xvfb",
     "pyside6"
+]
+pygfx = [
+    "pygfx"
 ]
 ruff = [
     "ruff"
