@@ -79,6 +79,7 @@ from examples.pyside.flow_layout import FlowLayout
 
 cg.PySideRenderer.register_layout("flow", FlowLayout)
 
+
 class LayoutExample(cg.Component):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -150,5 +151,5 @@ class LayoutExample(cg.Component):
 
     def set_index(self, number):
         self.state["index"] = number - 1
-        print('index', self.state['index'])
+        print("index", self.state["index"])
 </script>
