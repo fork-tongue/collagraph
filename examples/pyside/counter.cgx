@@ -1,14 +1,12 @@
-<template>
-  <widget>
-    <label
-      :text="f'Count: {count}'"
-    />
-    <button
-      text="bump"
-      @clicked="bump"
-    />
-  </widget>
-</template>
+<widget>
+  <label
+    :text="f'Count: {count}'"
+  />
+  <button
+    text="bump"
+    @clicked="bump"
+  />
+</widget>
 
 <script>
 import collagraph as cg
