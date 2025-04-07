@@ -1,6 +1,6 @@
 <!--
 Run this example as follows:
-    poetry run collagraph --renderer pygfx --state '{"count": 100}' examples/pygfx/point_cloud.cgx
+    uv run collagraph --renderer pygfx --state '{"count": 100}' examples/pygfx/point_cloud.cgx
 -->
 <ambient-light />
 <point-light />
