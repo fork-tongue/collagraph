@@ -1,3 +1,4 @@
+# This file is imported in `layout_example.cgx` to show how to use custom layouts
 from PySide6 import QtCore, QtWidgets
 
 
