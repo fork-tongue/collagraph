@@ -2,7 +2,7 @@
 name = "app"
 version = "0.1.0"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = [{ name = "Your Name", email = "<you@example.com>"}]
 requires-python = ">=3.9"
 readme = "README.md"
 dependencies = ["collagraph>=0.5.0"]
