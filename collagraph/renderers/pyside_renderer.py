@@ -16,20 +16,25 @@ logger = logging.getLogger(__name__)
 
 # Pre-populated cache for types, mapping from string to type
 TYPE_MAPPING = {
+    "action": QtGui.QAction,
     "button": QtWidgets.QPushButton,
     "checkbox": QtWidgets.QCheckBox,
     "combobox": QtWidgets.QComboBox,
+    "dialogbuttonbox": QtWidgets.QDialogButtonBox,
+    "dock": QtWidgets.QDockWidget,
+    "groupbox": QtWidgets.QGroupBox,
+    "itemmodel": QtGui.QStandardItemModel,
+    "itemselectionmodel": QtCore.QItemSelectionModel,
     "label": QtWidgets.QLabel,
     "lineedit": QtWidgets.QLineEdit,
     "menu": QtWidgets.QMenu,
     "menubar": QtWidgets.QMenuBar,
-    "radiobutton": QtWidgets.QRadioButton,
-    "dialogbuttonbox": QtWidgets.QDialogButtonBox,
-    "groupbox": QtWidgets.QGroupBox,
     "progressbar": QtWidgets.QProgressBar,
+    "radiobutton": QtWidgets.QRadioButton,
     "scrollarea": QtWidgets.QScrollArea,
     "slider": QtWidgets.QSlider,
     "spinbox": QtWidgets.QSpinBox,
+    "standarditem": QtGui.QStandardItem,
     "statusbar": QtWidgets.QStatusBar,
     "tabwidget": QtWidgets.QTabWidget,
     "textedit": QtWidgets.QTextEdit,
@@ -39,11 +44,6 @@ TYPE_MAPPING = {
     "treewidgetitem": QtWidgets.QTreeWidgetItem,
     "widget": QtWidgets.QWidget,
     "window": QtWidgets.QMainWindow,
-    "action": QtGui.QAction,
-    "dock": QtWidgets.QDockWidget,
-    "itemmodel": QtGui.QStandardItemModel,
-    "itemselectionmodel": QtCore.QItemSelectionModel,
-    "standarditem": QtGui.QStandardItem,
 }
 
 # Mapping from type to func (list of tuples actually instead of dict)
