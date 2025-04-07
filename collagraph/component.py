@@ -7,7 +7,7 @@ from weakref import ref
 
 from observ import reactive, readonly
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from collagraph.fragment import ComponentFragment
     from collagraph.renderers import Renderer
 

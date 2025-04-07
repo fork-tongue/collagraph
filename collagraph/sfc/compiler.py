@@ -153,7 +153,7 @@ def construct_ast(path, template=None):
     # method to fix any `lineno` and `col_offset` attributes of the nodes
     ast.fix_missing_locations(script_tree)
 
-    if DEBUG:
+    if DEBUG:  # pragma: no cover
         try:
             _print_ast_tree_as_code(script_tree, path)
         except Exception as e:
@@ -167,6 +167,9 @@ def get_script_ast(parser: CGXParser, path: Path) -> ast.Module:
     """
     # Read the data from script block
     script_node = parser.root.child_with_tag("script")
+    if not script_node.children:
+        raise RuntimeError(f"Script tag has no content: {path}:{script_node.location}")
+    # HTMLParser makes sure that there is only one child for script nodes
     assert isinstance(script_node.children[0], TextElement)
     script = script_node.children[0].content
     line, _ = script_node.location
@@ -800,17 +803,6 @@ class StoredNameCollector(ast.NodeVisitor):
             self.names.add(node.id)
 
 
-class NameCollector(ast.NodeVisitor):
-    """AST node visitor that will create a set of the ids of every Name node
-    it encounters."""
-
-    def __init__(self):
-        self.names: set[str] = set()
-
-    def visit_Name(self, node):  # noqa: N802
-        self.names.add(node.id)
-
-
 class LambdaNamesCollector(ast.NodeVisitor):
     def __init__(self):
         self.names: set[str] = set()
@@ -918,19 +910,16 @@ def control_flow(element):
 def check_parsed_tree(node: Element):
     # Only check whole trees starting at the root
     assert node.tag == "root"
-    if len(node.children) < 2:
-        if child := next(iter(node.children)):
-            if child.tag != "script":
-                raise ValueError(
-                    f"Only one tag found: {child.tag}. Missing 'script' tag."
-                )
-            else:
-                raise ValueError("Only script tag found. Missing other tags")
-        raise ValueError(
-            f"Expected at least 2 closed tags, found: {len(node.children)} "
-            "({[node.tag for node in node.children]})\n"
-            ""
-        )
+    children = [child for child in node.children if not isinstance(child, Comment)]
+    if len(children) == 0:
+        raise ValueError("Expected at least 2 closed tags, found nothing")
+    if len(children) == 1:
+        child = children[0]
+        if child.tag != "script":
+            raise ValueError(f"Only one tag found: {child.tag}. Missing 'script' tag.")
+        else:
+            raise ValueError("Only script tag found. Missing other tags")
+
     number_of_script_tags_in_root = len(
         [
             child
@@ -957,7 +946,7 @@ def _print_ast_tree_as_code(tree, path):  # pragma: no cover
     console.print(syntax)
 
 
-def format_code(code):
+def format_code(code):  # pragma: no cover
     """
     Format the given code string with ruff
     """
