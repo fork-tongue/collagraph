@@ -2,6 +2,7 @@
 Example that shows slider, progress bar and spinbox that
 are connected to the same value.
 
+Run this example as follows:
 uv run collagraph examples/pyside/slider_example.cgx
 -->
 

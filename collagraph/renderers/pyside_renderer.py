@@ -31,6 +31,7 @@ TYPE_MAPPING = {
     "slider": QtWidgets.QSlider,
     "spinbox": QtWidgets.QSpinBox,
     "statusbar": QtWidgets.QStatusBar,
+    "tabwidget": QtWidgets.QTabWidget,
     "textedit": QtWidgets.QTextEdit,
     "toolbar": QtWidgets.QToolBar,
     "treeview": QtWidgets.QTreeView,
