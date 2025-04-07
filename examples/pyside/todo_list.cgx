@@ -1,0 +1,26 @@
+<!--
+This file is imported in todo_example.cgx
+-->
+<widget>
+  <widget
+    v-for="item in items"
+    :layout="{'type': 'Box', 'direction': 'LeftToRight'}"
+  >
+    <button
+      text="✔️"
+      :checked="False"
+      :maximum-size="(40, 40)"
+      @clicked="lambda: clicked(item)"
+    />
+    <label :text="item" />
+  </widget>
+</widget>
+
+<script>
+import collagraph as cg
+
+
+class TodoList(cg.Component):
+    def clicked(self, item):
+        self.emit("clicked", item)
+</script>
