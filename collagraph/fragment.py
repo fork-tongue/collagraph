@@ -221,7 +221,7 @@ class Fragment:
             for attr in new - old:
                 self._watch_bind(
                     attr,
-                    lambda: expression()[attr],
+                    lambda attr=attr: expression()[attr],
                 )
 
             for attr in old - new:
