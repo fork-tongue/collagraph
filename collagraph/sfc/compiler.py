@@ -563,7 +563,7 @@ def create_collagraph_render_function(
 
     # Create and add children
     def create_children(
-        nodes: list[Element],
+        nodes: list[Element | Comment | TextElement],
         target: str | None,
         names: set,
         list_names: list[dict[str, set[str]]],
@@ -912,7 +912,7 @@ def control_flow(element):
 def check_parsed_tree(node: Element):
     # Only check whole trees starting at the root
     assert node.tag == "root"
-    children = [child for child in node.children if not isinstance(child, Comment)]
+    children = [child for child in node.children if isinstance(child, Element)]
     if len(children) == 0:
         raise ValueError("Expected at least 2 closed tags, found nothing")
     if len(children) == 1:
@@ -926,7 +926,7 @@ def check_parsed_tree(node: Element):
         [
             child
             for child in node.children
-            if hasattr(child, "tag") and child.tag == "script"
+            if isinstance(child, Element) and child.tag == "script"
         ]
     )
     if number_of_script_tags_in_root != 1:

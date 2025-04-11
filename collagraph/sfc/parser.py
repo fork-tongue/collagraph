@@ -19,7 +19,7 @@ class Comment:
 class Element:
     """Node that represents an element from a CGX file."""
 
-    def __init__(self, tag, attrs=None, location=None):
+    def __init__(self, tag: str, attrs: dict, location: tuple[int, int]):
         self.tag = tag
         self.attrs = attrs or {}
         self.location = location
@@ -42,7 +42,7 @@ class CGXParser(HTMLParser):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.root = Element("root")
+        self.root = Element("root", attrs={}, location=(-1, -1))
         self.stack = [self.root]
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):
@@ -88,9 +88,9 @@ class CGXParser(HTMLParser):
                 TextElement(content=data, location=self.getpos())
             )
 
-    def handle_comment(self, comment: str):
-        if comment.strip():
+    def handle_comment(self, data: str):
+        if data.strip():
             # Add item as child to the last on the stack
             self.stack[-1].children.append(
-                Comment(content=comment, location=self.getpos())
+                Comment(content=data, location=self.getpos())
             )
