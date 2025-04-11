@@ -42,7 +42,7 @@ def init_collagraph(
         canvas = WgpuCanvas(size=(600, 400))
         wgpu_renderer = gfx.renderers.WgpuRenderer(canvas)
 
-        camera = gfx.PerspectiveCamera(70, 16 / 9)
+        camera = gfx.PerspectiveCamera(70)
         camera.local.z = 15
         camera.show_pos((0, 0, 0))
 
