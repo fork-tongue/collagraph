@@ -30,7 +30,9 @@ def available_renderers():
 def init_collagraph(
     renderer_type: str, component_path: Path, state: dict | None = None
 ):
-    component_class, _ = cg.sfc.compiler.load(component_path)
+    file_as_module = ".".join([*component_path.parts[:-1], component_path.stem])
+    component_module = importlib.import_module(file_as_module)
+    component_class = component_module.__component_class
     props = reactive(state or {})
 
     if renderer_type == "pygfx":

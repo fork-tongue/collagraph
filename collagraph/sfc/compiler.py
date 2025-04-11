@@ -86,6 +86,8 @@ def load_from_string(template, path=None, namespace=None):
             f"The last class defined in {path} is not a subclass of "
             f"Component: {component_class}"
         )
+    namespace["__component_class"] = component_class
+    namespace["__component_name"] = name
     return component_class, namespace
 
 
