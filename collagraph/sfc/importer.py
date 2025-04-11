@@ -7,7 +7,6 @@ from pathlib import Path
 from types import ModuleType
 from typing import Sequence
 
-# from importlib import MetaPathFinderProtocol
 from . import compiler
 
 
