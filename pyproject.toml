@@ -30,29 +30,13 @@ collagraph = "collagraph.__main__:run"
 hook-dirs = "collagraph.__pyinstaller:get_hook_dirs"
 
 [dependency-groups]
-dev = [
-    "ruff",
-    "pre-commit",
-    "pytest",
-    "pytest-cov",
-    "twine",
-]
-pyside = [
-    "pytest-qt",
-    "pytest-xvfb",
-    "pyside6"
-]
-pygfx = [
-    "pygfx"
-]
-ruff = [
-    "ruff"
-]
+dev = ["ruff", "pre-commit", "pytest", "pytest-cov", "twine"]
+pyside = ["pytest-qt", "pytest-xvfb", "pyside6"]
+pygfx = ["pygfx"]
+ruff = ["ruff"]
 
 [tool.uv]
-default-groups = [
-    "dev",
-]
+default-groups = ["dev"]
 
 [tool.ruff.lint]
 select = [
@@ -74,7 +58,6 @@ select = [
 "tests/pyside/test_*.py" = ["E402"]
 "tests/*" = ["N806", "N802"]
 "collagraph/__pyinstaller/*" = ["N999"]
-"tests_legacy/*" = ["N"]
 "examples/*" = ["N999", "N802"]
 "examples/pyside/flow_layout.py" = ["N802"]
 
