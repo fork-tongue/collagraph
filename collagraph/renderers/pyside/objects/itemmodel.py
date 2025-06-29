@@ -13,7 +13,7 @@ def insert(self, el, anchor=None):
 
         if anchor is not None:
             index = self.indexFromItem(anchor)
-            self.insertRow(index.row(), el)
+            self.insertRows(index.row(), [el])
         else:
             self.appendRow(el)
     else:
