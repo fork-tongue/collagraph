@@ -6,7 +6,7 @@ from warnings import warn
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from collagraph.types import EventLoopType
+from collagraph.constants import EventLoopType
 
 from . import Renderer
 from .pyside import attr_name_to_method_name, camel_case

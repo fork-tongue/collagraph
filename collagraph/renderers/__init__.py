@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, Callable, Optional
 
-from collagraph.types import EventLoopType
+from collagraph.constants import EventLoopType
 
 
 class Renderer(metaclass=ABCMeta):  # pragma: no cover

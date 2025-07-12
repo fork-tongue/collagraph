@@ -528,7 +528,7 @@ def create_collagraph_render_function(
                     )
                 ),
             ],
-            decorator_list=[],
+            decorator_list=[ast.Name(id="computed", ctx=ast.Load())],
         )
 
         names_collector = StoredNameCollector()

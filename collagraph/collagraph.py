@@ -6,8 +6,8 @@ from typing import Any
 from observ import scheduler
 
 from collagraph.component import Component
+from collagraph.constants import EventLoopType
 from collagraph.renderers import Renderer
-from collagraph.types import EventLoopType
 
 
 class Collagraph:
