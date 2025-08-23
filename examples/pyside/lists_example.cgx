@@ -1,0 +1,92 @@
+<!--
+  Run this example as follows:
+  uv run collagraph examples/pyside/lists_example.cgx
+ -->
+<window>
+  <widget>
+    <qsplitter>
+      <qlistview object_name="listview">
+        <qstandarditemmodel @item_changed="item_changed" :column_count="2">
+          <qstandarditem
+            v-for="item in standard_items()"
+            v-bind="item"
+          />
+        </qstandarditemmodel>
+      </qlistview>
+      <qtableview object_name="tableview">
+        <qstandarditemmodel @item_changed="item_changed" :column_count="2">
+          <qstandarditem
+            v-for="item in standard_items()"
+            v-bind="item"
+          />
+        </qstandarditemmodel>
+      </qtableview>
+      <qtreeview object_name="treeview">
+        <qstandarditemmodel @item_changed="item_changed" :column_count="2">
+          <qstandarditem
+            v-for="item in standard_items()"
+            v-bind="item"
+          />
+        </qstandarditemmodel>
+      </qtreeview>
+    </qsplitter>
+    <widget
+      :layout="{'type': 'Box', 'direction': 'LeftToRight'}"
+      :maximum-height="50"
+    >
+      <button text="Add" object_name="add" @clicked="bump" />
+      <button text="Remove" object_name="remove" @clicked="decr" />
+    </widget>
+  </widget>
+</window>
+
+
+<script>
+"""
+Example of how to render lists, tables and trees.
+"""
+
+from observ import reactive
+from PySide6 import QtCore, QtWidgets
+
+import collagraph as cg
+
+STATE_MAP = {
+    False: QtCore.Qt.Unchecked,
+    True: QtCore.Qt.Checked,
+}
+
+
+class Example(cg.Component):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.state["items"] = [
+            [["Item", "Value"], False],
+            [["Foo", "Bar"], False],
+        ]
+
+    def bump(self):
+        self.state["items"].append([["NEW", "ITEM"], False])
+
+    def decr(self):
+        if len(self.state["items"]):
+            self.state["items"].pop(0)
+
+    def item_changed(self, item):
+        self.state["items"][item.row()][0][item.column()] = item.text()
+        self.state["items"][item.row()][1] = item.checkState() == QtCore.Qt.Checked
+
+    def standard_items(self):
+        items = []
+        for row, (item, check_state) in enumerate(self.state["items"]):
+            for column, text in enumerate(item):
+                child_props = {
+                    "text": text,
+                    "model_index": (row, column),
+                    "checkable": column == 0,
+                }
+                if column == 0:
+                    child_props["check_state"] = STATE_MAP[check_state]
+                items.append(child_props)
+        return items
+</script>

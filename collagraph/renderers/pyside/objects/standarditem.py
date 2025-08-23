@@ -1,7 +1,7 @@
 from PySide6.QtGui import QStandardItem
 
-from .qobject import set_attribute as qobject_set_attribute
 from ... import PySideRenderer
+from .qobject import set_attribute as qobject_set_attribute
 
 
 @PySideRenderer.register_insert(QStandardItem)
@@ -19,7 +19,7 @@ def insert(self, el, anchor=None):
                 break
         if index is None:
             return
-        self.insertRow(index, el)
+        self.insertRows(index, [el])
     else:
         self.appendRow(el)
 

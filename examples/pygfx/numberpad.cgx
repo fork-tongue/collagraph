@@ -1,0 +1,26 @@
+<Button
+  v-for="position in locations"
+  :position="position"
+/>
+
+<script>
+import collagraph as cg
+from examples.pygfx.button import Button
+
+
+class NumberPad(cg.Component):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.state["columns"] = 4
+        self.state["rows"] = 5
+
+    @property
+    def locations(self):
+        columns = self.state["columns"]
+        rows = self.state["rows"]
+        return [
+            (x - (columns - 1) / 2, y - (rows - 1) / 2, 0)
+            for x in range(columns)
+            for y in range(rows)
+        ]
+</script>

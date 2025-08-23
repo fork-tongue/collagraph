@@ -1,0 +1,64 @@
+<template>
+  <widget>
+    <treeview
+      :selection-mode="QtWidgets.QTreeView.ExtendedSelection"
+      object-name="tree"
+    >
+      <itemmodel
+        object-name="item-model"
+      >
+        <standarditem
+          v-for="idx, item in enumerate(items)"
+          :key="idx"
+          :text="item"
+        />
+      </itemmodel>
+      <qitemselectionmodel
+        object-name="selection-model"
+        @selection-changed="selection_changed"
+      />
+    </treeview>
+    <button
+      text="Remove item"
+      object-name="button"
+      :enabled="bool(selected)"
+      @clicked="remove_item"
+    />
+  </widget>
+</template>
+
+<script>
+import collagraph as cg
+from PySide6 import QtCore, QtWidgets
+
+
+class TreeView(cg.Component):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.state["items"] = ["Foo", "Bar", "Bla"]
+        self.state["selected"] = []
+
+    def remove_item(self):
+        # Process selections in reverse so that it
+        # works with multiple selections
+        selections = reversed(sorted(self.state["selected"]))
+
+        for selection in selections:
+            self.state["items"].pop(selection)
+
+    def selection_changed(self, selected, deselected):
+        # Get a reference to the selection model
+        # Updating the selected rows from the 'selected' and 'deselected'
+        # arguments does not always work properly when multiple selected items
+        # are removed because the order in which events are handled.
+        # For instance, when row 2 and row 1 are removed (in that order) the
+        # selection_changed handler will be called twice with '1' as deselected
+        # argument...
+        selection_model = self.element.findChild(
+            QtCore.QItemSelectionModel, "selection-model"
+        )
+        if selection_model:
+            self.state["selected"] = list(
+                [row.row() for row in selection_model.selectedRows()]
+            )
+</script>

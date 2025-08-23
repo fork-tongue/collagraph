@@ -1,6 +1,6 @@
 <!--
   Run this example as follows:
-  poetry run collagraph examples/pyside/debug_example.cgx
+  uv run collagraph examples/pyside/debug_example.cgx
 -->
 <template>
   <window>

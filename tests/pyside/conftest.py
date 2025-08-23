@@ -12,14 +12,9 @@ def qapp(qapp_args, qapp_cls, pytestconfig, qtbot):
     from pytestqt.qt_compat import qt_api
 
     app = qt_api.QtWidgets.QApplication.instance()
-    if app is None:
-        assert False
-        app = qapp_cls(qapp_args)
-        name = pytestconfig.getini("qt_qapp_name")
-        app.setApplicationName(name)
-    else:
-        # Check that there are not left-over widgets from other tests
-        assert len(app.topLevelWidgets()) == 0
+    assert app is not None
+    # Check that there are not left-over widgets from other tests
+    assert len(app.topLevelWidgets()) == 0
 
     policy = asyncio.get_event_loop_policy()
     if not isinstance(policy, QAsyncioEventLoopPolicy):
@@ -37,3 +32,5 @@ def qapp(qapp_args, qapp_cls, pytestconfig, qtbot):
     app.processEvents()
 
     qtbot.waitUntil(lambda: len(app.topLevelWidgets()) == 0, timeout=500)
+
+    asyncio.set_event_loop_policy(None)

@@ -30,7 +30,16 @@ def remove(self, el: Union[QStandardItemModel, QItemSelectionModel]):
     if isinstance(el, QStandardItemModel):
         self.setModel(None)
     elif isinstance(el, QItemSelectionModel):
-        self.setSelectionModel(None)
+        # Note: setting the selection model to None results
+        # in a segmentation fault, hard crash...
+        # Setting the selection model to a new instance will instead
+        # print a warning:
+        # > QAbstractItemView::setSelectionModel() failed: Trying to set a selection
+        # > model, which works on a different model than the view.
+        # Maybe just not removing is sufficient
+        # self.setSelectionModel(QItemSelectionModel())
+        # self.setSelectionModel(QItemSelectionModel(self.model()))
+        pass
     else:
         raise NotImplementedError(type(el).__name__)
 

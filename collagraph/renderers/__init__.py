@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, Callable, Optional
 
-from collagraph.types import EventLoopType
+from collagraph.constants import EventLoopType
 
 
 class Renderer(metaclass=ABCMeta):  # pragma: no cover
@@ -68,7 +68,7 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
         pass
 
 
-from .dict_renderer import DictRenderer  # noqa: I202
+from .dict_renderer import DictRenderer
 
 try:
     import js
@@ -89,7 +89,7 @@ try:
 except ImportError:  # pragma: no cover
     pass
 else:
-    from .pyside_renderer import PySideRenderer
+    from .pyside_renderer import PySideRenderer  # noqa: I001
 
     # Need to import the objects in order to register their methods
-    from .pyside import objects  # noqa: F401
+    from .pyside import objects

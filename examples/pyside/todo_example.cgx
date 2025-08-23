@@ -1,0 +1,50 @@
+<!--
+Example of how to render to PySide6 UI.
+
+Run this example as follows:
+uv run collagraph examples/pyside/todo_example.cgx
+-->
+<window title="My First TODO app">
+  <widget name="main-content">
+    <label text="What do you want to do?" />
+    <lineedit :text="text" @text_edited="handle_change" />
+    <button text="Add" @clicked="handle_submit" />
+    <label text="To do:" />
+    <TodoList
+      :items="items"
+      @clicked="handle_complete"
+    />
+  </widget>
+</window>
+
+
+<script>
+from PySide6 import QtWidgets
+
+import collagraph as cg
+
+from examples.pyside.todo_list import TodoList
+
+
+class TodoApp(cg.Component):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.state["items"] = [
+            "Groceries",
+            "Laundry",
+        ]
+        self.state["text"] = ""
+
+    def handle_change(self, event):
+        self.state["text"] = event
+
+    def handle_submit(self):
+        if todo := self.state["text"]:
+            if todo in self.state["items"]:
+                return
+            self.state["items"].append(todo)
+            self.state["text"] = ""
+
+    def handle_complete(self, event):
+        self.state["items"].remove(event)
+</script>

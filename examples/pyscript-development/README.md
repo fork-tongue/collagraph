@@ -8,7 +8,7 @@ This setup is most suitable for local development on collagraph.
 In root of project:
 
 ```sh
-poetry build
+uv build
 cp dist/*.whl examples/pyscript/deps/.
 python -m http.server --directory examples/pyscript
 ```
@@ -22,8 +22,8 @@ I use `entr` to watch files in the collagraph repo to build the new
 `examples/pyscript/deps/` folder:
 
 ```sh
-# Run poetry build when any .py or .cgx file changes
-find . -iname "*.py" -o -iname "*.cgx" | entr -c poetry build
+# Run uv build when any .py or .cgx file changes
+find . -iname "*.py" -o -iname "*.cgx" | entr -c uv build
 ```
 
 ```sh

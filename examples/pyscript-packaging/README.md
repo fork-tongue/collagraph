@@ -8,7 +8,7 @@ This setup is most suitable for deployment.
 In this folder:
 
 ```sh
-poetry build
+uv build
 python -m http.server
 ```
 
