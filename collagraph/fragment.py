@@ -423,29 +423,29 @@ class ListFragment(Fragment):
             value = self.expression()
             return value if hasattr(value, "__len__") else list(value)
 
+        # Keep a list with all the rendered values
+        self.values = []
+
         @weak(self)
         def update_children(self):
-            for index in reversed(range(len(expression()), len(self.children))):
+            items = expression()
+            for index in reversed(range(len(items), len(self.children))):
+                # Remove extra items and context
                 fragment = self.children.pop(index)
                 fragment.unmount()
+                self.values.pop(index)
 
-            for i, item in enumerate(expression()):
-                if i >= len(self.children):
-
-                    def index_in_value(i=i):
-                        if i < len(expression()):
-                            return expression()[i]
-
-                    # NOTE: I could try and figure out the lambda names
-                    # in the expression / self.expression
-
-                    # TODO: create_fragment should contain a reactive object
-                    # probably with all the required props. Then within the
-                    # 'create_node' method, the binds can be picked from the
-                    # reactive object. And we'll need a watcher to update that
-                    # reactive object from the 'outside' (so here in this function)
-
-                    fragment = self.create_fragment(index_in_value)
+            for i, item in enumerate(items):
+                if i < len(self.children):
+                    # Update the content for existing values
+                    self.values[i]["context"] = item
+                else:
+                    # Create a new fragment + context
+                    context = reactive({"context": item})
+                    self.values.append(context)
+                    fragment = self.create_fragment(
+                        lambda i=i: self.values[i]["context"]
+                    )
                     self.children.append(fragment)
                     fragment.parent = self
                     fragment.mount(target, anchor=self.anchor())
