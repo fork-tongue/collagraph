@@ -32,7 +32,7 @@ class Track(cg.Component):
 
 class Scrubber(cg.Component):
     scrubber_geometry = gfx.sphere_geometry()
-    scrubber_material = gfx.MeshPhongMaterial(color=[0.5, 1, 0.5])
+    scrubber_material = gfx.MeshPhongMaterial(color=[0.5, 1, 0.5], pick_write=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

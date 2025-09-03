@@ -31,7 +31,7 @@ if __name__ == "__main__":
             # When increasing this number, it will take longer
             # and longer for pygfx to create the render pipeline
             # (compiling shaders and such), so be careful...
-            {"count": 50},
+            {"count": 500},
         ),
         h(
             "Mesh",

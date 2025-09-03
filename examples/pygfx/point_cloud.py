@@ -6,15 +6,47 @@ from collagraph import h
 
 sphere_geom = gfx.sphere_geometry(radius=0.5)
 materials = {
-    "default": gfx.MeshPhongMaterial(color=[1, 1, 1]),
-    "selected": gfx.MeshPhongMaterial(color=[1, 0, 0]),
-    "hovered": gfx.MeshPhongMaterial(color=[1, 0.6, 0]),
-    "other": gfx.MeshPhongMaterial(color=[1, 0, 0.5]),
+    "default": gfx.MeshPhongMaterial(color=[1, 1, 1], pick_write=True),
+    "selected": gfx.MeshPhongMaterial(color=[1, 0, 0], pick_write=True),
+    "hovered": gfx.MeshPhongMaterial(color=[1, 0.6, 0], pick_write=True),
+    "other": gfx.MeshPhongMaterial(color=[1, 0, 0.5], pick_write=True),
 }
 
 
+def rand_point():
+    return (
+        random.randint(-20, 20),
+        random.randint(-20, 20),
+        random.randint(-20, 20),
+    )
+
+
+def point(index, selected, hovered, set_selected, set_hovered):
+    material = (
+        "selected"
+        if index == selected
+        else "hovered"
+        if index == hovered
+        else "default"
+    )
+    return h(
+        "Mesh",
+        {
+            "geometry": sphere_geom,
+            "material": materials[material],
+            "local.position": positions[index],
+            "key": index,
+            "on_click": lambda event: set_selected(index),
+            "on_pointer_move": lambda event: set_hovered(index),
+        },
+    )
+
+
+positions = []
+
+
 def PointCloud(props):
-    random.seed(0)
+    global positions
 
     def set_hovered(index):
         props["hovered"] = index
@@ -25,34 +57,23 @@ def PointCloud(props):
         else:
             props["selected"] = index
 
-    def random_point(index, selected, hovered):
-        material = materials["default"]
-        if index == selected:
-            material = materials["selected"]
-        elif index == hovered:
-            material = materials["hovered"]
-        return h(
-            "Mesh",
-            {
-                "geometry": sphere_geom,
-                "material": material,
-                "local.position": [
-                    random.randint(-10, 10),
-                    random.randint(-10, 10),
-                    random.randint(-10, 10),
-                ],
-                "key": index,
-                "on_click": lambda event: set_selected(index),
-                "on_pointer_move": lambda event: set_hovered(index),
-            },
-        )
 
     selected = props.get("selected", -1)
     hovered = props.get("hovered", -1)
     number_of_points = props.get("count", 50)
 
+    if len(positions) > number_of_points:
+        positions = positions[:number_of_points]
+    elif len(positions) < number_of_points:
+        positions.extend(
+            [rand_point() for _ in range(number_of_points - len(positions))]
+        )
+
     return h(
         "Group",
         {},
-        *[random_point(i, selected, hovered) for i in range(number_of_points)],
+        *[
+            point(i, selected, hovered, set_selected, set_hovered)
+            for i in range(number_of_points)
+        ],
     )
