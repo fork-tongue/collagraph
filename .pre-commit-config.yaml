@@ -13,13 +13,13 @@ repos:
   - id: flake8
     name: flake8
     description: '`flake8` is a command-line utility for enforcing style consistency across Python projects.'
-    entry: poetry run flake8
+    entry: uv run flake8
     language: system
     types: [python]
     require_serial: true
   - id: pytest
     name: pytest
-    entry: poetry run pytest tests
+    entry: uv run pytest tests
     language: system
     types: [text]
     files: \.(py|cgx)$

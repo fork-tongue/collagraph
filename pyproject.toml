@@ -1,50 +1,43 @@
-[tool.poetry]
+[project]
 name = "collagraph"
 version = "0.7.0"
 description = "Reactive user interfaces"
-authors = ["Berend Klein Haneveld <berendkleinhaneveld@gmail.com>", "Korijn van Golen <korijn@gmail.com>"]
-license = "MIT"
-homepage = "https://github.com/fork-tongue/collagraph"
 readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "observ>=0.14.1",
+]
+authors = [
+	{ name = "Berend Klein Haneveld", email = "berendkleinhaneveld@gmail.com"},
+	{ name = "Korijn van Golen", email = "korijn@gmail.com"}
+]
+license = "MIT"
 
-[tool.poetry.extras]
-pygfx = ["pygfx"]
-pyside = ["pyside6_essentials"]
+[project.scripts]
+collagraph = "collagraph.__main__:run"
 
-[tool.poetry.dependencies]
-python = ">=3.9"
-observ = ">=0.14.1"
-pygfx = { version = ">=0.1.17", optional = true }
-pyside6_essentials = { version = "~6.6", python = "<3.13", optional = true }
-
-[tool.poetry.group.dev.dependencies]
-black = "*"
-flake8 = "*"
-flake8-black = "*"
-flake8-import-order = "*"
-flake8-print = "*"
-pre-commit = "*"
-pytest = "*"
-pytest-cov = "*"
-twine = "*"
-
-[tool.poetry.group.pyside]
-optional = true
-
-[tool.poetry.group.pyside.dependencies]
+[dependency-groups]
+dev = [
+    "black",
+    "flake8",
+    "flake8-black",
+    "flake8-import-order",
+    "flake8-print",
+    "pre-commit",
+    "pytest",
+    "pytest-cov",
+    "twine",
+]
 # When PySide6 is not installed, then pytest-qt will break the test suite.
 # But pytest-qt can't be marked as an optional dev dependency. So instead
 # it is now part of a group which can be installed as follows:
-#  > poetry install --with pyside --extras pyside
-pytest-qt = "*"
-pytest-xvfb = "*"
+#  > uv sync --group dev --group pyside-dev --extra pyside
+pygfx = ["pygfx"]
+pyside = ["pyside6~=6.6"]
+pyside-dev = [
+    "pytest-qt",
+    "pytest-xvfb",
+]
 
-[tool.poetry.plugins.pyinstaller40]
-hook-dirs = "collagraph.__pyinstaller:get_hook_dirs"
-
-[tool.poetry.scripts]
-collagraph = "collagraph.__main__:run"
-
-[build-system]
-requires = ["poetry>=1.0.0"]
-build-backend = "poetry.masonry.api"
+[tool.uv]
+package = true

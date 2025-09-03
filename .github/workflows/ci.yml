@@ -15,17 +15,17 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.9
-      - name: Install poetry
-        run: pip install "poetry>=1.4.2,<1.5"
-      - name: Install dependencies
-        run: poetry install
+          python-version-file: "pyproject.toml"
+      - name: Install only dev dependencies
+        run: uv sync --only-group dev
       - name: Lint
-        run: poetry run flake8
+        run: uv run flake8
   
   test:
     name: Test on ${{ matrix.name }}
@@ -42,22 +42,24 @@ jobs:
             pyversion: '3.11'
           - name: Linux py312
             pyversion: '3.12'
+          - name: Linux py313
+            pyversion: '3.13'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
       - name: Set up Python ${{ matrix.pyversion }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.pyversion }}
       - name: Install system dependencies
         run: |
           sudo apt-get update -y -qq
           sudo apt-get install -y libgles2-mesa-dev
-      - name: Install poetry
-        run: pip install "poetry>=1.4.2,<1.5"
       - name: Install dependencies
-        run: poetry install --extras pyside --extras pygfx --with pyside
+        run: uv sync --all-groups
       - name: Test
-        run: poetry run pytest -v --cov=collagraph --cov-report=term-missing
+        run: uv run pytest -v --cov=collagraph --cov-report=term-missing
         env:
           QT_QPA_PLATFORM: offscreen
 
@@ -65,21 +67,21 @@ jobs:
     name: Build and test wheel
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v5
+    - name: Install uv
+      uses: astral-sh/setup-uv@v6
     - name: Set up Python 3.9
       uses: actions/setup-python@v2
       with:
         python-version: '3.9'
-    - name: Install poetry
-      run: pip install "poetry>=1.4.2,<1.5"
     - name: Install dependencies
-      run: poetry install
+      run: uv sync
     - name: Build wheel
-      run: poetry build
+      run: uv build
     - name: Twine check
-      run: poetry run twine check dist/*
+      run: uv run twine check dist/*
     - name: Upload wheel artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         path: dist
         name: dist
@@ -90,30 +92,21 @@ jobs:
     needs: [lint, test, build]
     if: success() && startsWith(github.ref, 'refs/tags/v')
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v5
     - name: Download wheel artifact
-      uses: actions/download-artifact@v1.0.0
-      with:
-        name: dist
-    - name: Get version from git ref
-      id: get_version
-      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-    - name: Create GH release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.get_version.outputs.VERSION }}
-        release_name: Release ${{ steps.get_version.outputs.VERSION }}
-        draft: false
-        prerelease: false
-    - name: Upload release assets
-      # Move back to official action after fix https://github.com/actions/upload-release-asset/issues/4
-      uses: AButler/upload-release-assets@v2.0
-      with:
-        release-tag: ${{ steps.get_version.outputs.VERSION }}
-        files: 'dist/*.tar.gz;dist/*.whl'
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+    - name: Release to GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            dist/*.tar.gz
+            dist/*.whl
+          draft: true
+          prerelease: false
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:

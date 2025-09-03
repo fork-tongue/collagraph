@@ -76,7 +76,7 @@ Which looks something like this:
 Instead of using a python file as an entry point to run components, you can run them directly using the collagraph CLI:
 
 ```sh
-poetry run collagraph examples/pyside/counter.cgx
+uv run collagraph examples/pyside/counter.cgx
 ```
 
 For more examples, please take a look at the [examples folder](examples).
@@ -95,15 +95,15 @@ To try out Collagraph or start development, run:
 
 ```sh
 # Basic dev setup (no pygfx or pyside)
-poetry install
+uv install
 # Full dev setup
-poetry install --with pyside --extras pyside --extras pygfx
+uv install --all-groups
 # Run example:
-poetry run python examples/pyside/layout-example.py
+uv run python examples/pyside/layout-example.py
 # Run test suite:
-poetry run pytest
+uv run pytest
 # Install git pre-commit hooks to make sure tests/linting passes before committing
-poetry run pre-commit install
+uv run pre-commit install
 ```
 
 
