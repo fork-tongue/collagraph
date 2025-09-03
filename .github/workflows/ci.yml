@@ -5,7 +5,7 @@ on:
     branches:
       - master
     tags:
-      - 'v*'
+      - "v*"
   pull_request:
     branches:
       - master
@@ -26,7 +26,7 @@ jobs:
         run: uv sync --only-group dev
       - name: Lint
         run: uv run flake8
-  
+
   test:
     name: Test on ${{ matrix.name }}
     runs-on: ubuntu-latest
@@ -35,15 +35,15 @@ jobs:
       matrix:
         include:
           - name: Linux py39
-            pyversion: '3.9'
+            pyversion: "3.9"
           - name: Linux py310
-            pyversion: '3.10'
+            pyversion: "3.10"
           - name: Linux py311
-            pyversion: '3.11'
+            pyversion: "3.11"
           - name: Linux py312
-            pyversion: '3.12'
+            pyversion: "3.12"
           - name: Linux py313
-            pyversion: '3.13'
+            pyversion: "3.13"
     steps:
       - uses: actions/checkout@v5
       - name: Install uv
@@ -67,24 +67,24 @@ jobs:
     name: Build and test wheel
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
-    - name: Install uv
-      uses: astral-sh/setup-uv@v6
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.9'
-    - name: Install dependencies
-      run: uv sync
-    - name: Build wheel
-      run: uv build
-    - name: Twine check
-      run: uv run twine check dist/*
-    - name: Upload wheel artifact
-      uses: actions/upload-artifact@v4
-      with:
-        path: dist
-        name: dist
+      - uses: actions/checkout@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - name: Install dependencies
+        run: uv sync
+      - name: Build wheel
+        run: uv build
+      - name: Twine check
+        run: uv run twine check dist/*
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: dist
+          name: dist
 
   publish:
     name: Publish to Github and Pypi
@@ -92,13 +92,13 @@ jobs:
     needs: [lint, test, build]
     if: success() && startsWith(github.ref, 'refs/tags/v')
     steps:
-    - uses: actions/checkout@v5
-    - name: Download wheel artifact
+      - uses: actions/checkout@v5
+      - name: Download wheel artifact
         uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist
-    - name: Release to GitHub
+      - name: Release to GitHub
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -107,8 +107,8 @@ jobs:
             dist/*.whl
           draft: true
           prerelease: false
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@master
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_PASSWORD }}
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_PASSWORD }}
