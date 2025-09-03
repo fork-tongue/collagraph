@@ -5,7 +5,6 @@ from wgpu.gui.auto import run, WgpuCanvas
 import collagraph as cg
 from collagraph import h
 
-
 if __name__ == "__main__":
     canvas = WgpuCanvas(size=(600, 400))
     renderer = gfx.renderers.WgpuRenderer(canvas)

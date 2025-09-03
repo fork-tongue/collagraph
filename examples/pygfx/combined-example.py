@@ -2,9 +2,9 @@
 Example of how to render lists, tables and trees.
 """
 
-import pygfx as gfx
 from observ import reactive
-from point_cloud import PointCloud, materials
+from point_cloud import materials, PointCloud
+import pygfx as gfx
 from PySide6 import QtWidgets
 from wgpu.gui.qt import WgpuCanvas
 
@@ -54,7 +54,9 @@ class RenderWidget(cg.Component):
         def animate():
             renderer.render(container, camera)
 
-        self.gui.renderer.add_on_change_handler(lambda: self.element.request_draw(animate))
+        self.gui.renderer.add_on_change_handler(
+            lambda: self.element.request_draw(animate)
+        )
         self.gui.render(element, container)
 
     def render(self):

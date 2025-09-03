@@ -90,7 +90,7 @@ def test_fiber_element_deletion():
             *[
                 h("item", {"index": index + props["start_index"]})
                 for index in range(props["count"])
-            ]
+            ],
         )
 
     renderer = DictRenderer()

@@ -25,9 +25,7 @@ def point(index, selected, hovered, set_selected, set_hovered):
     material = (
         "selected"
         if index == selected
-        else "hovered"
-        if index == hovered
-        else "default"
+        else "hovered" if index == hovered else "default"
     )
     return h(
         "Mesh",
@@ -56,7 +54,6 @@ def PointCloud(props):
             props["selected"] = -1
         else:
             props["selected"] = index
-
 
     selected = props.get("selected", -1)
     hovered = props.get("hovered", -1)
