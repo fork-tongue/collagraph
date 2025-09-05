@@ -1,6 +1,6 @@
 <!--
   Run this example as follows:
-  ❯ poetry run collagraph examples/pyside/cgx_component_example.cgx
+  ❯ uv run collagraph examples/pyside/cgx_component_example.cgx
  -->
 <template>
   <qmainwindow window_title="JSX-like syntax example">

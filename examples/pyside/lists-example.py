@@ -50,7 +50,7 @@ def Example(props):
             "on_item_changed": item_changed,
             "column_count": 2,
         },
-        *children
+        *children,
     )
     selection_model = h(
         "QItemSelectionModel",

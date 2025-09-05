@@ -1,6 +1,6 @@
 <!--
   Run this example as follows:
-  poetry run collagraph --renderer pygfx examples/pygfx/pygfx-component.cgx
+  uv run collagraph --renderer pygfx examples/pygfx/pygfx-component.cgx
 -->
 <template>
   <group>

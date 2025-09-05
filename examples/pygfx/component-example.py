@@ -8,9 +8,9 @@ from collagraph import h
 class Button(cg.Component):
     geometry = gfx.box_geometry()
     materials = {
-        "default": gfx.MeshPhongMaterial(color=[1.0, 0.5, 0.0]),
-        "pressed": gfx.MeshPhongMaterial(color=[0.0, 0.5, 0.0]),
-        "hovered": gfx.MeshPhongMaterial(color=[1.0, 0.2, 0.0]),
+        "default": gfx.MeshPhongMaterial(color=[1.0, 0.5, 0.0], pick_write=True),
+        "pressed": gfx.MeshPhongMaterial(color=[0.0, 0.5, 0.0], pick_write=True),
+        "hovered": gfx.MeshPhongMaterial(color=[1.0, 0.2, 0.0], pick_write=True),
     }
 
     def __init__(self, *args, **kwargs):

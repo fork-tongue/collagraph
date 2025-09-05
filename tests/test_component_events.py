@@ -23,7 +23,6 @@ def test_components_events():
             self.state["bumped"] = False
 
         def render(self):
-            nonlocal counter
             props = {
                 "on_bump": self.bump,
                 "value": "foo",

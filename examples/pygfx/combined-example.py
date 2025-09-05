@@ -3,7 +3,7 @@ Example of how to render lists, tables and trees.
 """
 
 from observ import reactive
-from point_cloud import materials, PointCloud, sphere_geom
+from point_cloud import materials, PointCloud
 import pygfx as gfx
 from PySide6 import QtWidgets
 from wgpu.gui.qt import WgpuCanvas
@@ -41,10 +41,10 @@ class RenderWidget(cg.Component):
             h(
                 "Mesh",
                 {
+                    "geometry": gfx.sphere_geometry(),
+                    "material": materials["other"],
                     "name": "Hip",
                     "local.position": [2, 2, 2],
-                    "geometry": sphere_geom,
-                    "material": materials["other"],
                 },
             ),
         )
@@ -54,9 +54,10 @@ class RenderWidget(cg.Component):
         def animate():
             renderer.render(container, camera)
 
-        self.gui.render(
-            element, container, callback=lambda: self.element.request_draw(animate)
+        self.gui.renderer.add_on_change_handler(
+            lambda: self.element.request_draw(animate)
         )
+        self.gui.render(element, container)
 
     def render(self):
         return h("WgpuCanvas", {"minimum_height": 400, "minimum_width": 600})
@@ -103,7 +104,7 @@ if __name__ == "__main__":
     renderer.register_element("WgpuCanvas", WgpuCanvas)
     gui = cg.Collagraph(renderer=renderer)
 
-    state = reactive({"count": 50})
+    state = reactive({"count": 1000})
 
     # Define Qt structure and map state to the structure
     element = h(Example, state)

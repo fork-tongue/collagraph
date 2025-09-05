@@ -5,7 +5,6 @@ from wgpu.gui.auto import run, WgpuCanvas
 import collagraph as cg
 from collagraph import h
 
-
 if __name__ == "__main__":
     canvas = WgpuCanvas(size=(600, 400))
     renderer = gfx.renderers.WgpuRenderer(canvas)
@@ -31,7 +30,7 @@ if __name__ == "__main__":
             # When increasing this number, it will take longer
             # and longer for pygfx to create the render pipeline
             # (compiling shaders and such), so be careful...
-            {"count": 50},
+            {"count": 500},
         ),
         h(
             "Mesh",
