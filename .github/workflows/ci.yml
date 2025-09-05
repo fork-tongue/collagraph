@@ -34,8 +34,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Linux py39
-            pyversion: "3.9"
           - name: Linux py310
             pyversion: "3.10"
           - name: Linux py311
@@ -70,10 +68,10 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install uv
         uses: astral-sh/setup-uv@v6
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v2
         with:
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Install dependencies
         run: uv sync
       - name: Build wheel
