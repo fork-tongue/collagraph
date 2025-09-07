@@ -82,7 +82,7 @@ try:
 except ImportError:  # pragma: no cover
     pass
 else:
-    from .pyside_renderer import PySideRenderer # noqa I001
+    from .pyside_renderer import PySideRenderer  # noqa I001
 
     # Need to import the objects in order to register their methods
     from .pyside import objects
