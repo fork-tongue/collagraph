@@ -37,14 +37,14 @@ pyside-dev = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"collagraph/__init__.py" = ["I001"]
-"collagraph/renderers/**/__init__.py" = ["F401"]
-"collagraph/renderers/__init__.py" = ["E402"]
-"tests/pyside/test_*.py" = ["E402"]
-"tests/*" = ["N806", "N802"]
-"collagraph/__pyinstaller/*" = ["N999"]
-"examples/*" = ["N999", "N802"]
-"examples/pyside/flow_layout.py" = ["N802"]
+"collagraph/__init__.py" = ["I001"]  # unsorted-imports
+"collagraph/renderers/**/__init__.py" = ["F401"]  # unused-import
+"collagraph/renderers/__init__.py" = ["E402"]  # module-import-not-at-top-of-file
+"tests/pyside/test_*.py" = ["E402"]  # module-import-not-at-top-of-file
+"tests/*" = ["N806", "N802"]  # non-lowercase-variable-in-function, invalid-function-name
+"collagraph/__pyinstaller/*" = ["N999"]  # invalid-module-name
+"examples/*" = ["N999", "N802"]  # invalid-module-name, invalid-function-name
+"examples/pyside/flow_layout.py" = ["N802"]  # invalid-function-name
 
 [tool.uv]
 package = true
