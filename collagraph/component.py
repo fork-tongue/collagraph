@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from collections import defaultdict
+from typing import ClassVar
 from weakref import ref
 
 from observ import reactive, readonly
@@ -10,7 +11,7 @@ from collagraph import render_slot
 class Component:
     """Abstract base class for components"""
 
-    __lookup_cache__ = defaultdict(dict)
+    __lookup_cache__: ClassVar = defaultdict(dict)
 
     def __init__(self, props=None, parent=None):
         self._props = readonly({} if props is None else props)

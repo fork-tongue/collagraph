@@ -2,7 +2,8 @@ from weakref import ref
 
 from observ import reactive
 
-from collagraph import Collagraph, create_element as h, EventLoopType
+from collagraph import Collagraph, EventLoopType
+from collagraph import create_element as h
 from collagraph.renderers import Renderer
 
 

@@ -3,7 +3,6 @@ from pathlib import Path
 
 from collagraph.cgx import cgx
 
-
 DATA_PATH = Path(__file__).parent.parent / "data"
 
 

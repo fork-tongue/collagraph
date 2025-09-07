@@ -29,10 +29,10 @@ def Example(props):
                     h(
                         "Widget",
                         {
-                            "tab_label": f"Tab {i+1}",
+                            "tab_label": f"Tab {i + 1}",
                             "tab_index": i,
                         },
-                        h("Label", {"text": f"Content of tab {i+1}"}),
+                        h("Label", {"text": f"Content of tab {i + 1}"}),
                     )
                     for i in range(props["tab_count"])
                 ],

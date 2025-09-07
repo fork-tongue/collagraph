@@ -25,7 +25,9 @@ def point(index, selected, hovered, set_selected, set_hovered):
     material = (
         "selected"
         if index == selected
-        else "hovered" if index == hovered else "default"
+        else "hovered"
+        if index == hovered
+        else "default"
     )
     return h(
         "Mesh",

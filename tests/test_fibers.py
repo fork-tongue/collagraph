@@ -1,7 +1,8 @@
-from observ import reactive
 import pytest
+from observ import reactive
 
-from collagraph import Collagraph, create_element as h, EventLoopType
+from collagraph import Collagraph, EventLoopType
+from collagraph import create_element as h
 from collagraph.renderers import DictRenderer
 
 
@@ -131,11 +132,11 @@ def test_fiber_element_deletion():
     assert len(list_element["children"]) == 1
 
     def assert_is_not_deleted_fiber(fiber):
-        assert fiber is not fiber_to_be_deleted  # noqa: F821
-        assert fiber.alternate is not fiber_to_be_deleted  # noqa: F821
-        assert fiber.child is not fiber_to_be_deleted  # noqa: F821
-        assert fiber.sibling is not fiber_to_be_deleted  # noqa: F821
-        assert fiber.parent is not fiber_to_be_deleted  # noqa: F821
+        assert fiber is not fiber_to_be_deleted
+        assert fiber.alternate is not fiber_to_be_deleted
+        assert fiber.child is not fiber_to_be_deleted
+        assert fiber.sibling is not fiber_to_be_deleted
+        assert fiber.parent is not fiber_to_be_deleted
 
     # The current tree should not have any references anymore to the fiber
     # that is to be deleted. The alternate tree still does
@@ -171,11 +172,11 @@ def test_fiber_element_type_change():
     fiber_to_be_deleted = gui._current_root.child.child
 
     def assert_is_not_deleted_fiber(fiber):
-        assert fiber is not fiber_to_be_deleted  # noqa: F821
-        assert fiber.alternate is not fiber_to_be_deleted  # noqa: F821
-        assert fiber.child is not fiber_to_be_deleted  # noqa: F821
-        assert fiber.sibling is not fiber_to_be_deleted  # noqa: F821
-        assert fiber.parent is not fiber_to_be_deleted  # noqa: F821
+        assert fiber is not fiber_to_be_deleted
+        assert fiber.alternate is not fiber_to_be_deleted
+        assert fiber.child is not fiber_to_be_deleted
+        assert fiber.sibling is not fiber_to_be_deleted
+        assert fiber.parent is not fiber_to_be_deleted
 
     state["foo"] = False
 

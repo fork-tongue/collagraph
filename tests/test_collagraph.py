@@ -1,7 +1,8 @@
-from observ import reactive
 import pytest
+from observ import reactive
 
-from collagraph import Collagraph, Component, create_element as h, EventLoopType
+from collagraph import Collagraph, Component, EventLoopType
+from collagraph import create_element as h
 from collagraph.renderers import DictRenderer
 
 
