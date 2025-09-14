@@ -14,8 +14,6 @@ def available_renderers():
         "PySideRenderer": "pyside",
         "PygfxRenderer": "pygfx",
         "DictRenderer": "dict",
-        # TODO: add support for DomRenderer
-        # "DomRenderer": "dom",
     }.items():
         try:
             importlib.import_module("collagraph", renderer_type)
@@ -25,13 +23,15 @@ def available_renderers():
     return result
 
 
-def init_collagraph(renderer_type: str, component_path: Path, state: dict = None):
-    Component, _ = cg.cgx.cgx.load(component_path)
+def init_collagraph(
+    renderer_type: str, component_path: Path, state: dict | None = None
+):
+    component_class, _ = cg.cgx.cgx.load(component_path)
     props = reactive(state or {})
 
     if renderer_type == "pygfx":
         import pygfx as gfx
-        from wgpu.gui.auto import run, WgpuCanvas
+        from wgpu.gui.auto import WgpuCanvas, run
 
         canvas = WgpuCanvas(size=(600, 400))
         wgpu_renderer = gfx.renderers.WgpuRenderer(canvas)
@@ -50,7 +50,7 @@ def init_collagraph(renderer_type: str, component_path: Path, state: dict = None
 
         gui = cg.Collagraph(renderer=cg.PygfxRenderer())
         gui.render(
-            cg.h(Component, props),
+            cg.h(component_class, props),
             container,
             callback=lambda: canvas.request_draw(animate),
         )
@@ -61,7 +61,7 @@ def init_collagraph(renderer_type: str, component_path: Path, state: dict = None
 
         app = QtWidgets.QApplication()
         gui = cg.Collagraph(renderer=cg.PySideRenderer())
-        gui.render(cg.h(Component, props), app)
+        gui.render(cg.h(component_class, props), app)
         app.exec()
     elif renderer_type == "dict":
         container = {"root": None}
@@ -69,10 +69,10 @@ def init_collagraph(renderer_type: str, component_path: Path, state: dict = None
             renderer=cg.DictRenderer(),
             event_loop_type=cg.EventLoopType.SYNC,
         )
-        gui.render(cg.h(Component, props), container)
+        gui.render(cg.h(component_class, props), container)
         # Start debugger to allow for inspection of container
         # and manipulation of props
-        breakpoint()
+        breakpoint()  # noqa T100
 
 
 def existing_component_file(value):

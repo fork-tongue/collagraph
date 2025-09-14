@@ -8,8 +8,7 @@ from PySide6 import QtWidgets
 
 import collagraph as cg
 from collagraph import h
-
-from examples.pyside.flow_layout import FlowLayout  # noqa: I100
+from examples.pyside.flow_layout import FlowLayout
 
 cg.PySideRenderer.register_layout("flow", FlowLayout)
 
@@ -63,7 +62,7 @@ def LayoutExample(props):
     # Data to fill the form layout
     form = []
     for i, widget in enumerate(["LineEdit", "ComboBox", "SpinBox"]):
-        text = f"Line {i+1}:"
+        text = f"Line {i + 1}:"
         if i == 1:
             text = "Line 2, long text:"
         form.append((widget, {"form_label": text, "form_index": i}))

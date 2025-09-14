@@ -1,16 +1,18 @@
 import ast
-from html.parser import HTMLParser
-from pathlib import Path
 import re
 import sys
 import textwrap
+import warnings
+from html.parser import HTMLParser
+from os import environ
+from pathlib import Path
 
 from collagraph import Component
-
 
 # Adjust this setting to disable some runtime checks
 # Defaults to True, except when it is part of an installed application
 CGX_RUNTIME_WARNINGS = not getattr(sys, "frozen", False)
+DEBUG = bool(environ.get("CGX_DEBUG", False))
 
 SUFFIX = "cgx"
 DIRECTIVE_PREFIX = "v-"
@@ -140,6 +142,12 @@ def construct_ast(path, template=None):
     # Because we modified the AST significantly we need to call an AST
     # method to fix any `lineno` and `col_offset` attributes of the nodes
     ast.fix_missing_locations(script_tree)
+
+    if DEBUG:  # pragma: no cover
+        try:
+            _print_ast_tree_as_code(script_tree, path)
+        except Exception as e:
+            warnings.warn(f"Could not unparse AST: {e}")
     return script_tree, component_def.name
 
 
@@ -805,18 +813,29 @@ class CGXParser(HTMLParser):
             )
 
 
-def _print_ast_tree_as_code(tree):  # pragma: no cover
+def _print_ast_tree_as_code(tree, path):  # pragma: no cover
     """Handy function for debugging an ast tree"""
-    try:
-        import black
-    except ImportError:
-        return
+    from rich.console import Console
+    from rich.syntax import Syntax
 
-    try:
-        plain_result = ast.unparse(tree)
-        result = black.format_file_contents(
-            plain_result, fast=False, mode=black.mode.Mode()
-        )
-        print(result)  # noqa: T201
-    except TypeError:
-        pass
+    plain_result = ast.unparse(tree)
+    formatted = format_code(plain_result)
+    console = Console()
+    syntax = Syntax(formatted, "python")
+    console.print(f"#---{path}---")
+    console.print(syntax)
+
+
+def format_code(code):  # pragma: no cover
+    """
+    Format the given code string with ruff
+    """
+    from subprocess import run
+
+    result = run(
+        ["ruff", "format", "-"],
+        input=code,
+        encoding="utf-8",
+        capture_output=True,
+    )
+    return result.stdout

@@ -1,9 +1,9 @@
 import importlib
-from types import ModuleType
 import warnings
+from types import ModuleType
 
-from observ import reactive
 import pytest
+from observ import reactive
 
 from collagraph.cgx import cgx
 

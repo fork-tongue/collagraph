@@ -1,6 +1,6 @@
-from importlib.machinery import ModuleSpec
 import pathlib
 import sys
+from importlib.machinery import ModuleSpec
 
 from . import cgx
 

@@ -25,7 +25,9 @@ jobs:
       - name: Install only dev dependencies
         run: uv sync --only-group dev
       - name: Lint
-        run: uv run flake8
+        run: uv run --no-sync ruff check .
+      - name: Format
+        run: uv run --no-sync ruff format --check .
 
   test:
     name: Test on ${{ matrix.name }}

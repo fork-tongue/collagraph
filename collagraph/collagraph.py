@@ -1,8 +1,8 @@
-from itertools import zip_longest
 import logging
+import time
+from itertools import zip_longest
 from operator import xor
 from queue import SimpleQueue
-import time
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
 from observ import reactive, scheduler, to_raw
@@ -17,7 +17,6 @@ from .types import (
     OpType,
     VNode,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +123,7 @@ class Collagraph:
 
         self.request_idle_work()
 
-    def request_idle_work(self, deadline: int = None):
+    def request_idle_work(self, deadline: int | None = None):
         """
         Schedules work to be done when all other Qt events have been handled.
 
@@ -133,7 +132,7 @@ class Collagraph:
                 no deadline is given, then it will be set to 16ms from now.
         """
         # current in ns
-        if not deadline:
+        if deadline is None:
             deadline = time.perf_counter_ns() + 16 * 1000000
 
         if self.event_loop_type is EventLoopType.SYNC:
@@ -207,7 +206,7 @@ class Collagraph:
             next_fiber = next_fiber.parent
 
     def update_class_component(self, fiber: Fiber):
-        component = fiber.component or fiber.alternate and fiber.alternate.component
+        component = fiber.component or (fiber.alternate and fiber.alternate.component)
         if not component:
             parent_component = None
             parent_fiber = fiber.parent
@@ -383,7 +382,7 @@ class Collagraph:
                 self._deletions.append(old_fiber)
 
             # And we add it to the fiber tree setting it either as a child or as a
-            # sibling, depending on whether it’s the first child or not.
+            # sibling, depending on whether it is the first child or not.
             if not wip_fiber.child:
                 wip_fiber.child = new_fiber
             if prev_sibling:
@@ -633,7 +632,7 @@ def is_equivalent_event_handler(val, other, key):
     return equivalent_functions(val, alt)
 
 
-def indexOf(items: Iterable, match: Callable, *args):
+def index_of(items: Iterable, match: Callable, *args):
     """Returns the index of the first item for which the `match` function returns
     True."""
     for idx, item in enumerate(items):
@@ -643,7 +642,7 @@ def indexOf(items: Iterable, match: Callable, *args):
 
 def first(items: Iterable, match: Callable, *args):
     """Returns the first item for which the `match` function returns True."""
-    idx = indexOf(items, match, *args)
+    idx = index_of(items, match, *args)
     return items[idx] if idx is not None else None
 
 
@@ -657,7 +656,7 @@ def compare(a: Iterable, b: Iterable, match: Callable):
     b = b.copy()
     matches = []
     for item in a:
-        match_idx = indexOf(b, match, item)
+        match_idx = index_of(b, match, item)
         if match_idx is not None:
             matches.append(b.pop(match_idx))
         else:

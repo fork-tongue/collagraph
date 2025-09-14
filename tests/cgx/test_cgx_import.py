@@ -17,7 +17,7 @@ def test_cgx_import():
 
 def test_cgx_multiple_classes():
     with pytest.raises(ValueError):
-        import tests.data.multiple_classes_wrong_order  # noqa: F401
+        import tests.data.multiple_classes_wrong_order
 
     import tests.data.multiple_classes_right_order  # noqa: F401
 

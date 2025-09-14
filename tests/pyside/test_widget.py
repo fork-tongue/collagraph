@@ -1,5 +1,5 @@
-from observ import reactive
 import pytest
+from observ import reactive
 
 pytest.importorskip("PySide6")
 

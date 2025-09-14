@@ -1,12 +1,15 @@
-from observ import reactive
 import pytest
+from observ import reactive
+from typing_extensions import ClassVar
 
 from collagraph import (
     Collagraph,
     Component,
-    create_element as h,
     DictRenderer,
     EventLoopType,
+)
+from collagraph import (
+    create_element as h,
 )
 
 
@@ -61,7 +64,7 @@ def test_component_events():
 
 def test_component_basic_lifecycle():
     class SpecialCounter(Counter):
-        lifecycle = []
+        lifecycle: ClassVar = []
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
