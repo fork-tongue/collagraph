@@ -1,6 +1,7 @@
+from typing import ClassVar
+
 import pytest
 from observ import reactive
-from typing_extensions import ClassVar
 
 from collagraph import (
     Collagraph,

@@ -7,11 +7,10 @@ from html.parser import HTMLParser
 from os import environ
 from pathlib import Path
 
-from collagraph import Component
-
 # Adjust this setting to disable some runtime checks
 # Defaults to True, except when it is part of an installed application
 CGX_RUNTIME_WARNINGS = not getattr(sys, "frozen", False)
+
 DEBUG = bool(environ.get("CGX_DEBUG", False))
 
 SUFFIX = "cgx"
@@ -27,64 +26,6 @@ AST_GEN_VARIABLE_PREFIX = "_ast_"
 
 COMPONENT_CLASS_DEFINITION = re.compile(r"class\s*(.*?)\s*\(.*?\)\s*:")
 MOUSTACHES = re.compile(r"\{\{.*?\}\}")
-
-
-def load(path):
-    """
-    Loads and returns a component from a CGX file.
-
-    A subclass of Component will be created from the CGX file
-    where the contents of the <template> tag will be used as
-    the `render` function, while the contents of the <script>
-    tag will be used to provide the rest of the functions of
-    the component.
-
-    For example:
-
-        <template>
-          <item foo="bar">
-            <item baz="bla"/>
-          </item>
-        </template
-
-        <script>
-        import collagraph as cg
-
-        class Foo(cg.Component):
-            pass
-        </script>
-
-    """
-    template = path.read_text()
-
-    return load_from_string(template, path)
-
-
-def load_from_string(template, path=None):
-    """
-    Load template from a string
-    """
-    if path is None:
-        path = "<template>"
-
-    # Construct the AST tree
-    tree, name = construct_ast(path=path, template=template)
-
-    # Compile the tree into a code object (module)
-    code = compile(tree, filename=str(path), mode="exec")
-    # Execute the code as module and pass a dictionary that will capture
-    # the global and local scope of the module
-    module_namespace = {}
-    exec(code, module_namespace)
-
-    # Check that the class definition is an actual subclass of Component
-    component_class = module_namespace[name]
-    if not issubclass(component_class, Component):
-        raise ValueError(
-            f"The last class defined in {path} is not a subclass of "
-            f"Component: {component_class}"
-        )
-    return component_class, module_namespace
 
 
 def construct_ast(path, template=None):

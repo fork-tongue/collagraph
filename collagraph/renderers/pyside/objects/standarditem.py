@@ -28,7 +28,7 @@ def insert(self, el, anchor=None):
 def remove(self, el):
     if hasattr(el, "model_index"):
         # Only support removal of rows for now
-        row, column = getattr(el, "model_index")
+        row, _column = getattr(el, "model_index")
         if model := el.model():
             index = model.indexFromItem(el)
             row = index.row()

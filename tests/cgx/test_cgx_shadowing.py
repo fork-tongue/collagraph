@@ -5,11 +5,11 @@ from types import ModuleType
 import pytest
 from observ import reactive
 
-from collagraph.cgx import cgx
+from collagraph.sfc import compiler
 
 
 def test_warn_on_shadow_import():
-    cgx.CGX_RUNTIME_WARNINGS = True
+    compiler.CGX_RUNTIME_WARNINGS = True
 
     import tests.data.shadow_imports
 
@@ -34,7 +34,7 @@ def test_warn_on_shadow_import():
 
 
 def test_disable_warnings():
-    cgx.CGX_RUNTIME_WARNINGS = False
+    compiler.CGX_RUNTIME_WARNINGS = False
 
     import tests.data.shadow_imports
 
