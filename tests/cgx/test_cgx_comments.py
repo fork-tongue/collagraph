@@ -1,13 +1,13 @@
 import textwrap
 
-from collagraph.cgx import cgx
+from collagraph.sfc import compiler
 
 
 def test_comment_at_root_level():
     # This next call should not fail based
     # on the existence of comments anywhere
     # between the elements
-    cgx.construct_ast(
+    compiler.construct_ast(
         "template",
         textwrap.dedent(
             """

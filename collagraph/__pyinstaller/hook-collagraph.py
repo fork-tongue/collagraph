@@ -3,7 +3,8 @@ from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_data_files
 
-from collagraph.cgx.cgx import CGXParser, get_script_ast
+from collagraph.sfc.compiler import get_script_ast
+from collagraph.sfc.parser import CGXParser
 
 
 def hook(hook_api):

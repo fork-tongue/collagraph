@@ -10,8 +10,8 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from collagraph import Collagraph
 from collagraph import create_element as h
-from collagraph.cgx.cgx import load_from_string
 from collagraph.renderers import PySideRenderer
+from collagraph.sfc import load_from_string
 
 
 def get_current_window(app):
