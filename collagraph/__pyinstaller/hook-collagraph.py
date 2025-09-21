@@ -48,11 +48,11 @@ class ImportsCollector(ast.NodeVisitor):
     def __init__(self):
         self.names = set()
 
-    def visit_ImportFrom(self, node):  # noqa: N802
+    def visit_ImportFrom(self, node):
         for alias in node.names:
             self.names.add(".".join([node.module, alias.name]))
         self.names.add(node.module)
 
-    def visit_Import(self, node):  # noqa: N802
+    def visit_Import(self, node):
         for alias in node.names:
             self.names.add(alias.name)

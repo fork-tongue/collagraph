@@ -800,7 +800,7 @@ class StoredNameCollector(ast.NodeVisitor):
     def __init__(self):
         self.names: set[str] = set()
 
-    def visit_Name(self, node):  # noqa: N802
+    def visit_Name(self, node):
         if isinstance(node.ctx, ast.Store):
             self.names.add(node.id)
 
@@ -809,7 +809,7 @@ class LambdaNamesCollector(ast.NodeVisitor):
     def __init__(self):
         self.names: set[str] = set()
 
-    def visit_Lambda(self, node):  # noqa: N802
+    def visit_Lambda(self, node):
         # For some reason the body of a lambda is not visited
         # so we need to do it manually.
         # From the docs of ast.NodeVisitor:
@@ -833,7 +833,7 @@ class RewriteName(ast.NodeTransformer):
         self.skip: set[str] = skip
         self.list_names: list[dict[str, set[str]]] = list_names
 
-    def visit_Name(self, node):  # noqa: N802
+    def visit_Name(self, node):
         # Don't try and replace any item from the __builtins__
         if node.id in __builtins__:
             return node
@@ -872,7 +872,7 @@ class RewriteName(ast.NodeTransformer):
 
 
 class RewriteDots(ast.NodeTransformer):
-    def visit_Name(self, node):  # noqa: N802
+    def visit_Name(self, node):
         parts = node.id.split(".")
         if len(parts) == 1:
             return node
@@ -892,11 +892,11 @@ class ImportsCollector(ast.NodeVisitor):
     def __init__(self):
         self.names = set()
 
-    def visit_ImportFrom(self, node):  # noqa: N802
+    def visit_ImportFrom(self, node):
         for alias in node.names:
             self.names.add(alias.asname or alias.name)
 
-    def visit_Import(self, node):  # noqa: N802
+    def visit_Import(self, node):
         for alias in node.names:
             self.names.add(alias.asname or alias.name)
 
