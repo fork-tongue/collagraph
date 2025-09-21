@@ -58,6 +58,7 @@ def test_slots_dynamic_for_template():
 
 @pytest.mark.xfail
 def test_slots_dynamic_if():
+    # For a workaround: see test_slots_dynamic_if_template
     from tests.data.slots.dynamic_if import Tree
 
     state = reactive({"show_content": False})
@@ -82,6 +83,7 @@ def test_slots_dynamic_if():
 
 @pytest.mark.xfail
 def test_slots_dynamic_for():
+    # For a workaround: see test_slots_dynamic_for_template
     from tests.data.slots.dynamic_for import Tree
 
     state = reactive({"content": ["a", "b"]})
