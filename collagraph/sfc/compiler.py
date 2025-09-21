@@ -179,7 +179,7 @@ def get_script_ast(parser: CGXParser, path: Path) -> ast.Module:
     # Create an AST from the script
     script_tree = ast.parse(script, filename=str(path), mode="exec")
     # Make sure that the lineno's match up with the lines in the .cgx file
-    ast.increment_lineno(script_tree, n=line)
+    ast.increment_lineno(script_tree, n=line - 1)
     return script_tree
 
 
