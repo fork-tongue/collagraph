@@ -54,6 +54,7 @@ pyside-dev = [
 "collagraph/renderers/**/__init__.py" = ["F401"]  # unused-import
 "collagraph/renderers/__init__.py" = ["E402"]  # module-import-not-at-top-of-file
 "examples/*" = ["N999", "N802"]  # invalid-module-name, invalid-function-name
+"examples/pygfx/*.py" = ["I001"]  # unsorted-imports
 "examples/pyside/flow_layout.py" = ["N802"]  # invalid-function-name
 "tests/*" = ["N806", "N802"]  # non-lowercase-variable-in-function, invalid-function-name
 "tests/pyside/test_*.py" = ["E402"]  # module-import-not-at-top-of-file
