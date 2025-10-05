@@ -16,8 +16,6 @@ def available_renderers():
         "PySideRenderer": "pyside",
         "PygfxRenderer": "pygfx",
         "DictRenderer": "dict",
-        # TODO: add support for DomRenderer
-        # "DomRenderer": "dom",
     }.items():
         try:
             importlib.import_module("collagraph", renderer_type)

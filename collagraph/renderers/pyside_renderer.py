@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-from functools import lru_cache
+from functools import lru_cache, partial
 from typing import Any, Callable
 from warnings import warn
 
@@ -404,6 +404,11 @@ class PySideRenderer(Renderer):
                 # a QObject?) results in a SystemError. Lambdas though _can_ function
                 # as a slot, so when creating a slot of the value fails, retry with
                 # a simple lambda.
+                if isinstance(value, partial):
+                    # In the case that value is a partial object, Pyside 6.9.2 spits
+                    # out a warning 'PytestUnraisableExceptionWarning'. Wrapping the
+                    # partial in a lambda seems to do the trick
+                    raise SystemError
                 slot = QtCore.Slot()(value)
             except SystemError:
                 # TODO: with some inspection we might be able to figure out the

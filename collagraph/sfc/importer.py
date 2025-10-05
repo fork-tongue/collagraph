@@ -39,7 +39,7 @@ class CGXPathFinder(MetaPathFinder):
             # In our case we can just return the existing spec.
             return target.__spec__
 
-        package, _, module_name = name.rpartition(".")
+        _package, _, module_name = name.rpartition(".")
         sfc_file_name = f"{module_name}.{compiler.SUFFIX}"
         directories = sys.path if path is None else path
         for directory in directories:

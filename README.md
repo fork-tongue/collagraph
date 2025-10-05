@@ -81,11 +81,10 @@ uv run collagraph examples/pyside/counter.cgx
 
 For more examples, please take a look at the [examples folder](examples).
 
-Currently there are three renderers:
+Currently there are two renderers:
 
 * [PysideRenderer](collagraph/renderers/pyside_renderer.py): for rendering PySide6 applications
 * [PygfxRenderer](collagraph/renderers/pygfx_renderer.py): for rendering 3D graphic scenes with [Pygfx](https://github.com/pygfx/pygfx)
-* [DomRenderer](collagraph/renderers/dom_renderer.py): for rendering to browser DOM through [PyScript](https://pyscript.net) (or rather [Pyodide](https://pyodide.org/en/stable/))
 
 It is possible to create a custom Renderer using the [Renderer](collagraph/renderers/__init__.py) interface, to render to other UI frameworks, for instance wxPython.
 

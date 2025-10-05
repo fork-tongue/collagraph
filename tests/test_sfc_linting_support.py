@@ -13,3 +13,4 @@ def test_cgx_construct_ast():
     assert isinstance(tree, ast.Module)
     import_collagraph, class_def = tree.body
     assert class_def.name == "Simple"
+    assert import_collagraph.names[0].name == "collagraph"
