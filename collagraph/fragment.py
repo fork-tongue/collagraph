@@ -585,7 +585,8 @@ class SlotFragment(Fragment):
     the current element. The parent can then redirect the actual mounting
     to wherever it is actually needed?
 
-
+    Workaround: use a template tag if dynamic slot content is needed.
+    See: tests/data/slots/dynamic_if_template.cgx
     """
 
     def __init__(self, *args, name, tag=None, props=None, **kwargs):
@@ -607,9 +608,6 @@ class SlotFragment(Fragment):
             super().set_attribute(attr, value)
 
     def mount(self, target: Any, anchor: Any | None = None):
-        # if self._mounted:
-        #     return
-
         component_parent = self.parent_component.parent
         if component_parent.slot_contents:
             for item in component_parent.slot_contents:
