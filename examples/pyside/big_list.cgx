@@ -1,6 +1,6 @@
 <!--
   Run this example as follows:
-  poetry run collagraph examples/pyside/big_list.cgx
+  uv run collagraph examples/pyside/big_list.cgx
 -->
 <template>
   <window>

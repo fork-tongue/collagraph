@@ -21,7 +21,7 @@
         v-for="item in box"
         :is="item[0]"
         v-bind="item[1]"
-        @clicked="item[1]['clicked']()"
+        @clicked="item[1]['clicked']"
       />
     </groupbox>
     <groupbox
@@ -68,7 +68,7 @@
       text="This widget takes up all the remaining space in the top-level layout."
     />
     <dialogbuttonbox>
-        <button text="Select all" role="ResetRole" @clicked="select_all" />
+      <button text="Select all" role="ResetRole" @clicked="select_all" />
     </dialogbuttonbox>
   </widget>
 </window>
@@ -94,7 +94,6 @@ class LayoutExample(cg.Component):
                     "button",
                     {
                         "text": f"Button {i}",
-                        # "on_clicked": lambda _=None, x=i: self.set_index(x),
                         "clicked": lambda _=None, x=i: self.set_index(x),
                     },
                 )
