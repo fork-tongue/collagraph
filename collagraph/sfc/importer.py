@@ -7,7 +7,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Sequence
 
-from . import compiler
+from . import compiler, load
 
 
 class CGXLoader(Loader):
@@ -24,7 +24,7 @@ class CGXLoader(Loader):
     def exec_module(self, module):
         """Exec the compiled code, using the given module's __dict__ as namespace
         in order to instantiate the module"""
-        compiler.load(self.sfc_path, namespace=module.__dict__)
+        load(self.sfc_path, namespace=module.__dict__)
 
 
 class CGXPathFinder(MetaPathFinder):

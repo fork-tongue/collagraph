@@ -109,7 +109,7 @@ if __name__ == "__main__":
     renderer.register_layout("flow", FlowLayout)
     gui = cg.Collagraph(renderer=renderer)
 
-    Window, _ = cg.sfc.compiler.load_from_string(
+    Window, _ = cg.sfc.load_from_string(
         dedent(
             """
         <window>

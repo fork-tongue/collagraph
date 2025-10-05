@@ -8,7 +8,7 @@ pytest.importorskip("PySide6")
 from PySide6 import QtWidgets
 
 import collagraph as cg
-from collagraph.sfc.compiler import load_from_string
+from collagraph.sfc import load_from_string
 
 
 def test_widget_size():

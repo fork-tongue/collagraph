@@ -6,7 +6,7 @@ import pytest
 from observ import scheduler
 from observ.proxy_db import proxy_db
 
-from collagraph.sfc import compiler
+from collagraph.sfc import load_from_string
 
 # If there is no current event loop, then get_event_loop()
 # will emit a deprecation warning since Python 3.12, which
@@ -22,7 +22,7 @@ async def miniloop():
 
 def load(source, namespace=None):
     source = textwrap.dedent(source)
-    return compiler.load_from_string(source, namespace=namespace)
+    return load_from_string(source, namespace=namespace)
 
 
 @pytest.fixture
