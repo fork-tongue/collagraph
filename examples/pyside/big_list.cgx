@@ -15,8 +15,8 @@
         @item-double-clicked="item_double_clicked"
       >
         <Item
-          v-for="it in items"
-          v-bind="it"
+          v-for="item in items"
+          v-bind="item"
           :columns="columns"
         />
       </treewidget>
