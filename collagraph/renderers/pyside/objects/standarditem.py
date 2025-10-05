@@ -19,7 +19,7 @@ def insert(self, el, anchor=None):
                 break
         if index is None:
             return
-        self.insertRows(index, [el])
+        self.insertRow(index, el)
     else:
         self.appendRow(el)
 
