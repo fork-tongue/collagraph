@@ -5,7 +5,7 @@ from collagraph.renderers.dict_renderer import format_dict
 
 
 def test_component_basic_lifecycle(parse_source):
-    Counter, namespace = parse_source(
+    _, namespace = parse_source(
         """
         <counter
           :count="count"

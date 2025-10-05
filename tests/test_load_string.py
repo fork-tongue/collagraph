@@ -2,7 +2,7 @@ from collagraph import Collagraph, DictRenderer, EventLoopType
 
 
 def test_load_string(parse_source):
-    Item, namespace = parse_source(
+    _, namespace = parse_source(
         """
         <item :value="value" />
 

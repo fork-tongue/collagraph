@@ -508,7 +508,7 @@ def test_consecutive_lists(parse_source):
 
 
 def test_for_regression(parse_source):
-    Counter, namespace = parse_source(
+    _, namespace = parse_source(
         """
         <counter
           :count="count"

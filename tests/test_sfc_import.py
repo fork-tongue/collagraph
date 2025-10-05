@@ -32,7 +32,7 @@ def test_sfc_no_component_class():
 
 
 def test_cgx_use_imported_component(parse_source):
-    Content, namespace = parse_source(
+    _, namespace = parse_source(
         """
         <content-example :text="content" />
 

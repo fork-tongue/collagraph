@@ -46,7 +46,7 @@ def test_component_tag(parse_source):
 
 
 def test_component_tag_props_and_events(parse_source):
-    SubComponent, namespace = parse_source(
+    _, namespace = parse_source(
         """
         <sub
           :subval="val"

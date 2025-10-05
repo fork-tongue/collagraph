@@ -105,7 +105,7 @@ def test_lots_of_elements(parse_source):
 
 
 def test_delete_item_with_children_and_siblings(parse_source, process_events):
-    Item, namespace = parse_source(
+    _, namespace = parse_source(
         """
         <item>
           <part v-for="title in parts" :title="title" />
