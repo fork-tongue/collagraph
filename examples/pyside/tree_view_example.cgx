@@ -1,90 +1,62 @@
 <!--
-  Run this example as follows:
-  uv run collagraph examples/pyside/tree_view.cgx
+Tasks:
+- How to hide/show columns? Do indexes change?
 -->
-<template>
-  <window>
-    <widget>
-      <treeview :selection-mode="QtWidgets.QTreeView.ExtendedSelection">
-        <Model
-          v-bind="state"
-          @item-changed="item_changed"
-        />
-        <itemselectionmodel
-          object-name="selection-model"
-          @selection-changed="selection_changed"
-        />
-      </treeview>
-      <widget :layout="{'type': 'Box', 'direction': 'LeftToRight'}">
-        <button
-          text="Add row"
-          @clicked="add_row"
-        />
-        <button
-          text="Add column"
-          @clicked="add_column"
-        />
-        <button
-          text="Add child"
-          :enabled="bool(selected)"
-          @clicked="add_child"
-        />
-      </widget>
-      <widget :layout="{'type': 'Box', 'direction': 'LeftToRight'}">
-        <button
-          text="Remove item"
-          :enabled="bool(selected)"
-          @clicked="remove_item"
-        />
-        <button
-          text="Remove column"
-          :enabled="len(columns) > 1"
-          @clicked="remove_column"
-        />
-      </widget>
+<!--
+  Run this example as follows:
+  uv run collagraph examples/pyside/tree_view_example.cgx
+-->
+<window>
+  <widget>
+    <treeview :selection-mode="QtWidgets.QTreeView.ExtendedSelection">
+      <Model
+        v-bind="state"
+        @item-changed="item_changed"
+      />
+      <itemselectionmodel
+        object-name="selection-model"
+        @selection-changed="selection_changed"
+      />
+    </treeview>
+    <widget :layout="{'type': 'Box', 'direction': 'LeftToRight'}">
+      <button
+        text="Add row"
+        @clicked="add_row"
+      />
+      <button
+        text="Add child"
+        :enabled="bool(selected)"
+        @clicked="add_child"
+      />
+      <button
+        text="Add column"
+        @clicked="add_column"
+      />
     </widget>
-  </window>
-</template>
+    <widget :layout="{'type': 'Box', 'direction': 'LeftToRight'}">
+      <button
+        text="Remove item"
+        :enabled="bool(selected)"
+        @clicked="remove_item"
+      />
+      <button
+        text="Remove column"
+        :enabled="len(columns) > 1"
+        @clicked="remove_column"
+      />
+    </widget>
+  </widget>
+</window>
 
 <script>
 import collagraph as cg
 from PySide6 import QtCore, QtWidgets
 
+from .tree_view_model import Model
 
-class Model(cg.Component):
-    def updated(self):
-        # The column count automatically grows by updating 'horizontal-header-labels'
-        # but doesn't automatically shrink, so we'll have to do that ourselves
-        if self.element.columnCount() != len(self.props["columns"]):
-            self.element.setColumnCount(len(self.props["columns"]))
 
-    def convert(self, item, row, column, column_name):
-        return cg.h(
-            "standarditem",
-            {
-                "text": item.get(column_name),
-                "model_index": (row, column),
-            },
-            *[
-                self.convert(item, row, column, column_name)
-                for row, item in enumerate(item.get("children", []))
-                for column, column_name in enumerate(self.props["columns"])
-            ],
-        )
-
-    def render(self):
-        return cg.h(
-            "itemmodel",
-            {
-                "horizontal-header-labels": self.props["columns"],
-                "on_item_changed": lambda item: self.emit("item-changed", item),
-            },
-            *[
-                self.convert(item, row, column, column_name)
-                for row, item in enumerate(self.props["items"])
-                for column, column_name in enumerate(self.props["columns"])
-            ],
-        )
+def row(text: str, /, children=None, **kwargs):
+    return {"text": text, **kwargs, "children": children or []}
 
 
 class TreeView(cg.Component):
@@ -94,17 +66,15 @@ class TreeView(cg.Component):
         # has some problems...
         self.state["columns"] = ["text", "other"]
         self.state["items"] = [
-            {
-                "text": "Foo",
-                "other": "bla",
-                "children": [{"text": "Bar", "other": "bloeb!"}],
-            },
-            {"text": "Bla", "other": "toet"},
+            row("Foo", other="bla", children=[row("Bar", other="bloeb!")]),
+            row("Bla", other="toet"),
         ]
         self.state["selected"] = []
 
     def add_row(self):
-        self.state["items"].append({"text": "New"})
+        self.state["items"].append(
+            row("New", **{column: "" for column in self.state["columns"][1:]})
+        )
 
     def add_column(self):
         text, ok = QtWidgets.QInputDialog.getText(
@@ -120,13 +90,9 @@ class TreeView(cg.Component):
             items = items[index]["children"]
 
         selected_item = items[selection[-1]]
-        # NOTE: Instead of 'setdefault', check for key instead until
-        # https://github.com/fork-tongue/observ/pull/82 is merged into
-        # collagraph
-        if "children" in selected_item:
-            selected_item["children"].append({"text": "New"})
-        else:
-            selected_item["children"] = [{"text": "New"}]
+        selected_item["children"].append(
+            row("New", **{column: "" for column in self.state["columns"][1:]})
+        )
 
     def remove_item(self):
         # Process selections in reverse so that it
@@ -169,8 +135,6 @@ class TreeView(cg.Component):
             selected_item[column] = item.text()
         else:
             for key in list(selected_item.keys()):
-                if key == "children":
-                    continue
                 if key not in self.state["columns"]:
                     del selected_item[key]
 
@@ -182,6 +146,10 @@ class TreeView(cg.Component):
         # For instance, when row 2 and row 1 are removed (in that order) the
         # selection_changed handler will be called twice with '1' as deselected
         # argument...
+        # print("SELECTED:")
+        # for index in selected.indexes():
+        #     print(f"- {index.row()}, {index.column()}")
+
         selection_model = self.element.findChild(
             QtCore.QItemSelectionModel, "selection-model"
         )
@@ -191,10 +159,9 @@ class TreeView(cg.Component):
             )
 
 
-def clear_column(item, column):
-    if "children" in item:
-        for child in item["children"]:
-            clear_column(child, column)
+def clear_column(item: dict, column: str):
+    for child in item["children"]:
+        clear_column(child, column)
 
     if column in item:
         del item[column]

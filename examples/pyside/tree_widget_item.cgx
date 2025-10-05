@@ -1,0 +1,32 @@
+<treewidgetitem
+  :content="contents()"
+>
+  <Item
+    v-for="item in decendants()"
+    v-bind="item"
+    :columns="columns"
+  />
+</treewidgetitem>
+
+
+<script>
+import collagraph as cg
+from PySide6 import QtCore, QtWidgets
+
+
+class Item(cg.Component):
+    def contents(self):
+        try:
+            return {
+                idx: self.props["item"].get(column, "")
+                for idx, column in enumerate(self.props["columns"])
+            }
+        except:
+            return {}
+
+    def decendants(self):
+        return [
+            {"item": child.content, "children": child.children}
+            for child in self.props.get("children", [])
+        ]
+</script>
