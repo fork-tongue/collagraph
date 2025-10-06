@@ -118,8 +118,6 @@ class TreeWidget(cg.Component):
                 clear_column(item, column)
 
     def item_changed(self, item, column):
-        return
-        print("ITEM CHANGED", item, column)
         tree_widget = self.element.findChild(QtWidgets.QTreeWidget, "tree-widget")
         index = convert_qindex(tree_widget.indexFromItem(item))
 
@@ -127,13 +125,16 @@ class TreeWidget(cg.Component):
         for row in index[:-1]:
             items = items[row]["children"]
 
-        print(items)
         selected_item = items[index[-1]]
 
         if column < len(self.state["columns"]):
             column_name = self.state["columns"][column]
-            breakpoint()
-            selected_item[column_name] = item.text(column)
+            updated_value = item.text(column)
+            old_value = selected_item.get(column_name)
+            if old_value != updated_value:
+                # Prevent doing unnecessary updates to the state
+                if updated_value or old_value:
+                    selected_item[column_name] = item.text(column)
         else:
             for key in list(selected_item.keys()):
                 if key == "children":
