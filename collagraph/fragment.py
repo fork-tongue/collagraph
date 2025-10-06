@@ -417,7 +417,7 @@ class ListFragment(Fragment):
         # First create a computed value that captures the expression
         # as a list. We use a computed value so that the list is
         # evaluated lazy and is only re-evaluated when needed.
-        @computed
+        @computed(deep=False)
         @weak(self)
         def expression(self):
             value = self.expression()
