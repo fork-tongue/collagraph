@@ -27,7 +27,6 @@ class ComboBox(cg.Component):
         # all the items from the props
         self.state["current_index"] = 2
 
-
     def changed(self, idx):
         print("index changed:", idx)
         self.state["current_index"] = idx
