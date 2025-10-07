@@ -45,8 +45,7 @@ def test_component_template_tag(parse_source):
               <child name="a" />
               <child name="b" />
             </template>
-            <!-- FIXME: v-if="more" creates NameError -->
-            <template v-if="props['more']">
+            <template v-if="more">
               <child name="c" />
               <child name="d" />
             </template>
