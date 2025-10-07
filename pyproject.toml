@@ -1,6 +1,6 @@
 [project]
 name = "collagraph"
-version = "0.7.0"
+version = "0.8.0"
 description = "Reactive user interfaces"
 authors = [
     { name = "Berend Klein Haneveld", email = "berendkleinhaneveld@gmail.com" },
