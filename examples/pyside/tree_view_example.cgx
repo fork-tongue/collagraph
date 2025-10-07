@@ -1,0 +1,178 @@
+<!--
+Tasks:
+- How to hide/show columns? Do indexes change?
+-->
+<!--
+  Run this example as follows:
+  uv run collagraph examples/pyside/tree_view_example.cgx
+-->
+<window>
+  <widget>
+    <treeview :selection-mode="QtWidgets.QTreeView.ExtendedSelection">
+      <Model
+        v-bind="state"
+        @item-changed="item_changed"
+      />
+      <itemselectionmodel
+        object-name="selection-model"
+        @selection-changed="selection_changed"
+      />
+    </treeview>
+    <widget :layout="{'type': 'Box', 'direction': 'LeftToRight'}">
+      <button
+        text="Add row"
+        @clicked="add_row"
+      />
+      <button
+        text="Add child"
+        :enabled="bool(selected)"
+        @clicked="add_child"
+      />
+      <button
+        text="Add column"
+        @clicked="add_column"
+      />
+    </widget>
+    <widget :layout="{'type': 'Box', 'direction': 'LeftToRight'}">
+      <button
+        text="Remove item"
+        :enabled="bool(selected)"
+        @clicked="remove_item"
+      />
+      <button
+        text="Remove column"
+        :enabled="len(columns) > 1"
+        @clicked="remove_column"
+      />
+    </widget>
+  </widget>
+</window>
+
+<script>
+import collagraph as cg
+from PySide6 import QtCore, QtWidgets
+
+from .tree_view_model import Model
+
+
+def row(text: str, /, children=None, **kwargs):
+    return {"text": text, **kwargs, "children": children or []}
+
+
+class TreeView(cg.Component):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Adding columns seems to work relatively OK, but removing columns
+        # has some problems...
+        self.state["columns"] = ["text", "other"]
+        self.state["items"] = [
+            row("Foo", other="bla", children=[row("Bar", other="bloeb!")]),
+            row("Bla", other="toet"),
+        ]
+        self.state["selected"] = []
+
+    def add_row(self):
+        self.state["items"].append(
+            row("New", **{column: "" for column in self.state["columns"][1:]})
+        )
+
+    def add_column(self):
+        text, ok = QtWidgets.QInputDialog.getText(
+            self.element, "Name for new column", "Column name:"
+        )
+        if ok and text:
+            self.state["columns"].append(text)
+
+    def add_child(self):
+        selection = self.state["selected"][0]
+        items = self.state["items"]
+        for index in selection[:-1]:
+            items = items[index]["children"]
+
+        selected_item = items[selection[-1]]
+        selected_item["children"].append(
+            row("New", **{column: "" for column in self.state["columns"][1:]})
+        )
+
+    def remove_item(self):
+        # Process selections in reverse so that it
+        # works with multiple selections
+        selections = reversed(
+            sorted(
+                ",".join(str(i) for i in selection)
+                for selection in self.state["selected"]
+            )
+        )
+
+        for selection in selections:
+            selection = list(int(i) for i in selection.split(","))
+            items = self.state["items"]
+            for index in selection[:-1]:
+                items = items[index]["children"]
+
+            items.pop(selection[-1])
+
+    def remove_column(self):
+        columns = self.state["columns"]
+        if len(columns) > 1:
+            column = columns.pop()
+
+            for item in self.state["items"]:
+                clear_column(item, column)
+
+    def item_changed(self, item):
+        index = convert_qindex(item.index())
+
+        items = self.state["items"]
+        for row in index[:-1]:
+            items = items[row]["children"]
+
+        selected_item = items[index[-1]]
+
+        col_nr = item.index().column()
+        if col_nr < len(self.state["columns"]):
+            column = self.state["columns"][col_nr]
+            selected_item[column] = item.text()
+        else:
+            for key in list(selected_item.keys()):
+                if key not in self.state["columns"]:
+                    del selected_item[key]
+
+    def selection_changed(self, selected, deselected):
+        # Get a reference to the selection model
+        # Updating the selected rows from the 'selected' and 'deselected'
+        # arguments does not always work properly when multiple selected items
+        # are removed because the order in which events are handled.
+        # For instance, when row 2 and row 1 are removed (in that order) the
+        # selection_changed handler will be called twice with '1' as deselected
+        # argument...
+        # print("SELECTED:")
+        # for index in selected.indexes():
+        #     print(f"- {index.row()}, {index.column()}")
+
+        selection_model = self.element.findChild(
+            QtCore.QItemSelectionModel, "selection-model"
+        )
+        if selection_model:
+            self.state["selected"] = list(
+                [convert_qindex(index) for index in selection_model.selectedRows()]
+            )
+
+
+def clear_column(item: dict, column: str):
+    for child in item["children"]:
+        clear_column(child, column)
+
+    if column in item:
+        del item[column]
+
+
+def convert_qindex(index):
+    indexes = []
+
+    while index.isValid():
+        indexes.insert(0, index.row())
+        index = index.parent()
+
+    return indexes
+</script>

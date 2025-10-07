@@ -1,0 +1,28 @@
+<standarditem
+    :text="text"
+    :model_index="model_index"
+>
+    <Item
+      v-for="child in converted_children()"
+      v-bind="child"
+      :columns="columns"
+    />
+</standarditem>
+
+<script>
+import collagraph as cg
+from PySide6 import QtCore, QtWidgets
+
+
+class Item(cg.Component):
+    def converted_children(self):
+        return [
+            {
+                "text": item.get(column_name),
+                "model_index": (row, column),
+                "items": item["children"],
+            }
+            for row, item in enumerate(self.props["items"])
+            for column, column_name in enumerate(self.props["columns"])
+        ]
+</script>

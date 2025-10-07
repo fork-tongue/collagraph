@@ -2,16 +2,16 @@
   Run this example as follows:
   uv run collagraph --renderer pygfx examples/pygfx/pygfx-component.cgx
 -->
-<template>
-  <group>
-  	<ambient-light />
-  	<directional-light />
-  	<mesh
-  	  :material="red"
-  	  :geometry="sphere"
-  	/>
-  </group>
-</template>
+<group>
+	<ambient-light />
+	<directional-light />
+	<mesh
+	  :material="material()"
+	  :geometry="sphere"
+    @pointer_enter="lambda ev: hover(True)"
+    @pointer_leave="lambda ev: hover(False)"
+	/>
+</group>
 
 <script>
 import pygfx as gfx
@@ -19,9 +19,15 @@ import collagraph as cg
 
 
 sphere = gfx.sphere_geometry(radius=3)
-red = gfx.MeshPhongMaterial(color=(1, 0.2, 0.2))
+red = gfx.MeshPhongMaterial(color=(1, 0.2, 0.2), pick_write=True)
+blue = gfx.MeshPhongMaterial(color=(0.2, 0.4, 1.0), pick_write=True)
 
 
 class Ball(cg.Component):
-	pass
+    def material(self):
+        hovered = self.state.get("hovered", False)
+        return red if hovered else blue
+
+    def hover(self, hover):
+        self.state["hovered"] = hover
 </script>

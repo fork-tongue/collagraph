@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import importlib
 import json
@@ -26,7 +28,9 @@ def available_renderers():
 def init_collagraph(
     renderer_type: str, component_path: Path, state: dict | None = None
 ):
-    component_class, _ = cg.sfc.load(component_path)
+    file_as_module = ".".join([*component_path.parts[:-1], component_path.stem])
+    component_module = importlib.import_module(file_as_module)
+    component_class = component_module.__component_class
     props = reactive(state or {})
 
     if renderer_type == "pygfx":
@@ -36,24 +40,22 @@ def init_collagraph(
         canvas = WgpuCanvas(size=(600, 400))
         wgpu_renderer = gfx.renderers.WgpuRenderer(canvas)
 
-        camera = gfx.PerspectiveCamera(70, 16 / 9)
-        camera.position.z = 15
+        camera = gfx.PerspectiveCamera(70)
+        camera.local.z = 15
+        camera.show_pos((0, 0, 0))
 
-        controls = gfx.OrbitController(camera.position.clone())
-        controls.add_default_event_handlers(wgpu_renderer, camera)
+        controls = gfx.OrbitController(camera)
+        controls.register_events(wgpu_renderer)
 
         container = gfx.Scene()
 
         def animate():
-            controls.update_camera(camera)
             wgpu_renderer.render(container, camera)
 
-        gui = cg.Collagraph(renderer=cg.PygfxRenderer())
-        gui.render(
-            cg.h(component_class, props),
-            container,
-            callback=lambda: canvas.request_draw(animate),
-        )
+        renderer = cg.PygfxRenderer()
+        renderer.add_on_change_handler(lambda: canvas.request_draw(animate))
+        gui = cg.Collagraph(renderer=renderer)
+        gui.render(component_class, container, state=props)
 
         run()
     elif renderer_type == "pyside":
@@ -61,7 +63,7 @@ def init_collagraph(
 
         app = QtWidgets.QApplication()
         gui = cg.Collagraph(renderer=cg.PySideRenderer())
-        gui.render(cg.h(component_class, props), app)
+        gui.render(component_class, app, state=props)
         app.exec()
     elif renderer_type == "dict":
         container = {"root": None}
@@ -69,10 +71,10 @@ def init_collagraph(
             renderer=cg.DictRenderer(),
             event_loop_type=cg.EventLoopType.SYNC,
         )
-        gui.render(cg.h(component_class, props), container)
+        gui.render(component_class, container, state=props)
         # Start debugger to allow for inspection of container
         # and manipulation of props
-        breakpoint()  # noqa T100
+        breakpoint()  # noqa: T100
 
 
 def existing_component_file(value):

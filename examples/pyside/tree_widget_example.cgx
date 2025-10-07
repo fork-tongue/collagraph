@@ -1,0 +1,186 @@
+<!--
+  Run this example as follows:
+  uv run collagraph examples/pyside/tree_widget.cgx
+-->
+<window>
+  <widget>
+    <treewidget
+      object-name="tree-widget"
+      :selection-mode="QtWidgets.QTreeView.ExtendedSelection"
+      :header-labels="columns"
+      :column-count="len(columns)"
+      @item-changed="item_changed"
+      @item-selection-changed="selection_changed"
+      @item-double-clicked="item_double_clicked"
+    >
+      <Item
+        v-for="item in items"
+        :item="item.content"
+        :children="item.children"
+        :columns="columns"
+      />
+    </treewidget>
+    <widget
+      :layout="{'type': 'Box', 'direction': 'LeftToRight'}"
+    >
+      <button
+        text="Add row"
+        @clicked="add_row"
+      />
+      <button
+        text="Add column"
+        @clicked="add_column"
+      />
+      <button
+        text="Add child"
+        :enabled="bool(selected)"
+        @clicked="add_child"
+      />
+    </widget>
+    <widget
+      :layout="{'type': 'Box', 'direction': 'LeftToRight'}"
+    >
+      <button
+        text="Remove item"
+        :enabled="bool(selected)"
+        @clicked="remove_item"
+      />
+      <button
+        text="Remove column"
+        :enabled="len(columns) > 1"
+        @clicked="remove_column"
+      />
+    </widget>
+  </widget>
+</window>
+
+<script>
+import collagraph as cg
+from observ import reactive
+from PySide6 import QtCore, QtWidgets
+
+from examples.pyside.tree_widget_item import Item
+
+
+class Row:
+    def __init__(self, content=None, children=None):
+        if content is None:
+            content = {}
+        if children is None:
+            children = []
+        self.content = reactive(content)
+        self.children = reactive(children)
+
+
+class TreeWidget(cg.Component):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.state["columns"] = ["text", "other"]
+        self.state["items"] = [
+            Row(
+                content={"text": "Foo", "other": "bla"},
+                children=[
+                    Row(content={"text": "Bar", "other": "bloeb!"}),
+                ],
+            ),
+            Row(content={"text": "Bla", "other": "toet"}),
+        ]
+        self.state["selected"] = []
+
+    def add_row(self):
+        self.state["items"].append(Row(content={"text": "New"}))
+
+    def add_column(self):
+        text, ok = QtWidgets.QInputDialog.getText(
+            self.element, "Name for new column", "Column name:"
+        )
+        if ok and text and text not in self.state["columns"]:
+            self.state["columns"].append(text)
+
+    def add_child(self):
+        selection = self.state["selected"][0]
+        items = self.state["items"]
+        for index in selection[:-1]:
+            items = items[index].children
+
+        selected_item = items[selection[-1]]
+        selected_item.children.append(Row(content={"text": "New"}))
+
+    def remove_item(self):
+        # Process selections in reverse so that it
+        # works with multiple selections
+        selections = reversed(
+            sorted(
+                ",".join(str(i) for i in selection)
+                for selection in self.state["selected"]
+            )
+        )
+
+        for selection in selections:
+            selection = list(int(i) for i in selection.split(","))
+            items = self.state["items"]
+            for index in selection[:-1]:
+                items = items[index].children
+
+            items.pop(selection[-1])
+
+    def remove_column(self):
+        columns = self.state["columns"]
+        if len(columns) > 1:
+            column = columns.pop()
+
+            for item in self.state["items"]:
+                clear_column(item, column)
+
+    def item_changed(self, item, column):
+        tree_widget = self.element.findChild(QtWidgets.QTreeWidget, "tree-widget")
+        index = convert_qindex(tree_widget.indexFromItem(item))
+
+        items = self.state["items"]
+        for row in index[:-1]:
+            items = items[row].children
+
+        selected_item: Row = items[index[-1]]
+
+        if column < len(self.state["columns"]):
+            column_name = self.state["columns"][column]
+            selected_item.content[column_name] = item.text(column)
+        else:
+            for key in list(selected_item.content.keys()):
+                if key not in self.state["columns"]:
+                    del selected_item.content[key]
+
+    def selection_changed(self):
+        tree_widget = self.element.findChild(QtWidgets.QTreeWidget, "tree-widget")
+        self.state["selected"] = list(
+            [
+                convert_qindex(tree_widget.indexFromItem(item))
+                for item in tree_widget.selectedItems()
+            ]
+        )
+
+    def item_double_clicked(self, item, column):
+        flags = item.flags()
+        if True:  # Put your logic for checking whether column/item is editable
+            item.setFlags(flags | QtCore.Qt.ItemIsEditable)
+        elif flags & QtCore.Qt.ItemIsEditable:
+            item.setFlags(flags ^ QtCore.Qt.ItemIsEditable)
+
+
+def clear_column(item: Row, column):
+    for child in item.children:
+        clear_column(child, column)
+
+    if column in item.content:
+        del item.content[column]
+
+
+def convert_qindex(index):
+    indexes = []
+
+    while index.isValid():
+        indexes.insert(0, index.row())
+        index = index.parent()
+
+    return indexes
+</script>

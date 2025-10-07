@@ -95,9 +95,9 @@ To try out Collagraph or start development, run:
 
 ```sh
 # Basic dev setup (no pygfx or pyside)
-uv install
+uv sync
 # Full dev setup
-uv install --all-groups
+uv sync --all-groups
 # Run example:
 uv run python examples/pyside/layout-example.py
 # Run test suite:

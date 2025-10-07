@@ -1,0 +1,57 @@
+<!--
+Example that shows slider, progress bar and spinbox that
+are connected to the same value.
+
+Run this example as follows:
+uv run collagraph examples/pyside/slider_example.cgx
+-->
+
+<window>
+  <widget>
+    <slider
+      :orientation="QtCore.Qt.Orientation.Horizontal"
+      :minimum="0"
+      :maximum="100"
+      :value="value"
+      :tracking="tracking"
+      @value_changed="value_changed"
+    />
+    <checkbox
+      text="slider tracking"
+      :checked="tracking"
+      @state_changed="tracking_changed"
+    />
+    <spinbox
+      :minimum="0"
+      :maximum="100"
+      :value="value"
+      @value_changed="value_changed"
+    />
+    <progressbar
+      :minimum="0"
+      :maximum="100"
+      :value="value"
+      @value_changed="value_changed"
+    />
+  </widget>
+</window>
+
+<script>
+from observ import reactive
+from PySide6 import QtCore, QtWidgets
+
+import collagraph as cg
+
+
+class Example(cg.Component):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.state["value"] = 50
+        self.state["tracking"] = True
+
+    def value_changed(self, value):
+        self.state["value"] = value
+
+    def tracking_changed(self, value):
+        self.state["tracking"] = value
+</script>

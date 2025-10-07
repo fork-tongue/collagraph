@@ -1,3 +1,4 @@
+# This file is imported in `layout_example.cgx` to show how to use custom layouts
 from PySide6 import QtCore, QtWidgets
 
 
@@ -98,6 +99,8 @@ class FlowLayout(QtWidgets.QLayout):
 
 
 if __name__ == "__main__":
+    from textwrap import dedent
+
     import collagraph as cg
 
     app = QtWidgets.QApplication()
@@ -106,18 +109,27 @@ if __name__ == "__main__":
     renderer.register_layout("flow", FlowLayout)
     gui = cg.Collagraph(renderer=renderer)
 
-    element = cg.h(
-        "window",
-        {},
-        cg.h(
-            "widget",
-            {"layout": {"type": "flow"}},
-            *[
-                cg.h("label", {"text": text})
-                for text in ["Item a", "Item b", "Item c", "Item d"]
-            ],
-        ),
+    Window, _ = cg.sfc.load_from_string(
+        dedent(
+            """
+        <window>
+          <widget
+            :layout="{'type': 'flow'}"
+          >
+            <label v-for="text in ['Item a', 'Item b', 'Item c', 'Item d']"
+              :text="text"
+            />
+          </widget>
+        </window>
+
+        <script>
+        import collagraph as cg
+        class Window(cg.Component):
+            pass
+        </script>
+        """
+        )
     )
 
-    gui.render(element, app)
+    gui.render(Window, app)
     app.exec()

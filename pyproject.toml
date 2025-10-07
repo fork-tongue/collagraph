@@ -1,20 +1,27 @@
 [project]
 name = "collagraph"
-version = "0.7.0"
+version = "0.8.0"
 description = "Reactive user interfaces"
-readme = "README.md"
+authors = [
+    { name = "Berend Klein Haneveld", email = "berendkleinhaneveld@gmail.com" },
+    { name = "Korijn van Golen", email = "korijn@gmail.com" }
+]
 requires-python = ">=3.10"
+readme = "README.md"
+license = "MIT"
 dependencies = [
     "observ>=0.14.1",
 ]
-authors = [
-	{ name = "Berend Klein Haneveld", email = "berendkleinhaneveld@gmail.com"},
-	{ name = "Korijn van Golen", email = "korijn@gmail.com"}
-]
-license = "MIT"
 
 [project.scripts]
 collagraph = "collagraph.__main__:run"
+
+[project.entry-points.pyinstaller40]
+hook-dirs = "collagraph.__pyinstaller:get_hook_dirs"
+
+[project.optional-dependencies]
+pygfx = ["pygfx>=0.9.0"]
+pyside = ["PySide6>=6.6.2,!=6.8.3,!=6.9.0 ; python_version < '3.14'"]
 
 [dependency-groups]
 dev = [
@@ -30,24 +37,27 @@ dev = [
 # it is now part of a group which can be installed as follows:
 #  > uv sync --group dev --group pyside-dev --extra pyside
 pygfx = ["pygfx"]
-pyside = ["pyside6~=6.6"]
+pyside = ["pyside6"]
 pyside-dev = [
     "pytest-qt",
     "pytest-xvfb",
 ]
 
+[tool.uv.sources]
+# observ = { path = "../observ", editable = true }
+# pygfx = { path = "../pygfx", editable = true }
+# pygfx = { git = "https://github.com/pygfx/pygfx" }
+
 [tool.ruff.lint.per-file-ignores]
 "collagraph/__init__.py" = ["I001"]  # unsorted-imports
+"collagraph/__pyinstaller/*" = ["N999"]  # invalid-module-name
 "collagraph/renderers/**/__init__.py" = ["F401"]  # unused-import
 "collagraph/renderers/__init__.py" = ["E402"]  # module-import-not-at-top-of-file
-"tests/pyside/test_*.py" = ["E402"]  # module-import-not-at-top-of-file
-"tests/*" = ["N806", "N802"]  # non-lowercase-variable-in-function, invalid-function-name
-"collagraph/__pyinstaller/*" = ["N999"]  # invalid-module-name
 "examples/*" = ["N999", "N802"]  # invalid-module-name, invalid-function-name
+"examples/pygfx/*.py" = ["I001"]  # unsorted-imports
 "examples/pyside/flow_layout.py" = ["N802"]  # invalid-function-name
-
-[tool.uv]
-package = true
+"tests/*" = ["N806", "N802"]  # non-lowercase-variable-in-function, invalid-function-name
+"tests/pyside/test_*.py" = ["E402"]  # module-import-not-at-top-of-file
 
 [tool.ruff.lint]
 select = [
@@ -62,3 +72,7 @@ select = [
     "T20", # flake8-print
     "RUF", # ruff
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

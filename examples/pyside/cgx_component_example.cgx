@@ -1,23 +1,21 @@
 <!--
   Run this example as follows:
-  ❯ uv run collagraph examples/pyside/cgx_component_example.cgx
+  uv run collagraph examples/pyside/cgx_component_example.cgx
  -->
-<template>
-  <qmainwindow window_title="JSX-like syntax example">
-    <qwidget :layout="top_to_bottom">
-      <qlabel v-bind:text="props.get('title')" />
-      <qlabel v-if="state.get('content')" :text="content" />
-      <qlabel v-else-if="state.get('other_content')" :text="other_content" />
-      <qlabel v-else text="Nothing to see here" />
-      <qwidget :layout="left_to_right">
-        <qcheckbox v-on:state_changed="check_action" text="Click it" />
-        <qlabel v-if="not clicked" text="You know you want it!" />
-        <qlabel v-else text="You did it!" />
-      </qwidget>
-      <qpushbutton text="Push me" @clicked="click_action" />
+<qmainwindow window_title="JSX-like syntax example">
+  <qwidget :layout="top_to_bottom">
+    <qlabel v-bind:text="props.get('title')" />
+    <qlabel v-if="state.get('content')" :text="content" />
+    <qlabel v-else-if="state.get('other_content')" :text="other_content" />
+    <qlabel v-else text="Nothing to see here" />
+    <qwidget :layout="left_to_right">
+      <qcheckbox v-on:state_changed="check_action" text="Click it" />
+      <qlabel v-if="not clicked" text="You know you want it!" />
+      <qlabel v-else text="You did it!" />
     </qwidget>
-  </qmainwindow>
-</template>
+    <qpushbutton text="Push me" @clicked="click_action" />
+  </qwidget>
+</qmainwindow>
 
 <script lang="python">
 from collagraph import Component

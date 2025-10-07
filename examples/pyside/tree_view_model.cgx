@@ -1,0 +1,35 @@
+<itemmodel
+  :horizontal-header-labels="columns"
+  @item_changed="lambda item: emit('item-changed', item)"
+>
+    <Item
+      v-for="child in parsed_items()"
+      v-bind="child"
+      :columns="columns"
+    />
+</itemmodel>
+
+<script>
+import collagraph as cg
+from PySide6 import QtCore, QtWidgets
+from .tree_view_item import Item
+
+
+class Model(cg.Component):
+    def updated(self):
+        # The column count automatically grows by updating 'horizontal-header-labels'
+        # but doesn't automatically shrink, so we'll have to do that ourselves
+        if self.element.columnCount() != len(self.props["columns"]):
+            self.element.setColumnCount(len(self.props["columns"]))
+
+    def parsed_items(self):
+        return [
+            {
+                "text": item.get(column_name),
+                "model_index": (row, column),
+                "items": item["children"],
+            }
+            for row, item in enumerate(self.props["items"])
+            for column, column_name in enumerate(self.props["columns"])
+        ]
+</script>

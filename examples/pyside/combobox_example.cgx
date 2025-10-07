@@ -1,0 +1,33 @@
+<!--
+  Run this example as follows:
+  uv run collagraph examples/pyside/combobox_example.cgx
+ -->
+<widget>
+  <qcombobox
+    :items="items"
+    :current_index="current_index"
+    @current_index_changed="changed"
+  />
+</widget>
+
+<script>
+import collagraph as cg
+
+items = [
+    "tree",
+    "dog",
+    "horse",
+]
+
+
+class ComboBox(cg.Component):
+    def mounted(self):
+        # Set the current index on mount
+        # when the element has been initialized with
+        # all the items from the props
+        self.state["current_index"] = 2
+
+    def changed(self, idx):
+        print("index changed:", idx)
+        self.state["current_index"] = idx
+</script>

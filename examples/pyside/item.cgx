@@ -1,0 +1,24 @@
+<template>
+  <treewidgetitem :content="content()">
+    <Item
+      v-for="child in child_items()"
+      v-bind="child"
+      :columns="columns"
+    />
+  </treewidgetitem>
+</template>
+
+<script>
+from pprint import pprint
+import collagraph as cg
+
+class Item(cg.Component):
+    def content(self):
+        return  {
+            idx: self.props.get(column, "")
+            for idx, column in enumerate(self.props["columns"])
+        }
+
+    def child_items(self):
+        return self.props.get("children") or []
+</script>

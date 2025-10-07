@@ -2,42 +2,38 @@
   Run this example as follows:
   uv run collagraph --state '{"items": [0, 1, 2]}' examples/pyside/dialog_example_window.cgx
  -->
-<template>
-  <template>
-    <window>
-      <widget>
-        <label text="Please select an item" />
-        <label :text="selected_text" />
-        <radiobutton
-          text="Window modal"
-          :checked="modality == 'window'"
-          @clicked="lambda: update_modality('window')"
-        />
-        <radiobutton
-          text="Application modal"
-          :checked="modality == 'app'"
-          @clicked="lambda: update_modality('app')"
-        />
-        <button
-          text="Select an item"
-          @clicked="show_dialog"
-        />
-      </widget>
-      <ListDialog
-        v-if="dialog_active"
-        :items="items"
-        :global_dialog="modality == 'app'"
-        @accepted="show_result"
-        @finished="close_dialog"
-      />
-    </window>
-    <window>
-      <widget>
-        <label text="Another window" />
-      </widget>
-    </window>
-  </template>
-</template>
+<window>
+  <widget>
+    <label text="Please select an item" />
+    <label :text="selected_text" />
+    <radiobutton
+      text="Window modal"
+      :checked="modality == 'window'"
+      @clicked="lambda: update_modality('window')"
+    />
+    <radiobutton
+      text="Application modal"
+      :checked="modality == 'app'"
+      @clicked="lambda: update_modality('app')"
+    />
+    <button
+      text="Select an item"
+      @clicked="show_dialog"
+    />
+  </widget>
+  <ListDialog
+    v-if="dialog_active"
+    :items="items"
+    :global_dialog="modality == 'app'"
+    @accepted="show_result"
+    @finished="close_dialog"
+  />
+</window>
+<window>
+  <widget>
+    <label text="Just another window" />
+  </widget>
+</window>
 
 <script>
 import collagraph as cg
@@ -60,7 +56,7 @@ class Window(cg.Component):
     def show_result(self, result):
         selected_text = "Nothing selected"
         if result >= 0:
-            selected_text = str(self.props["items"][result])
+            selected_text = f"Selected: {self.props['items'][result]}"
 
         self.state["selected_text"] = selected_text
 

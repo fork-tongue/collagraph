@@ -87,13 +87,7 @@ class PygfxRenderer(Renderer):
                 else:
                     DEFAULT_ATTR_CACHE[key] = default_value
 
-        # Note: this check can be removed when the following PR
-        # has been included in a new release of observ (>0.15):
-        # https://github.com/fork-tongue/observ/pull/130
-        if val := getattr(value, "__target__", None):
-            setattr(obj, attr, val)
-        else:
-            setattr(obj, attr, value)
+        setattr(obj, attr, value)
         self._trigger()
 
     def remove_attribute(self, obj, attr, value):

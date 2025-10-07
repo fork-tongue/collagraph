@@ -4,37 +4,35 @@
 
   See the dialog_example_window.cgx for how to integrate this component.
  -->
-<template>
   <!--
     When specifying a 'modal' dialog, use window-modality
     to change the default 'ApplicationModal' to 'WindowModal'
     if you don't want to block input to other windows.
   -->
-  <qdialog
-    modal
-    :window-modality="Qt.ApplicationModal if props.get('global_dialog', False) else Qt.WindowModal"
-    @accepted="accepted"
-    @rejected="rejected"
-  >
-    <label text="Select elements" />
-    <treeview>
-      <qstandarditemmodel>
-        <standarditem
-          v-for="item in items"
-          :text="str(item)"
-        />
-      </qstandarditemmodel>
-      <qitemselectionmodel
-        @selection-changed="selection_changed"
+<qdialog
+  modal
+  :window-modality="Qt.ApplicationModal if props.get('global_dialog', False) else Qt.WindowModal"
+  @accepted="accepted"
+  @rejected="rejected"
+>
+  <label text="Select elements" />
+  <treeview>
+    <qstandarditemmodel>
+      <standarditem
+        v-for="item in items"
+        :text="str(item)"
       />
-    </treeview>
-    <dialogbuttonbox
-      :buttons="('Ok', 'Cancel')"
-      @accepted="lambda: element.accept()"
-      @rejected="lambda: element.reject()"
+    </qstandarditemmodel>
+    <qitemselectionmodel
+      @selection-changed="selection_changed"
     />
-  </qdialog>
-</template>
+  </treeview>
+  <dialogbuttonbox
+    :buttons="('Ok', 'Cancel')"
+    @accepted="lambda: element.accept()"
+    @rejected="lambda: element.reject()"
+  />
+</qdialog>
 
 <script>
 from PySide6.QtCore import Qt

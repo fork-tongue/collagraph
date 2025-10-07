@@ -79,12 +79,13 @@ def test_pygfx_attributes():
     # Set and unset attributes on Mesh
     mesh = gfx.Mesh()
 
-    # Custom attribute 'foo'
-    renderer.set_attribute(mesh, "foo", "foo")
-    assert mesh.foo == "foo"
+    # Custom attribute 'custom_name'
+    assert not hasattr(mesh, "custom_name")
+    renderer.set_attribute(mesh, "custom_name", "foo")
+    assert mesh.custom_name == "foo"
 
-    renderer.remove_attribute(mesh, "foo", "foo")
-    assert not hasattr(mesh, "foo")
+    renderer.remove_attribute(mesh, "custom_name", "foo")
+    assert not hasattr(mesh, "custom_name")
 
     # Position attribute
     original_position_contents = mesh.local.position.tolist()

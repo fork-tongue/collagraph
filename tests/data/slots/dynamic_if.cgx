@@ -1,0 +1,14 @@
+<Node>
+  <!-- dynamic slot content needs to be enclosed in a template
+  tag, so this is not going to work. -->
+  <content v-if="show_content" />
+</Node>
+
+<script lang="python">
+import collagraph as cg
+from tests.data.slots.node import Node
+
+
+class Tree(cg.Component):
+    pass
+</script>
