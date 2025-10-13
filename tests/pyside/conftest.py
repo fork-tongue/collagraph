@@ -1,3 +1,5 @@
+import warnings
+
 import pytest
 
 
@@ -16,9 +18,11 @@ def qapp(qapp_args, qapp_cls, pytestconfig, qtbot):
     # Check that there are not left-over widgets from other tests
     assert len(app.topLevelWidgets()) == 0
 
-    policy = asyncio.get_event_loop_policy()
-    if not isinstance(policy, QAsyncioEventLoopPolicy):
-        asyncio.set_event_loop_policy(QAsyncioEventLoopPolicy())
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        policy = asyncio.get_event_loop_policy()
+        if not isinstance(policy, QAsyncioEventLoopPolicy):
+            asyncio.set_event_loop_policy(QAsyncioEventLoopPolicy())
 
     yield app
 
@@ -33,4 +37,6 @@ def qapp(qapp_args, qapp_cls, pytestconfig, qtbot):
 
     qtbot.waitUntil(lambda: len(app.topLevelWidgets()) == 0, timeout=500)
 
-    asyncio.set_event_loop_policy(None)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        asyncio.set_event_loop_policy(None)

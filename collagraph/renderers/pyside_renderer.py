@@ -108,12 +108,15 @@ class PySideRenderer(Renderer):
 
     def register_asyncio(self):
         import asyncio
+        import warnings
 
         from PySide6.QtAsyncio import QAsyncioEventLoopPolicy
 
-        policy = asyncio.get_event_loop_policy()
-        if not isinstance(policy, QAsyncioEventLoopPolicy):
-            asyncio.set_event_loop_policy(QAsyncioEventLoopPolicy())
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            policy = asyncio.get_event_loop_policy()
+            if not isinstance(policy, QAsyncioEventLoopPolicy):
+                asyncio.set_event_loop_policy(QAsyncioEventLoopPolicy())
 
     @classmethod
     def register_element(cls, type_name, typ=None):
