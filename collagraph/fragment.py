@@ -317,19 +317,21 @@ class Fragment:
             self.target = None
             self._attributes = {}
             self._events = {}
-            # Disable the fn of the watcher to disable
-            # any 'false' hits
+            # Disable the fn and callback of the watcher to disable
+            # any 'false' triggers
             for watcher in self._watchers.values():
                 watcher.fn = lambda: ()
+                watcher.callback = None
             self._watchers = {}
             self._condition = None
             self.tag = None
         else:
             self.element = None
-            # Disable the fn of the watcher to disable
-            # any 'false' hits
+            # Disable the fn and callback of the watcher to disable
+            # any 'false' triggers
             for watcher in self._watchers.values():
                 watcher.fn = lambda: ()
+                watcher.callback = None
             self._watchers = {}
 
         # TODO: maybe control flow fragments needs another custom 'parenting'
