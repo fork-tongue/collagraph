@@ -59,8 +59,15 @@ def remove_layout(self, el):
 
 @PySideRenderer.register_remove(QFormLayout)
 def remove_form(self, el):
-    # Layout also deletes 'el' so no need to unset parent
-    self.removeRow(el)
+    # Don't use removeRow, even though it should theoratically work
+    # In reality it causes a hard crash...
+    # Instead, take the row, and then unset the parents of the
+    # associated widgets of the return layout item
+    layout_item = self.takeRow(el)
+    if layout_item:
+        layout_item.labelItem.widget().setParent(None)
+        layout_item.fieldItem.widget().setParent(None)
+    el.setParent(None)
 
 
 @PySideRenderer.register_set_attr(QLayout)
@@ -105,12 +112,31 @@ def set_grid_index(self, attr, value):
         layout.addWidget(self, *value)
 
 
-@PySideRenderer.register_custom_attribute("form_label", "form_index")
+@PySideRenderer.register_custom_attribute("form_label")
+def set_form_label(self, attr, value):
+    setattr(self, attr, value)
+    index = getattr(self, "form_index", None)
+    if parent := self.parent():
+        layout = parent.layout()
+        if index is not None:
+            label_item = layout.itemAt(index, QFormLayout.LabelRole)
+            label_item.widget().setText(value)
+
+
+@PySideRenderer.register_custom_attribute("form_index")
 def set_form_index(self, attr, value):
+    old_index = getattr(self, "form_index", None)
     setattr(self, attr, value)
     if parent := self.parent():
         layout = parent.layout()
+        label_widget = None
+        if old_index is not None:
+            layout_item = layout.takeRow(old_index)
+            label_widget = layout_item.labelItem.widget()
+            assert layout_item.fieldItem.widget() is self
         if hasattr(self, "form_label") and hasattr(self, "form_index"):
-            layout.insertRow(self.form_index, self.form_label, self)
+            layout.insertRow(
+                self.form_index, label_widget if label_widget else self.form_label, self
+            )
         elif hasattr(self, "form_label"):
             layout.addRow(self.form_label, self)

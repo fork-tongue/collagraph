@@ -1,0 +1,47 @@
+<widget>
+  <qsplitter>
+    <treewidget
+      object-name="tree-widget"
+      :header-labels="['content']"
+      :column-count="1"
+      :selection-mode="QtWidgets.QTreeView.ExtendedSelection"
+      @item-selection-changed="selection_changed"
+    >
+      <treewidgetitem
+        v-for="item in items"
+        :content="{0: item['name']}"
+        :obj_id="item['id']"
+      />
+    </treewidget>
+    <widget :layout="{'type': 'form'}">
+      <label v-for="item in selected_items()" v-bind="item" />
+    </widget>
+  </qsplitter>
+</widget>
+
+<script>
+import collagraph as cg
+from PySide6 import QtWidgets
+
+class App(cg.Component):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.state["items"] = [{"id": 0, "name": "first"}, {"id": 1, "name":"second"}]
+        self.state["selected"] = []
+
+    def selection_changed(self):
+        if not self.element:
+            return
+
+        tree_widget = self.element.findChild(QtWidgets.QTreeWidget, "tree-widget")
+        selected_items = tree_widget.selectedItems()
+        selected_ids = list([item.obj_id for item in selected_items])
+        self.state["selected"] = selected_ids
+
+    def selected_items(self):
+        result = [
+            {'text': self.state['items'][idx]["name"], 'form_label': f'Type {idx}:', 'form_index': 0}
+            for idx in self.state['selected']]
+        return result
+
+</script>
