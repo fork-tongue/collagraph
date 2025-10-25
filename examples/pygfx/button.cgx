@@ -32,8 +32,7 @@ class Button(cg.Component):
         ),
     }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def init(self):
         self.state["pressed"] = False
         self.state["hovered"] = False
         self.state["scale"] = self.props.get("scale", [0.85] * 3)

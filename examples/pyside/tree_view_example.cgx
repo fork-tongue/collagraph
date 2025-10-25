@@ -60,8 +60,7 @@ def row(text: str, /, children=None, **kwargs):
 
 
 class TreeView(cg.Component):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def init(self):
         # Adding columns seems to work relatively OK, but removing columns
         # has some problems...
         self.state["columns"] = ["text", "other"]

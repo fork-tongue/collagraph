@@ -85,8 +85,7 @@ def test_component_tag_props_and_events(parse_source):
             pass
 
         class App(cg.Component):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+            def init(self):
                 self.state["action_count"] = 0
 
             def bump(self):

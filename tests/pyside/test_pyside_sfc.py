@@ -21,8 +21,7 @@ def test_pyside_sfc_event_handlers(qtbot, parse_source):
         import collagraph as cg
 
         class Buttons(cg.Component):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+            def init(self):
                 self.state["count"] = 0
 
             def increase(self):

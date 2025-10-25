@@ -81,8 +81,7 @@ cg.PySideRenderer.register_layout("flow", FlowLayout)
 
 
 class LayoutExample(cg.Component):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def init(self):
 
         self.state["index"] = self.props.get("index", 0)
 

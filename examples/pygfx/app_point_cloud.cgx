@@ -18,8 +18,7 @@ from examples.pygfx.point_cloud import PointCloud
 
 
 class Example(cg.Component):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def init(self):
         self.state["count"] = self.props["count"]
 
     def add(self):

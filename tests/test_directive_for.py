@@ -619,8 +619,7 @@ def test_for_event_handlers(parse_source):
         import collagraph as cg
 
         class Buttons(cg.Component):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+            def init(self):
                 self.state["buttons"] = [
                     ["first", self.on_first],
                     ["second", self.on_second],
@@ -670,8 +669,7 @@ def test_for_lambdas(parse_source):
         import collagraph as cg
 
         class Buttons(cg.Component):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+            def init(self):
                 self.state["buttons"] = ["first", "second"]
 
             def on_button(self, value):

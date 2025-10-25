@@ -28,8 +28,7 @@ import collagraph as cg
 
 
 class Example(cg.Component):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def init(self):
         self.state["tab_count"] = 2
 
     def bump(self):

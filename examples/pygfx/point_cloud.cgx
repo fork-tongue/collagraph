@@ -34,8 +34,7 @@ def rand_point():
 
 
 class PointCloud(collagraph.Component):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def init(self):
         self.state["positions"] = []
         self.state["hovered"] = -1
         self.state["selected"] = -1

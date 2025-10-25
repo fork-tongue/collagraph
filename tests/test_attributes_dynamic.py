@@ -191,8 +191,7 @@ def test_dynamic_attribute_basic_dict(parse_source):
 
 
         class Labels(cg.Component):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+            def init(self):
                 self.state["label_text"] = self.props.get("text", "Label")
         </script>
         """
@@ -317,8 +316,7 @@ def test_dynamic_attribute_full(parse_source):
         import collagraph as cg
 
         class Labels(cg.Component):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+            def init(self):
                 self.state["other"] = "bar"
         </script>
         """
@@ -360,8 +358,7 @@ def test_dynamic_attribute_typo(parse_source):
         import collagraph as cg
 
         class App(cg.Component):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+            def init(self):
                 self.state["text"] = "Foo"
         </script>
         """

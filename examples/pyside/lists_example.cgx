@@ -58,8 +58,7 @@ STATE_MAP = {
 
 
 class Example(cg.Component):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def init(self):
         self.state["items"] = [
             [["Item", "Value"], False],
             [["Foo", "Bar"], False],

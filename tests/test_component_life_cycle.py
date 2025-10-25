@@ -16,8 +16,7 @@ def test_component_basic_lifecycle(parse_source):
         import collagraph as cg
 
         class Counter(cg.Component):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+            def init(self):
                 self.state["count"] = self.props.get("count", 0)
 
             def bump(self):
