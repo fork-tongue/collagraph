@@ -224,3 +224,29 @@ def test_component_props_deep_update(parse_source):
 
     assert Counter.updates == 1
     assert counter["attrs"]["prop"] == [0, 1, 2]
+
+
+def test_component_init_hook(parse_source):
+    Example, _ = parse_source(
+        """
+        <script>
+        import collagraph as cg
+
+        class Example(cg.Component):
+            init = False
+
+            def init(self):
+                Example.init = True
+        </script>
+
+        <counter v-bind="props" />
+        """
+    )
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
+    container = {"type": "root"}
+    state = reactive({"prop": [0, 1]})
+    gui.render(Example, container, state=state)
+
+    _ = container["children"][0]
+
+    assert Example.init is True
