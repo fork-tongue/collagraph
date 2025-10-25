@@ -15,7 +15,6 @@ Inspired by Vue and React.
 Write your Python interfaces in a declarative manner with plain render functions, component classes or even single-file components using Vue-like syntax, but with Python!
 
 * Reactivity (made possible by leveraging [observ](https://github.com/fork-tongue/observ))
-* Function components
 * Class components with local state and life-cycle methods/hooks
 * Single-file components with Vue-like template syntax (`.cgx` files)
 * Custom renderers
@@ -24,17 +23,15 @@ Here is an example that shows a counter, made with a component with Vue-like syn
 
 Contents of `counter.cgx`:
 ```html
-<template>
-  <widget>
-    <label
-      :text="f'Count: {count}'"
-    />
-    <button
-      text="bump"
-      @clicked="bump"
-    />
-  </widget>
-</template>
+<widget>
+  <label
+    :text="f'Count: {count}'"
+  />
+  <button
+    text="bump"
+    @clicked="bump"
+  />
+</widget>
 
 <script>
 import collagraph as cg
@@ -65,7 +62,7 @@ gui = cg.Collagraph(renderer=cg.PySideRenderer())
 # Render the component into a container
 # (in this case the app but can be another widget)
 app = QtWidgets.QApplication()
-gui.render(cg.h(Counter), app)
+gui.render(Counter, app)
 app.exec()
 ```
 
