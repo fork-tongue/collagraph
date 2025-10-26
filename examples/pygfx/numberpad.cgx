@@ -9,8 +9,7 @@ from examples.pygfx.button import Button
 
 
 class NumberPad(cg.Component):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def init(self):
         self.state["columns"] = 4
         self.state["rows"] = 5
 

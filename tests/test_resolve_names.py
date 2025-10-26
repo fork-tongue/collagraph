@@ -26,8 +26,7 @@ def test_resolve_names(parse_source):
         import collagraph as cg
 
         class Example(cg.Component):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+            def init(self):
                 assert "prop_val" in self.props
                 self.state["state_val"] = "state_value"
 

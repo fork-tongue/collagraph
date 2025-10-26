@@ -8,7 +8,6 @@ from tests.data.component.provide_child import Child
 
 
 class Parent(cg.Component):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def init(self):
         self.provide(key="value", value="foo")
 </script>

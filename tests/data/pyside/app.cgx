@@ -90,8 +90,7 @@ def quit():
 
 
 class Window(cg.Component):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def init(self):
         self.state["toggles"] = {
             "show_dock": True,
             "show_dock_title": True,

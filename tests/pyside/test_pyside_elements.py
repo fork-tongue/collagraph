@@ -101,8 +101,7 @@ def test_layouts(qapp, qtbot, parse_source):
         import collagraph as cg
 
         class LayoutExample(cg.Component):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+            def init(self):
                 # Data to fill the box layout
                 self.box = []
                 for i in range(1, 5):
@@ -207,8 +206,7 @@ def test_lists(qapp, qtbot, qtmodeltester, parse_source):
         import collagraph as cg
 
         class ListsExample(cg.Component):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+            def init(self):
                 self.state["values"] = self.props["items"]
 
             def items_content(self):

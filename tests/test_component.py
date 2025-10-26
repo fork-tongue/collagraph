@@ -26,8 +26,7 @@ def test_component_no_override(parse_source, attr):
         import collagraph as cg
 
         class Item(cg.Component):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+            def init(self):
                 self.{attr} = {{}}
         </script>
         """
@@ -49,8 +48,7 @@ def test_component_props_read_only(parse_source):
         import collagraph as cg
 
         class Item(cg.Component):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+            def init(self):
                 self.props["foo"] = "bar"
         </script>
         """
@@ -115,8 +113,7 @@ def test_component_callback(parse_source):
         import collagraph as cg
 
         class Counter(cg.Component):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+            def init(self):
                 self.state["count"] = self.props.get("count", 0)
                 self.state["step_size"] = self.props.get("step_size", 1)
 

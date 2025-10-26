@@ -27,6 +27,12 @@ class Component:
         self._parent = ref(parent) if parent else None
         self._provided = {}
 
+        # Call init hook at end of __init__
+        self.init()
+
+    def init(self):
+        pass
+
     @property
     def props(self):
         """The incoming props of this component."""

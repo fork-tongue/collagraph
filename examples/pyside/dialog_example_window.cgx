@@ -41,8 +41,7 @@ from examples.pyside.dialog_example import ListDialog
 
 
 class Window(cg.Component):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def init(self):
         self.state["dialog_active"] = False
         self.state["selected_text"] = ""
         self.state["modality"] = "window"
