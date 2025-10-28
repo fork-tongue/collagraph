@@ -71,3 +71,54 @@ def test_dynamic_component_tag_anchor(parse_source):
     assert container["children"][0]["type"] == "first", format_dict(container)
     assert container["children"][1]["type"] == "bar", format_dict(container)
     assert container["children"][2]["type"] == "last", format_dict(container)
+
+
+def test_dynamic_component_tag_component(parse_source):
+    A, _ = parse_source(
+        """
+        <a :name="name" />
+        <script>
+        from collagraph import Component
+        class A(Component):
+            pass
+        </script>
+        """
+    )
+    B, _ = parse_source(
+        """
+        <b :name="name" />
+        <script>
+        from collagraph import Component
+        class B(Component):
+            pass
+        </script>
+        """
+    )
+    App, _ = parse_source(
+        """
+        <component :is="element_type" :name="name" />
+        <script>
+        from collagraph import Component
+        class App(Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"name": "foo", "element_type": A})
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    assert len(container["children"]) == 1
+    assert container["children"][0]["attrs"]["name"] == "foo"
+    assert container["children"][0]["type"] == "a"
+
+    state["element_type"] = B
+
+    assert len(container["children"]) == 1
+    assert container["children"][0]["attrs"]["name"] == "foo"
+    assert container["children"][0]["type"] == "b"
