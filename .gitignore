@@ -6,3 +6,6 @@ dist
 build
 uv.lock
 .venv
+
+# MkDocs build output
+site/

@@ -42,6 +42,9 @@ pyside-dev = [
     "pytest-qt",
     "pytest-xvfb",
 ]
+docs = [
+    "mkdocs>=1.5.0",
+]
 
 [tool.uv.sources]
 # observ = { path = "../observ", editable = true }

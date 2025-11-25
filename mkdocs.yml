@@ -1,0 +1,18 @@
+site_name: Collagraph Documentation
+site_description: A reactive UI framework for Python
+site_url: https://fork-tongue.github.io/collagraph/
+repo_url: https://github.com/fork-tongue/collagraph
+
+theme:
+  name: mkdocs
+  color_mode: auto
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Renderers:
+    - Overview: renderers/overview.md
+    - PySide6: renderers/pyside.md
+    - Pygfx: renderers/pygfx.md
+  - API:
+    - Renderer Interface: api/renderer.md
