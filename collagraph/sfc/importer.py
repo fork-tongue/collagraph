@@ -7,6 +7,8 @@ from pathlib import Path
 from types import ModuleType
 from typing import Sequence
 
+from collagraph.component import Component
+
 from .compiler import SUFFIX, construct_ast
 
 
@@ -24,6 +26,17 @@ class CGXLoader(SourceFileLoader):
 
         # Compile Python source to bytecode
         return compile(tree, path, mode="exec")
+
+    def exec_module(self, module):
+        super().exec_module(module)
+        # Check that the class definition is an actual subclass of Component
+        namespace = module.__dict__
+        if component_class := namespace.get("__component_class__"):
+            if not issubclass(component_class, Component):
+                raise ValueError(
+                    f"The last class defined in {self.path} is not a subclass of "
+                    f"Component: {component_class}"
+                )
 
 
 class CGXPathFinder(MetaPathFinder):

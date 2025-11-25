@@ -11,6 +11,8 @@ def test_cgx_construct_ast():
 
     assert name == "Simple"
     assert isinstance(tree, ast.Module)
-    import_collagraph, class_def = tree.body
+    import_collagraph, class_def, special_class_dunder = tree.body
     assert class_def.name == "Simple"
     assert import_collagraph.names[0].name == "collagraph"
+    assert special_class_dunder.targets[0].id == "__component_class__"
+    assert len(special_class_dunder.targets) == 1
