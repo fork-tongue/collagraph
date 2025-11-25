@@ -60,4 +60,4 @@ def set_attribute(self, attr, value):
 
     # And don't forget to enable signals when done
     if tree_widget:
-        tree_widget.blockSignals(True)
+        tree_widget.blockSignals(False)

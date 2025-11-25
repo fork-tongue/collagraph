@@ -92,6 +92,13 @@ def test_qtreewidgetitem_change_list_no_trigger(qtbot, parse_source):
     qtbot.waitUntil(partial(tree_widget_nr_items_found, container, 3), timeout=500)
     assert Tree.changed == 0
 
+    # Edit the text of the first item, which should trigger the itemChanged signal
+    tree_widget = container.findChild(QtWidgets.QTreeWidget)
+    root_item = tree_widget.invisibleRootItem()
+    first_item = root_item.child(0)
+    first_item.setText(0, "e")
+    assert Tree.changed == 1
+
 
 def test_qtreewidgetitem_change_item_no_trigger(qtbot, parse_source):
     """
@@ -122,6 +129,13 @@ def test_qtreewidgetitem_change_item_no_trigger(qtbot, parse_source):
     qtbot.waitUntil(partial(item_in_list, 2, "e"), timeout=500)
     assert Tree.changed == 0
 
+    # Edit the text of the first item, which should trigger the itemChanged signal
+    tree_widget = container.findChild(QtWidgets.QTreeWidget)
+    root_item = tree_widget.invisibleRootItem()
+    first_item = root_item.child(0)
+    first_item.setText(0, "e")
+    assert Tree.changed == 1
+
 
 def test_qstandarditem_change_list_no_trigger(qtbot, parse_source):
     """
@@ -144,6 +158,13 @@ def test_qstandarditem_change_list_no_trigger(qtbot, parse_source):
 
     qtbot.waitUntil(partial(tree_view_nr_items_found, container, 3), timeout=500)
     assert Tree.changed == 0
+
+    # Edit the text of the first item, which should trigger the itemChanged signal
+    tree_view = container.findChild(QtWidgets.QTreeView)
+    model = tree_view.model()
+    item_index = model.index(0, 0)
+    model.setItemData(item_index, {0: "e"})
+    assert Tree.changed == 1
 
 
 def test_qstandarditem_change_item_no_trigger(qtbot, parse_source):
@@ -175,3 +196,10 @@ def test_qstandarditem_change_item_no_trigger(qtbot, parse_source):
 
     qtbot.waitUntil(partial(item_in_list, 2, "e"), timeout=500)
     assert Tree.changed == 0
+
+    # Edit the text of the first item, which should trigger the itemChanged signal
+    tree_view = container.findChild(QtWidgets.QTreeView)
+    model = tree_view.model()
+    item_index = model.index(0, 0)
+    model.setItemData(item_index, {0: "e"})
+    assert Tree.changed == 1
