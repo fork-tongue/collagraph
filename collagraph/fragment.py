@@ -398,7 +398,7 @@ class ListFragment(Fragment):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.create_fragment: Callable[[], Fragment] | None = None
-        self._list_expression: Callable[[], list[Any]] | None = None
+        self.expression: Callable[[], list[Any]] | None = None
         self.is_keyed: bool = False
         self.key_extractor: Callable[[Any], Any] | None = None
 
@@ -413,7 +413,7 @@ class ListFragment(Fragment):
         self.key_extractor = key_extractor
 
     def set_expression(self, expression: Callable[[], list[Any]] | None):
-        self._list_expression = expression
+        self.expression = expression
 
     def mount(self, target: Any, anchor: Any | None = None):
         if self._mounted:
@@ -427,7 +427,7 @@ class ListFragment(Fragment):
         @computed(deep=False)
         @weak(self)
         def expression(self):
-            value = self._list_expression()
+            value = self.expression()
             return value if hasattr(value, "__len__") else list(value)
 
         # Keep a list with all the rendered values
