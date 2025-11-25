@@ -1,30 +1,42 @@
 from __future__ import annotations
 
 import sys
-from importlib.abc import Loader, MetaPathFinder
-from importlib.machinery import ModuleSpec
+from importlib.abc import MetaPathFinder
+from importlib.machinery import ModuleSpec, SourceFileLoader
 from pathlib import Path
 from types import ModuleType
 from typing import Sequence
 
-from . import compiler, load
+from collagraph.component import Component
+
+from .compiler import SUFFIX, construct_ast
 
 
-class CGXLoader(Loader):
-    """Loader for .cgx files"""
+class CGXLoader(SourceFileLoader):
+    """
+    Loader for .cgx files. Subclassing SourceFileLoader provides .pyc caching support.
+    """
 
-    def __init__(self, sfc_path):
-        """Create loader and store the referenced file"""
-        self.sfc_path = sfc_path
+    def source_to_code(self, data, path: str):
+        """
+        Convert cgx files to Python code, then compile it to bytecode.
+        """
+        # Convert custom cgx format to Python AST
+        tree, _component_name = construct_ast(path, data.decode("utf-8"))
 
-    def create_module(self, spec):
-        # Return None to make use of the standard machinery for creating modules
-        return None
+        # Compile Python source to bytecode
+        return compile(tree, path, mode="exec")
 
     def exec_module(self, module):
-        """Exec the compiled code, using the given module's __dict__ as namespace
-        in order to instantiate the module"""
-        load(self.sfc_path, namespace=module.__dict__)
+        super().exec_module(module)
+        # Check that the class definition is an actual subclass of Component
+        namespace = module.__dict__
+        if component_class := namespace.get("__component_class__"):
+            if not issubclass(component_class, Component):
+                raise ValueError(
+                    f"The last class defined in {self.path} is not a subclass of "
+                    f"Component: {component_class}"
+                )
 
 
 class CGXPathFinder(MetaPathFinder):
@@ -40,12 +52,13 @@ class CGXPathFinder(MetaPathFinder):
             return target.__spec__
 
         _package, _, module_name = name.rpartition(".")
-        sfc_file_name = f"{module_name}.{compiler.SUFFIX}"
+        sfc_file_name = f"{module_name}.{SUFFIX}"
         directories = sys.path if path is None else path
         for directory in directories:
             sfc_path = Path(directory) / sfc_file_name
             if sfc_path.exists():
-                spec = ModuleSpec(name, CGXLoader(sfc_path), origin=str(sfc_path))
+                loader = CGXLoader(name, str(sfc_path))
+                spec = ModuleSpec(name, loader, origin=str(sfc_path))
                 spec.has_location = True
                 return spec
 

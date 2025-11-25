@@ -90,6 +90,14 @@ def construct_ast(path, template=None):
     ast.increment_lineno(render_tree, n=line)
     component_def.body.append(render_tree)
 
+    # Make sure the component class is available in a special variable
+    script_tree.body.append(
+        ast.Assign(
+            targets=[ast.Name(id="__component_class__", ctx=ast.Store())],
+            value=ast.Name(id=component_def.name, ctx=ast.Load()),
+        )
+    )
+
     # Because we modified the AST significantly we need to call an AST
     # method to fix any `lineno` and `col_offset` attributes of the nodes
     ast.fix_missing_locations(script_tree)
