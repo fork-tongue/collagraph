@@ -1,4 +1,3 @@
-import pytest
 from observ import reactive
 
 from collagraph import Collagraph, EventLoopType
@@ -303,7 +302,6 @@ def test_for_reactive_pop(parse_source):
     assert items == state["items"], format_dict(container)
 
 
-@pytest.mark.xfail
 def test_for_keyed(parse_source):
     App, _ = parse_source(
         """
@@ -350,8 +348,6 @@ def test_for_keyed(parse_source):
         assert node["type"] == "node"
         assert node["attrs"]["key"] == item["id"]
         assert node["attrs"]["text"] == item["text"]
-
-    assert False, "Figure out how to make sure keyed lists perform better than unkeyed"
 
 
 def test_example(parse_source):

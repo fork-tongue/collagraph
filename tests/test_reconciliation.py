@@ -1,6 +1,5 @@
 from weakref import ref
 
-import pytest
 from observ import reactive
 
 from collagraph import Collagraph, EventLoopType
@@ -70,7 +69,6 @@ class CustomElementRenderer(Renderer):
         raise NotImplementedError
 
 
-@pytest.mark.xfail
 def test_reconcile_by_key(parse_source):
     states = [
         (["a", "b", "c"], ["c", "a", "b"], "shift right"),  # shift right
