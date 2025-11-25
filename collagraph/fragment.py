@@ -301,9 +301,6 @@ class Fragment:
             self.renderer.remove(self.element, self.target)
             self.element = None
 
-    def _has_content(self):
-        return bool(self.element)
-
     def unmount(self, destroy=True):
         self._mounted = False
 
@@ -563,9 +560,6 @@ class ComponentFragment(Fragment):
 
     def _remove(self):
         self.props = None
-
-    def _has_content(self):
-        return bool(self.props)
 
     def unmount(self, destroy=True):
         if self.component:
