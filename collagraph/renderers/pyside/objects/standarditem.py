@@ -41,6 +41,12 @@ def remove(self, el):
 
 @PySideRenderer.register_set_attr(QStandardItem)
 def set_attribute(self, attr, value):
+    # Before setting any attribute, make sure to disable
+    # all signals for the tree widget
+    model = self.model()
+    if model:
+        model.blockSignals(True)
+
     if attr == "model_index":
         if model := self.model():
             index = model.indexFromItem(self)
@@ -56,3 +62,7 @@ def set_attribute(self, attr, value):
                     model.setItem(row, column, it)
 
     qobject_set_attribute(self, attr, value)
+
+    # And don't forget to enable signals when done
+    if model:
+        model.blockSignals(True)

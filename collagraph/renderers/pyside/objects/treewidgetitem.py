@@ -35,21 +35,29 @@ def remove(self, el: QTreeWidgetItem):
 
 @PySideRenderer.register_set_attr(QTreeWidgetItem)
 def set_attribute(self, attr, value):
-    if attr == "content":
-        for col, data in value.items():
-            self.setText(col, data)
-        return
-    elif attr == "expanded":
-        if not self.parent():
-            self._expanded = value
-        else:
-            self.setExpanded(value)
-        return
-    elif attr == "selected":
-        if not self.parent():
-            self._selected = value
-        else:
-            self.setSelected(value)
-        return
+    # Before setting any attribute, make sure to disable
+    # all signals for the tree widget
+    tree_widget = self.treeWidget()
+    if tree_widget:
+        tree_widget.blockSignals(True)
 
-    qobject_set_attribute(self, attr, value)
+    match attr:
+        case "content":
+            for col, data in value.items():
+                self.setText(col, data)
+        case "expanded":
+            if not self.parent():
+                self._expanded = value
+            else:
+                self.setExpanded(value)
+        case "selected":
+            if not self.parent():
+                self._selected = value
+            else:
+                self.setSelected(value)
+        case _:
+            qobject_set_attribute(self, attr, value)
+
+    # And don't forget to enable signals when done
+    if tree_widget:
+        tree_widget.blockSignals(True)
