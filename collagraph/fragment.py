@@ -435,9 +435,8 @@ class ListFragment(Fragment):
 
         if self.is_keyed and self.key_extractor:
             # Key-based reconciliation
-            # Track fragments by their keys
-            self.key_to_fragment = {}
-            self.key_to_context = {}
+            # Track fragments and contexts (tuple) by their keys
+            self.key_to_fragment: dict[str, tuple] = {}
 
             @weak(self)
             def update_children_keyed(self):
@@ -461,18 +460,14 @@ class ListFragment(Fragment):
                             duplicates.append(str(key))
                     raise RuntimeError(f"Duplicate keys found: {', '.join(duplicates)}")
 
-                # Get old keys
-                old_keys = list(self.key_to_fragment.keys())
-
                 # Determine which keys are removed, added, or moved
-                old_key_set = set(old_keys)
+                old_key_set = set(self.key_to_fragment)
                 new_key_set = set(new_keys)
 
                 # Keys that are no longer present - unmount them
                 removed_keys = old_key_set - new_key_set
                 for key in removed_keys:
-                    fragment = self.key_to_fragment.pop(key)
-                    context = self.key_to_context.pop(key)
+                    fragment, _ = self.key_to_fragment.pop(key)
                     # Remove from children list
                     if fragment in self.children:
                         self.children.remove(fragment)
@@ -485,18 +480,16 @@ class ListFragment(Fragment):
 
                     if key in self.key_to_fragment:
                         # Reuse existing fragment
-                        fragment = self.key_to_fragment[key]
-                        context = self.key_to_context[key]
+                        fragment, context = self.key_to_fragment[key]
                         # Update the context with new item value
                         context["context"] = item
                         new_children.append(fragment)
                     else:
                         # Create new fragment for new key
                         context = reactive({"context": item})
-                        self.key_to_context[key] = context
                         fragment = self.create_fragment(lambda c=context: c["context"])
-                        self.key_to_fragment[key] = fragment
                         fragment.parent = self
+                        self.key_to_fragment[key] = fragment, context
                         new_children.append(fragment)
 
                 # Now we need to reorder/mount the DOM elements to match new_children
