@@ -453,6 +453,7 @@ class ListFragment(Fragment):
                     new_keys.append(key)
                     new_key_to_item[key] = item
 
+                # Check for duplicate keys, raise when found
                 if len(new_keys) != len(new_key_to_item):
                     duplicates = []
                     for key in new_key_to_item:
