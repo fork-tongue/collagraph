@@ -64,4 +64,4 @@ def set_attribute(self, attr, value):
 
     # And don't forget to enable signals when done
     if model:
-        model.blockSignals(True)
+        model.blockSignals(False)
