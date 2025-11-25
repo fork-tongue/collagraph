@@ -42,7 +42,7 @@ def remove(self, el):
 @PySideRenderer.register_set_attr(QStandardItem)
 def set_attribute(self, attr, value):
     # Before setting any attribute, make sure to disable
-    # all signals for the tree widget
+    # all signals for the associated model
     model = self.model()
     if model:
         model.blockSignals(True)
