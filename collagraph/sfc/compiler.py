@@ -675,8 +675,18 @@ def create_collagraph_render_function(
                     if parent_node.tag and parent_node.tag[0].isupper():
                         attributes.append(ast_set_slot_name(el, "default"))
 
+            # Check if this tag is a loop variable (from v-for)
+            # Loop variables should not be treated as components
+            is_loop_variable = any(
+                child.tag in loop_vars
+                for loop_dict in list_names
+                for loop_vars in loop_dict.values()
+            )
+
             is_component = (
-                child.tag in names or child.tag[0].isupper() or "." in child.tag
+                (child.tag in names and not is_loop_variable)
+                or child.tag[0].isupper()
+                or "." in child.tag
             )
             result.append(
                 ast_create_fragment(
