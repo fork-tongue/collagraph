@@ -254,14 +254,9 @@ class Fragment:
         self.create()
 
         if self.element:
-            # We have a regular element - insert it and mount its children
             self.renderer.insert(self.element, parent=target, anchor=anchor)
-            for child in self.children:
-                child.mount(self.element)
-        else:
-            # Template fragment - no element, just mount children
-            for child in self.children:
-                child.mount(target, anchor)
+        for child in self.children:
+            child.mount(self.element or target)
 
         self._mounted = True
 
