@@ -113,12 +113,79 @@ def test_dynamic_component_tag_component(parse_source):
     )
     gui.render(App, container, state=state)
 
-    assert len(container["children"]) == 1
+    assert len(container["children"]) == 1, container["children"]
     assert container["children"][0]["attrs"]["name"] == "foo"
     assert container["children"][0]["type"] == "a"
 
     state["element_type"] = B
 
-    assert len(container["children"]) == 1
+    assert len(container["children"]) == 1, container["children"]
     assert container["children"][0]["attrs"]["name"] == "foo"
     assert container["children"][0]["type"] == "b"
+
+    # Check that reactivity still works
+    state["name"] = "bar"
+
+    assert len(container["children"]) == 1, container["children"]
+    assert container["children"][0]["type"] == "b"
+    assert container["children"][0]["attrs"]["name"] == "bar"
+
+    state["element_type"] = A
+
+    assert len(container["children"]) == 1, container["children"]
+    assert container["children"][0]["type"] == "a"
+    assert container["children"][0]["attrs"]["name"] == "bar"
+
+
+def test_dynamic_component_tag_component_and_element(parse_source):
+    A, _ = parse_source(
+        """
+        <a :name="name" />
+        <script>
+        from collagraph import Component
+        class A(Component):
+            pass
+        </script>
+        """
+    )
+    App, _ = parse_source(
+        """
+        <component :is="element_type" :name="name" />
+        <script>
+        from collagraph import Component
+        class App(Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"name": "foo", "element_type": A})
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    assert len(container["children"]) == 1, container["children"]
+    assert container["children"][0]["attrs"]["name"] == "foo"
+    assert container["children"][0]["type"] == "a"
+
+    state["element_type"] = "b"
+
+    assert len(container["children"]) == 1, container["children"]
+    assert container["children"][0]["attrs"]["name"] == "foo"
+    assert container["children"][0]["type"] == "b"
+
+    # Check that reactivity still works
+    state["name"] = "bar"
+
+    assert len(container["children"]) == 1, container["children"]
+    assert container["children"][0]["type"] == "b"
+    assert container["children"][0]["attrs"]["name"] == "bar"
+
+    state["element_type"] = A
+
+    assert len(container["children"]) == 1, container["children"]
+    assert container["children"][0]["attrs"]["name"] == "bar"
+    assert container["children"][0]["type"] == "a"

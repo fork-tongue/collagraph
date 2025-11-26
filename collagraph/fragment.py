@@ -55,10 +55,15 @@ class Fragment:
         # TODO: add extra dict prop just for attributes:
         # that saves on lookups like: 'bind:' in key
         self._watchers: dict[str, Watcher] = {}
+        # Watcher for dynamic tag changes (separate from attribute watchers)
+        self._type_watcher: Watcher | None = None
         # Conditional expression for whether the DOM element should be rendered
         self._condition: Callable | None = None
 
         self._mounted = False
+
+        # ComponentFragment delegate for when tag is a Component class
+        self._component_delegate: ComponentFragment | None = None
 
         # Make sure that the relationship between this
         # item and its parent is set correctly
@@ -113,6 +118,8 @@ class Fragment:
         """
         if self.element:
             return self.element
+        if self._component_delegate:
+            return self._component_delegate.first()
         for child in self.children:
             if child.element:
                 return child.element
@@ -176,7 +183,7 @@ class Fragment:
         # TODO: In case of a component tag, do we maybe want to wait???
         # So that we can build up a reactive props object or something?
         self.tag = expression()
-        self._watchers["type"] = watch(
+        self._type_watcher = watch(
             expression,
             update_type,
             immediate=False,
@@ -245,6 +252,31 @@ class Fragment:
         if self.tag == "template" or self.tag is None:
             return
 
+        # Check if tag is a Component class (callable)
+        if callable(self.tag):
+            # Create a ComponentFragment to handle the component
+            # Note: Don't pass parent=self to avoid double-mounting
+            self._component_delegate = ComponentFragment(
+                self.renderer,
+                tag=self.tag,
+                props=reactive({}),
+            )
+            # Manually set parent without registering as child
+            self._component_delegate._parent = ref(self)
+
+            # Transfer static attributes to props
+            self._component_delegate._attributes.update(self._attributes)
+
+            # Transfer dynamic bindings
+            self._component_delegate._binds.extend(self._binds)
+
+            # Transfer event handlers
+            self._component_delegate._events.update(self._events)
+
+            # Create the component
+            self._component_delegate.create()
+            return
+
         # Create the element
         self.element = self.renderer.create_element(self.tag)
         # Set all static attributes
@@ -275,37 +307,55 @@ class Fragment:
         self.target = target
         self.create()
 
-        if self.element:
+        # If we have a component delegate, mount it instead
+        if self._component_delegate:
+            self._component_delegate.mount(target, anchor)
+        elif self.element:
             self.renderer.insert(self.element, parent=target, anchor=anchor)
+
         for child in self.children:
             child.mount(self.element or target)
 
         self._mounted = True
 
     def _set_attr(self, attr, value):
-        if self.element:
+        if self._component_delegate:
+            self._component_delegate._set_attr(attr, value)
+        elif self.element:
             self.renderer.set_attribute(self.element, attr, value)
             if self._mounted:
                 if component := self._component_parent():
                     component.updated()
 
     def _rem_attr(self, attr):
-        if self.element:
+        if self._component_delegate:
+            self._component_delegate._rem_attr(attr)
+        elif self.element:
             self.renderer.remove_attribute(self.element, attr, None)
             if self._mounted:
                 if component := self._component_parent():
                     component.updated()
 
     def _remove(self):
-        if self.element:
+        if self._component_delegate:
+            self._component_delegate._remove()
+        elif self.element:
             self.renderer.remove(self.element, self.target)
             self.element = None
 
     def _has_content(self):
+        if self._component_delegate:
+            return self._component_delegate._has_content()
         return bool(self.element)
 
     def unmount(self, destroy=True):
         self._mounted = False
+
+        # Unmount component delegate if present
+        if self._component_delegate:
+            self._component_delegate.unmount(destroy=destroy)
+            # Always clear the delegate since we'll recreate it on remount
+            self._component_delegate = None
 
         for child in self.children:
             child.unmount(destroy=destroy)
@@ -323,6 +373,11 @@ class Fragment:
                 watcher.fn = lambda: ()
                 watcher.callback = None
             self._watchers = {}
+            # Also disable the type watcher
+            if self._type_watcher:
+                self._type_watcher.fn = lambda: ()
+                self._type_watcher.callback = None
+                self._type_watcher = None
             self._condition = None
             self.tag = None
         else:
@@ -333,6 +388,7 @@ class Fragment:
                 watcher.fn = lambda: ()
                 watcher.callback = None
             self._watchers = {}
+            # Keep _type_watcher alive for dynamic tag switching
 
         # TODO: maybe control flow fragments needs another custom 'parenting'
         # solution where the control flow fragment keeps references to the
