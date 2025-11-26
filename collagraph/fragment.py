@@ -255,14 +255,13 @@ class Fragment:
         # Check if tag is a Component class (callable)
         if callable(self.tag):
             # Create a ComponentFragment to handle the component
-            # Note: Don't pass parent=self to avoid double-mounting
+            # Register as child (like ComponentFragment does with its internal fragment)
             self._component_delegate = ComponentFragment(
                 self.renderer,
                 tag=self.tag,
+                parent=self,  # This will call register_child()
                 props=reactive({}),
             )
-            # Manually set parent without registering as child
-            self._component_delegate._parent = ref(self)
 
             # Transfer static attributes to props
             self._component_delegate._attributes.update(self._attributes)
@@ -307,14 +306,19 @@ class Fragment:
         self.target = target
         self.create()
 
-        # If we have a component delegate, mount it instead
+        # Conditional mount logic (similar to ComponentFragment pattern)
         if self._component_delegate:
+            # Delegate handles everything (it's registered as a child but we mount it explicitly)
             self._component_delegate.mount(target, anchor)
         elif self.element:
+            # We have a regular element - insert it and mount its children
             self.renderer.insert(self.element, parent=target, anchor=anchor)
-
-        for child in self.children:
-            child.mount(self.element or target)
+            for child in self.children:
+                child.mount(self.element)
+        else:
+            # Template fragment - no element, just mount children
+            for child in self.children:
+                child.mount(target, anchor)
 
         self._mounted = True
 
@@ -351,12 +355,11 @@ class Fragment:
     def unmount(self, destroy=True):
         self._mounted = False
 
-        # Unmount component delegate if present
+        # Clear delegate reference (it will be unmounted via children loop)
         if self._component_delegate:
-            self._component_delegate.unmount(destroy=destroy)
-            # Always clear the delegate since we'll recreate it on remount
             self._component_delegate = None
 
+        # Unmount all children (including delegate if present)
         for child in self.children:
             child.unmount(destroy=destroy)
 
