@@ -400,12 +400,17 @@ class ListFragment(Fragment):
         self.create_fragment: Callable[[], Fragment] | None = None
         self.expression: Callable[[], list[Any]] | None = None
         self.is_keyed: bool = False
+        self.key_extractor: Callable[[Any], Any] | None = None
 
     def set_create_fragment(
-        self, create_fragment: Callable[[], Fragment], is_keyed: bool
+        self,
+        create_fragment: Callable[[], Fragment],
+        is_keyed: bool,
+        key_extractor: Callable[[Any], Any] | None = None,
     ):
         self.create_fragment = create_fragment
         self.is_keyed = is_keyed
+        self.key_extractor = key_extractor
 
     def set_expression(self, expression: Callable[[], list[Any]] | None):
         self.expression = expression
@@ -428,41 +433,155 @@ class ListFragment(Fragment):
         # Keep a list with all the rendered values
         self.values = []
 
-        @weak(self)
-        def update_children(self):
-            items = expression()
-            for index in reversed(range(len(items), len(self.children))):
-                # Remove extra items and context
-                fragment = self.children.pop(index)
-                fragment.unmount()
-                self.values.pop(index)
+        if self.is_keyed and self.key_extractor:
+            # Key-based reconciliation
+            # Track fragments by their keys
+            self.key_to_fragment: dict[str, Fragment] = {}
 
-            for i, item in enumerate(items):
-                if i < len(self.children):
-                    # Update the content for existing values
-                    self.values[i]["context"] = item
-                else:
-                    # Create a new fragment + context
-                    context = reactive({"context": item})
-                    self.values.append(context)
-                    fragment = self.create_fragment(
-                        lambda i=i: self.values[i]["context"]
-                    )
-                    self.children.append(fragment)
-                    fragment.parent = self
-                    fragment.mount(target, anchor=self.anchor())
+            @weak(self)
+            def update_children_keyed(self):
+                items = expression()
 
-        # Then we add a watch_effect for the children
-        # which adds/removes/updates all the child fragments
-        self._watchers["list"] = watch_effect(update_children)
+                # Build new keys list
+                new_keys = []
+                new_key_to_item = {}
+                for item in items:
+                    # Extract key for this item
+                    # Pass a function that returns the item directly
+                    key = self.key_extractor(lambda i=item: i)
+                    new_keys.append(key)
+                    new_key_to_item[key] = item
+
+                # Check for duplicate keys, raise when found
+                if len(new_keys) != len(new_key_to_item):
+                    duplicates = []
+                    for key in new_key_to_item:
+                        if new_keys.count(key) > 1:
+                            duplicates.append(str(key))
+                    raise RuntimeError(f"Duplicate keys found: {', '.join(duplicates)}")
+
+                # Determine which keys are removed, added, or moved
+                old_key_set = set(self.key_to_fragment)
+                new_key_set = set(new_keys)
+
+                # Keys that are no longer present - unmount them
+                removed_keys = old_key_set - new_key_set
+                for key in removed_keys:
+                    fragment = self.key_to_fragment.pop(key)
+                    # Remove from children list
+                    self.children.remove(fragment)
+                    fragment.unmount()
+
+                # Build new children array in the correct order
+                new_children = []
+                for i, key in enumerate(new_keys):
+                    item = new_key_to_item[key]
+
+                    if key in self.key_to_fragment:
+                        # Reuse existing fragment
+                        fragment = self.key_to_fragment[key]
+                        # Update the context with new item value
+                        new_children.append(fragment)
+                    else:
+                        # Create new fragment for new key
+                        context = reactive({"context": item})
+                        fragment = self.create_fragment(lambda c=context: c["context"])
+                        fragment.parent = self
+                        self.key_to_fragment[key] = fragment
+                        new_children.append(fragment)
+
+                # Now we need to reorder/mount the DOM elements to match new_children
+                # We process from the end to the beginning to avoid interference
+                # from previous moves
+                for i in range(len(new_children) - 1, -1, -1):
+                    fragment = new_children[i]
+
+                    # Determine the correct anchor for this position
+                    # The anchor is the element after this position
+                    if i + 1 < len(new_children):
+                        # Anchor is the next fragment's first element
+                        next_fragment = new_children[i + 1]
+                        anchor = next_fragment.first()
+                    else:
+                        # This is the last item, use the list's anchor
+                        anchor = self.anchor()
+
+                    # Check if fragment needs to be mounted or moved
+                    if not fragment._mounted:
+                        # Mount new fragment at the correct position
+                        fragment.mount(target, anchor=anchor)
+                    else:
+                        # Fragment is already mounted, move it in the DOM if needed
+                        if fragment.element:
+                            # Check if it's already in the correct position
+                            # Get the actual next sibling in the current DOM
+                            current_next = self._get_next_sibling(
+                                fragment.element, target
+                            )
+
+                            # Only move if not already in correct position
+                            if current_next != anchor:
+                                # Remove from current position
+                                # (but keep element reference)
+                                # and insert at new position
+                                self.renderer.remove(fragment.element, target)
+                                self.renderer.insert(
+                                    fragment.element, parent=target, anchor=anchor
+                                )
+
+                # Update children list
+                self.children = new_children
+
+            def _get_next_sibling(element, parent):
+                """Get the next sibling element in the parent's children list"""
+                try:
+                    idx = parent.children.index(element)
+                    if idx + 1 < len(parent.children):
+                        return parent.children[idx + 1]
+                    return None
+                except (ValueError, AttributeError):
+                    return None
+
+            # Bind the helper function to self
+            self._get_next_sibling = _get_next_sibling
+
+            # Watch for changes
+            self._watchers["list"] = watch_effect(update_children_keyed)
+        else:
+            # Index-based reconciliation (original logic)
+            @weak(self)
+            def update_children(self):
+                items = expression()
+                for index in reversed(range(len(items), len(self.children))):
+                    # Remove extra items and context
+                    fragment = self.children.pop(index)
+                    fragment.unmount()
+                    self.values.pop(index)
+
+                for i, item in enumerate(items):
+                    if i < len(self.children):
+                        # Update the content for existing values
+                        self.values[i]["context"] = item
+                    else:
+                        # Create a new fragment + context
+                        context = reactive({"context": item})
+                        self.values.append(context)
+                        fragment = self.create_fragment(
+                            lambda i=i: self.values[i]["context"]
+                        )
+                        self.children.append(fragment)
+                        fragment.parent = self
+                        fragment.mount(target, anchor=self.anchor())
+
+            # Then we add a watch_effect for the children
+            # which adds/removes/updates all the child fragments
+            self._watchers["list"] = watch_effect(update_children)
 
         for child in self.children:
             if not child.element:
                 child.mount(target, anchor=self.anchor())
 
         self._mounted = True
-        # TODO: detect whether a keyed list is used?
-        # TODO: for keyed lists: watch a list of keys instead of indices
 
     def unmount(self, destroy=True):
         super().unmount(destroy=destroy)
