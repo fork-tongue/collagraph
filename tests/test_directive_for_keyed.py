@@ -124,6 +124,80 @@ class TrackingRenderer(CustomElementRenderer):
         self.operations = []
 
 
+def test_reconcile_by_key(parse_source):
+    states = [
+        (["a", "b", "c"], ["c", "a", "b"], "shift right"),  # shift right
+        (["a", "b", "c"], ["b", "c", "a"], "shift left"),  # shift left
+        (["a", "b", "c"], ["c", "b", "a"], "reverse order"),  # reverse order
+        (["a", "b", "c"], ["a", "b"], "remove last"),  # remove last
+        (["a", "b", "c"], ["a", "c"], "remove from middle"),  # remove from middle
+        (["a", "b", "c"], ["b", "c"], "remove first"),  # remove first
+        (["a", "b", "c"], ["a", "b", "c", "d"], "add last"),  # add last
+        (["a", "b", "c"], ["a", "b", "d", "c"], "add in middle"),  # add in middle
+        (["a", "b", "c"], ["d", "a", "b", "c"], "add begin"),  # add begin
+        (["a", "b", "c", "d"], ["e", "f"], "replace completely"),  # replace completely
+    ]
+
+    Items, _ = parse_source(
+        """
+            <items>
+              <!-- FIXME: using v-for="item in items" is broken... -->
+              <item
+                v-for="it in items"
+                :key="it"
+                :content="it"
+              />
+            </items>
+
+            <script>
+            import collagraph as cg
+
+            class Items(cg.Component):
+                pass
+            </script>
+        """
+    )
+    renderer = CustomElementRenderer()
+
+    for before, after, name in states:
+        gui = Collagraph(
+            renderer=renderer,
+            event_loop_type=EventLoopType.SYNC,
+        )
+        container = CustomElement()
+        container.type = "root"
+        container.children = []
+        state = reactive({"items": before})
+
+        gui.render(Items, container, state=state)
+
+        items = container.children[0]
+
+        for idx, val in enumerate(before):
+            item = items.children[idx]
+            assert item.content == val, name
+
+        children_refs = [ref(x) for x in items.children]
+
+        state["items"] = after
+
+        for idx, val in enumerate(after):
+            item = items.children[idx]
+            assert item.content == val, (
+                name,
+                [child.content for child in items.children],
+                after,
+            )
+
+            # Check that the instances have not been replaced
+            # but actually have been moved/reconciled
+            if val in before:
+                prev_idx = before.index(val)
+                assert item is children_refs[prev_idx](), name
+
+        assert len(after) == len(items.children), name
+
+
 def test_keyed_list_efficiency(parse_source):
     """Test that keyed lists only perform necessary DOM operations."""
     Items, _ = parse_source(
