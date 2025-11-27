@@ -120,7 +120,6 @@ def test_reconcile_by_key(parse_source):
 
         for idx, val in enumerate(before):
             item = items.children[idx]
-            # breakpoint()
             assert item.content == val, name
 
         children_refs = [ref(x) for x in items.children]
@@ -128,7 +127,6 @@ def test_reconcile_by_key(parse_source):
         state["items"] = after
 
         for idx, val in enumerate(after):
-            # breakpoint()
             item = items.children[idx]
             assert item.content == val, (
                 name,
@@ -138,10 +136,8 @@ def test_reconcile_by_key(parse_source):
 
             # Check that the instances have not been replaced
             # but actually have been moved/reconciled
-            try:
+            if val in before:
                 prev_idx = before.index(val)
                 assert item is children_refs[prev_idx](), name
-            except ValueError:
-                pass
 
         assert len(after) == len(items.children), name

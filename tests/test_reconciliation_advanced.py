@@ -124,7 +124,6 @@ class TrackingRenderer(CustomElementRenderer):
         self.operations = []
 
 
-# Test 1: Performance/Efficiency Testing
 def test_keyed_list_efficiency(parse_source):
     """Test that keyed lists only perform necessary DOM operations."""
     Items, _ = parse_source(
@@ -295,7 +294,6 @@ def test_keyed_vs_unkeyed_efficiency(parse_source):
     assert unkeyed_elements_after[0].content == "c", "Content updated to 'c'"
 
 
-# Test 2: Component State Preservation
 def test_keyed_components_preserve_state(parse_source):
     """Test that components in keyed lists preserve their internal state."""
     Counter, _ = parse_source(
@@ -413,7 +411,6 @@ def test_keyed_components_preserve_state(parse_source):
     assert counter_c.state["count"] == 0
 
 
-# Test 3: Duplicate Key Handling
 def test_duplicate_keys_behavior(parse_source):
     """Test behavior when multiple items have the same key."""
     Items, _ = parse_source(
@@ -454,7 +451,6 @@ def test_duplicate_keys_behavior(parse_source):
     assert "Duplicate keys found: 1" in str(err.value)
 
 
-# Test 4: Complex Key Expressions
 def test_complex_key_expressions(parse_source):
     """Test keys computed from multiple item properties."""
     Items, _ = parse_source(
@@ -522,7 +518,6 @@ def test_complex_key_expressions(parse_source):
     assert items_el.children[2] is element_refs[0]()
 
 
-# Test 5: Nested Keyed Lists
 def test_nested_keyed_lists(parse_source):
     """Test keyed lists containing other keyed lists."""
     # TODO: switch back to 'group' and 'item' after #136 is merged
@@ -617,7 +612,6 @@ def test_nested_keyed_lists(parse_source):
     assert group_a_items_after[1] is a1_ref()
 
 
-# Test 6: Interaction with v-if
 @pytest.mark.skip(reason="v-if on v-for elements not currently supported by compiler")
 def test_keyed_list_with_v_if(parse_source):
     """Test v-for with :key combined with v-if on items."""
@@ -629,7 +623,6 @@ def test_keyed_list_with_v_if(parse_source):
     pass
 
 
-# Test 7: Event Handler Preservation
 def test_event_handlers_after_reconciliation(parse_source):
     """Test that event handlers remain functional after list reordering."""
     Items, _ = parse_source(
@@ -706,7 +699,6 @@ def test_event_handlers_after_reconciliation(parse_source):
     assert Items.call_log == [1, 3, 1, 2]
 
 
-# Test 8: Memory Leak Detection
 def test_no_memory_leaks_on_item_removal(parse_source):
     """Test that removed keyed items are garbage collected."""
     Items, _ = parse_source(
@@ -757,7 +749,6 @@ def test_no_memory_leaks_on_item_removal(parse_source):
     )
 
 
-# Test 9: Edge Cases
 def test_keyed_list_edge_cases(parse_source):
     """Test various edge cases."""
     Items, _ = parse_source(
@@ -809,7 +800,6 @@ def test_keyed_list_edge_cases(parse_source):
     assert len(items_el.children) == 0
 
 
-# Test 10: Key Type Variations
 def test_different_key_types(parse_source):
     """Test that keys can be different types."""
     Items, _ = parse_source(
@@ -865,7 +855,6 @@ def test_different_key_types(parse_source):
     assert items_el.children[1] is not refs[1]()
 
 
-# Test 11: Reactive Key Changes
 def test_reactive_key_changes(parse_source):
     """Test what happens when a key value itself changes."""
     Items, _ = parse_source(
@@ -927,7 +916,6 @@ def test_reactive_key_changes(parse_source):
     assert items_el.children[1].text == "B"
 
 
-# Test 12: Multiple simultaneous operations
 def test_complex_reconciliation_scenario(parse_source):
     """Test a complex scenario with add, remove, move, and update."""
     Items, _ = parse_source(
