@@ -694,3 +694,32 @@ def test_for_lambdas(parse_source):
         handler()
 
     assert calls == ["first", "second"]
+
+
+def test_for_context_and_naming(parse_source):
+    """
+    Make sure that using a loop variable can have the same
+    name as an element.
+    """
+    Items, _ = parse_source(
+        """
+        <item
+          v-for="item in items"
+          :value="item['value']"
+        />
+        <script>
+        import collagraph as cg
+        class Items(cg.Component):
+            pass
+        </script>
+        """
+    )
+    state = reactive({"items": [{"value": "a"}, {"value": "b"}]})
+
+    gui = Collagraph(DictRenderer())
+    container = {"type": "root"}
+    gui.render(Items, container, state)
+
+    first_item, second_item = container["children"]
+    assert first_item["attrs"]["value"] == "a"
+    assert second_item["attrs"]["value"] == "b"
