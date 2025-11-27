@@ -911,3 +911,202 @@ def test_dynamic_component_deeply_nested_dynamic(parse_source):
     assert len(level1["children"]) == 3
     assert len(level2["children"]) == 3
     assert len(level3["children"]) == 1
+
+
+def test_dynamic_component_with_slot(parse_source):
+    """Test dynamic component switching to Component class with slot"""
+    Wrapper, _ = parse_source(
+        """
+        <wrapper>
+          <slot />
+        </wrapper>
+        <script>
+        from collagraph import Component
+        class Wrapper(Component):
+            pass
+        </script>
+        """
+    )
+
+    App, _ = parse_source(
+        """
+        <component :is="tag">
+          <content :text="text" />
+        </component>
+        <script>
+        from collagraph import Component
+        class App(Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"tag": "div", "text": "Hello"})
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    # Initial: regular div element with content as child
+    root = container["children"][0]
+    assert root["type"] == "div"
+    assert len(root["children"]) == 1
+    assert root["children"][0]["type"] == "content"
+    assert root["children"][0]["attrs"]["text"] == "Hello"
+
+    # Change to Component class with slot
+    state["tag"] = Wrapper
+    root = container["children"][0]
+    assert root["type"] == "wrapper"
+    assert len(root["children"]) == 1, format_dict(container)
+    assert root["children"][0]["type"] == "content"
+    assert root["children"][0]["attrs"]["text"] == "Hello"
+
+    # Verify reactivity still works
+    state["text"] = "World"
+    assert root["children"][0]["attrs"]["text"] == "World"
+
+    # Change back to regular element
+    state["tag"] = "section"
+    root = container["children"][0]
+    assert root["type"] == "section"
+    assert len(root["children"]) == 1
+    assert root["children"][0]["type"] == "content"
+    assert root["children"][0]["attrs"]["text"] == "World"
+
+    # Change to different Component
+    state["tag"] = Wrapper
+    root = container["children"][0]
+    assert root["type"] == "wrapper"
+    assert len(root["children"]) == 1
+    assert root["children"][0]["type"] == "content"
+
+
+def test_dynamic_component_with_named_slots(parse_source):
+    """Test dynamic component with Component class that has named slots"""
+    Layout, _ = parse_source(
+        """
+        <layout>
+          <header>
+            <slot name="header" />
+          </header>
+          <main>
+            <slot />
+          </main>
+          <footer>
+            <slot name="footer" />
+          </footer>
+        </layout>
+        <script>
+        from collagraph import Component
+        class Layout(Component):
+            pass
+        </script>
+        """
+    )
+
+    App, _ = parse_source(
+        """
+        <component :is="tag">
+          <h1 v-slot:header :title="header_text" />
+          <content :text="content_text" />
+          <span v-slot:footer :label="footer_text" />
+        </component>
+        <script>
+        from collagraph import Component
+        class App(Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive(
+        {
+            "tag": "div",
+            "header_text": "Header",
+            "content_text": "Content",
+            "footer_text": "Footer",
+        }
+    )
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    # Initial: regular div with all children
+    root = container["children"][0]
+    assert root["type"] == "div"
+    assert len(root["children"]) == 3
+    assert root["children"][0]["type"] == "h1"
+    assert root["children"][0]["attrs"]["title"] == "Header"
+    assert root["children"][1]["type"] == "content"
+    assert root["children"][1]["attrs"]["text"] == "Content"
+    assert root["children"][2]["type"] == "span"
+    assert root["children"][2]["attrs"]["label"] == "Footer"
+
+    # Change to Layout component with named slots
+    state["tag"] = Layout
+    root = container["children"][0]
+    assert root["type"] == "layout"
+
+    # Check that children are properly distributed to named slots
+    layout_children = root["children"]
+    assert len(layout_children) == 3, format_dict(container)
+
+    # Header slot
+    header = layout_children[0]
+    assert header["type"] == "header"
+    assert len(header["children"]) == 1
+    assert header["children"][0]["type"] == "h1"
+    assert header["children"][0]["attrs"]["title"] == "Header"
+
+    # Main slot (default)
+    main = layout_children[1]
+    assert main["type"] == "main"
+    assert len(main["children"]) == 1
+    assert main["children"][0]["type"] == "content"
+    assert main["children"][0]["attrs"]["text"] == "Content"
+
+    # Footer slot
+    footer = layout_children[2]
+    assert footer["type"] == "footer"
+    assert len(footer["children"]) == 1
+    assert footer["children"][0]["type"] == "span"
+    assert footer["children"][0]["attrs"]["label"] == "Footer"
+
+    # Verify reactivity still works
+    state["header_text"] = "New Header"
+    state["content_text"] = "New Content"
+    state["footer_text"] = "New Footer"
+
+    assert header["children"][0]["attrs"]["title"] == "New Header"
+    assert main["children"][0]["attrs"]["text"] == "New Content"
+    assert footer["children"][0]["attrs"]["label"] == "New Footer"
+
+    # Change back to regular element
+    state["tag"] = "section"
+    root = container["children"][0]
+    assert root["type"] == "section"
+    assert len(root["children"]) == 3
+    # Order should be preserved
+    assert root["children"][0]["type"] == "h1"
+    assert root["children"][1]["type"] == "content"
+    assert root["children"][2]["type"] == "span"
+
+    # Change back to Layout
+    state["tag"] = Layout
+    root = container["children"][0]
+    assert root["type"] == "layout"
+
+    # Verify slots are still correct
+    layout_children = root["children"]
+    assert len(layout_children[0]["children"]) == 1
+    assert layout_children[0]["children"][0]["type"] == "h1"
+    assert len(layout_children[1]["children"]) == 1
+    assert layout_children[1]["children"][0]["type"] == "content"
+    assert len(layout_children[2]["children"]) == 1
+    assert layout_children[2]["children"][0]["type"] == "span"

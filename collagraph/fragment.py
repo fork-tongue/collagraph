@@ -667,6 +667,11 @@ class ComponentFragment(Fragment):
     def unmount(self, destroy=True):
         if self.component:
             self.component.before_unmount()
+
+        # Unmount slot contents before calling super
+        for slot_content in self.slot_contents:
+            slot_content.unmount(destroy=destroy)
+
         super().unmount(destroy=destroy)
 
 
@@ -774,6 +779,19 @@ class DynamicFragment(Fragment):
 
     def _create_fragment_for_tag(self, tag):
         """Create appropriate fragment for the given tag"""
+        # Save existing children before creating active fragment
+        # If we had a ComponentFragment, children are in its slot_contents
+        if (
+            self._active_fragment
+            and isinstance(self._active_fragment, ComponentFragment)
+            and self._active_fragment.tag is not None
+        ):
+            # Get children from previous ComponentFragment's slot_contents
+            existing_children = self._active_fragment.slot_contents.copy()
+        else:
+            # Get children from DynamicFragment's children
+            existing_children = self.children.copy()
+
         if callable(tag):
             # Component class - create ComponentFragment
             # Don't pass parent, so that the register_child method is skipped
@@ -786,11 +804,19 @@ class DynamicFragment(Fragment):
             )
             # Manually set the parent
             self._active_fragment._parent = ref(self)
-            # Don't transfer children - ComponentFragment creates its own from rendering
+
+            # Transfer existing children as slot content
+            # ComponentFragment.register_child() adds them to slot_contents
+            # when tag is set
+            for child in existing_children:
+                child._parent = ref(self._active_fragment)
+                # Set slot_name to "default" if not already set (e.g., by v-slot:name)
+                if not hasattr(child, "slot_name") or child.slot_name is None:
+                    child.slot_name = "default"
+                self._active_fragment.register_child(child)
         else:
             # String tag - create regular Fragment
             # Also don't pass parent here
-            existing_children = self.children.copy()
             self._active_fragment = Fragment(
                 self.renderer,
                 tag=tag,
@@ -798,9 +824,8 @@ class DynamicFragment(Fragment):
             # Manually set the parent
             self._active_fragment._parent = ref(self)
 
-            # # Transfer existing children to the active fragment
+            # Transfer existing children to the active fragment
             for child in existing_children:
-                assert child is not self._active_fragment
                 child._parent = ref(self._active_fragment)
                 self._active_fragment.children.append(child)
 
