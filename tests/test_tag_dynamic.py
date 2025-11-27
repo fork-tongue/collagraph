@@ -477,3 +477,437 @@ def test_dynamic_component_old_elements_removed(parse_source):
     assert "span" not in child_types
     assert "section" not in child_types
     assert "div" not in child_types
+
+
+def test_dynamic_component_with_vif_child(parse_source):
+    """Test that v-if children work correctly inside dynamic components"""
+    App, _ = parse_source(
+        """
+        <component :is="tag">
+          <child v-if="show" />
+          <fallback v-else />
+        </component>
+        <script>
+        from collagraph import Component
+        class App(Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"tag": "div", "show": True})
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    # Initial: div with v-if showing child
+    assert container["children"][0]["type"] == "div"
+    assert len(container["children"][0]["children"]) == 1
+    assert container["children"][0]["children"][0]["type"] == "child"
+
+    # Toggle v-if while keeping tag same
+    state["show"] = False
+    assert container["children"][0]["type"] == "div"
+    assert len(container["children"][0]["children"]) == 1
+    assert container["children"][0]["children"][0]["type"] == "fallback"
+
+    # Change tag while v-if is False
+    state["tag"] = "span"
+    assert container["children"][0]["type"] == "span"
+    assert len(container["children"][0]["children"]) == 1
+    assert container["children"][0]["children"][0]["type"] == "fallback"
+
+    # Toggle v-if back while tag is span
+    state["show"] = True
+    assert container["children"][0]["type"] == "span"
+    assert len(container["children"][0]["children"]) == 1
+    assert container["children"][0]["children"][0]["type"] == "child"
+
+    # Change tag while v-if is True
+    state["tag"] = "section"
+    assert container["children"][0]["type"] == "section"
+    assert len(container["children"][0]["children"]) == 1
+    assert container["children"][0]["children"][0]["type"] == "child"
+
+
+def test_dynamic_component_with_vfor_child(parse_source):
+    """Test that v-for children work correctly inside dynamic components"""
+    App, _ = parse_source(
+        """
+        <component :is="tag">
+          <item v-for="item in items" :name="item" />
+        </component>
+        <script>
+        from collagraph import Component
+        class App(Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"tag": "div", "items": ["a", "b", "c"]})
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    # Initial: div with v-for items
+    assert container["children"][0]["type"] == "div"
+    assert len(container["children"][0]["children"]) == 3
+    assert container["children"][0]["children"][0]["attrs"]["name"] == "a"
+    assert container["children"][0]["children"][1]["attrs"]["name"] == "b"
+    assert container["children"][0]["children"][2]["attrs"]["name"] == "c"
+
+    # Modify items while keeping tag same
+    state["items"] = ["x", "y"]
+    assert container["children"][0]["type"] == "div"
+    assert len(container["children"][0]["children"]) == 2
+    assert container["children"][0]["children"][0]["attrs"]["name"] == "x"
+    assert container["children"][0]["children"][1]["attrs"]["name"] == "y"
+
+    # Change tag while items are present
+    state["tag"] = "span"
+    assert container["children"][0]["type"] == "span"
+    assert len(container["children"][0]["children"]) == 2
+    assert container["children"][0]["children"][0]["attrs"]["name"] == "x"
+    assert container["children"][0]["children"][1]["attrs"]["name"] == "y"
+
+    # Modify items again after tag change
+    state["items"] = ["p", "q", "r", "s"]
+    assert container["children"][0]["type"] == "span"
+    assert len(container["children"][0]["children"]) == 4
+    assert container["children"][0]["children"][0]["attrs"]["name"] == "p"
+    assert container["children"][0]["children"][1]["attrs"]["name"] == "q"
+    assert container["children"][0]["children"][2]["attrs"]["name"] == "r"
+    assert container["children"][0]["children"][3]["attrs"]["name"] == "s"
+
+    # Change tag again with different item count
+    state["tag"] = "article"
+    assert container["children"][0]["type"] == "article"
+    assert len(container["children"][0]["children"]) == 4
+
+
+def test_dynamic_component_with_mixed_children(parse_source):
+    """Test dynamic component with mix of static, v-if, and v-for children"""
+    App, _ = parse_source(
+        """
+        <component :is="tag">
+          <before />
+          <conditional v-if="show" />
+          <item v-for="item in items" :label="item" />
+          <after />
+        </component>
+        <script>
+        from collagraph import Component
+        class App(Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"tag": "div", "show": True, "items": ["1", "2"]})
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    # Initial: before, conditional, item*2, after = 5 elements
+    root = container["children"][0]
+    assert root["type"] == "div"
+    assert len(root["children"]) == 5, format_dict(container)
+    assert root["children"][0]["type"] == "before"
+    assert root["children"][1]["type"] == "conditional"
+    assert root["children"][2]["type"] == "item"
+    assert root["children"][2]["attrs"]["label"] == "1"
+    assert root["children"][3]["type"] == "item"
+    assert root["children"][3]["attrs"]["label"] == "2"
+    assert root["children"][4]["type"] == "after"
+
+    # Hide conditional
+    state["show"] = False
+    root = container["children"][0]
+    assert len(root["children"]) == 4, format_dict(container)
+    assert root["children"][0]["type"] == "before"
+    assert root["children"][1]["type"] == "item"
+    assert root["children"][2]["type"] == "item"
+    assert root["children"][3]["type"] == "after"
+
+    # Change tag while conditional is hidden
+    state["tag"] = "span"
+    root = container["children"][0]
+    assert root["type"] == "span"
+    assert len(root["children"]) == 4
+
+    # Show conditional again
+    state["show"] = True
+    root = container["children"][0]
+    assert len(root["children"]) == 5
+    assert root["children"][0]["type"] == "before"
+    assert root["children"][1]["type"] == "conditional"
+    assert root["children"][2]["type"] == "item"
+    assert root["children"][3]["type"] == "item"
+    assert root["children"][4]["type"] == "after"
+
+    # Modify items
+    state["items"] = ["a", "b", "c"]
+    root = container["children"][0]
+    assert len(root["children"]) == 6  # before, conditional, item*3, after
+    assert root["children"][2]["attrs"]["label"] == "a"
+    assert root["children"][3]["attrs"]["label"] == "b"
+    assert root["children"][4]["attrs"]["label"] == "c"
+
+    # Change tag with all children active
+    state["tag"] = "section"
+    root = container["children"][0]
+    assert root["type"] == "section"
+    assert len(root["children"]) == 6
+
+
+def test_dynamic_component_nested_control_flow(parse_source):
+    """Test dynamic component with nested v-if inside v-for"""
+    App, _ = parse_source(
+        """
+        <component :is="tag">
+          <group v-for="group in groups">
+            <title :text="group['name']" />
+            <item v-if="group['visible']" />
+          </group>
+        </component>
+        <script>
+        from collagraph import Component
+        class App(Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive(
+        {
+            "tag": "div",
+            "groups": [
+                {"name": "Group1", "visible": True},
+                {"name": "Group2", "visible": False},
+            ],
+        }
+    )
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    # Initial render
+    root = container["children"][0]
+    assert root["type"] == "div"
+    assert len(root["children"]) == 2
+
+    # First group has title + item (visible=True)
+    group1 = root["children"][0]
+    assert group1["type"] == "group"
+    assert len(group1["children"]) == 2
+    assert group1["children"][0]["type"] == "title"
+    assert group1["children"][1]["type"] == "item"
+
+    # Second group has only title (visible=False)
+    group2 = root["children"][1]
+    assert group2["type"] == "group"
+    assert len(group2["children"]) == 1
+    assert group2["children"][0]["type"] == "title"
+
+    # Toggle visibility
+    state["groups"][1]["visible"] = True
+    group2 = root["children"][1]
+    assert len(group2["children"]) == 2
+
+    # Change tag
+    state["tag"] = "section"
+    root = container["children"][0]
+    assert root["type"] == "section"
+    assert len(root["children"]) == 2
+
+    # Verify nested structure survived tag change
+    group1 = root["children"][0]
+    assert len(group1["children"]) == 2
+    group2 = root["children"][1]
+    assert len(group2["children"]) == 2
+
+    # Modify groups
+    state["groups"] = [{"name": "GroupX", "visible": False}]
+    root = container["children"][0]
+    assert len(root["children"]) == 1
+    assert root["children"][0]["children"][0]["attrs"]["text"] == "GroupX"
+    assert len(root["children"][0]["children"]) == 1  # Only title, no item
+
+
+def test_dynamic_component_nested_dynamic(parse_source):
+    """Test dynamic component with nested dynamic component as child"""
+    App, _ = parse_source(
+        """
+        <component :is="outer">
+          <before />
+          <component :is="inner" />
+          <after />
+        </component>
+        <script>
+        from collagraph import Component
+        class App(Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"outer": "div", "inner": "span"})
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    # Initial: outer=div, inner=span
+    root = container["children"][0]
+    assert root["type"] == "div"
+    assert len(root["children"]) == 3
+    assert root["children"][0]["type"] == "before"
+    assert root["children"][1]["type"] == "span"
+    assert root["children"][2]["type"] == "after"
+
+    # Change inner tag
+    state["inner"] = "article"
+    root = container["children"][0]
+    assert root["type"] == "div"
+    assert len(root["children"]) == 3
+    assert root["children"][0]["type"] == "before"
+    assert root["children"][1]["type"] == "article"
+    assert root["children"][2]["type"] == "after"
+
+    # Change outer tag
+    state["outer"] = "section"
+    root = container["children"][0]
+    assert root["type"] == "section"
+    assert len(root["children"]) == 3
+    assert root["children"][0]["type"] == "before"
+    assert root["children"][1]["type"] == "article"
+    assert root["children"][2]["type"] == "after"
+
+    # Change both tags
+    state["outer"] = "main"
+    state["inner"] = "aside"
+    root = container["children"][0]
+    assert root["type"] == "main"
+    assert len(root["children"]) == 3
+    assert root["children"][0]["type"] == "before"
+    assert root["children"][1]["type"] == "aside"
+    assert root["children"][2]["type"] == "after"
+
+    # Verify no old elements accumulated
+    child_types = [child["type"] for child in root["children"]]
+    assert child_types == ["before", "aside", "after"]
+    assert "div" not in child_types
+    assert "span" not in child_types
+    assert "article" not in child_types
+    assert "section" not in child_types
+
+
+def test_dynamic_component_deeply_nested_dynamic(parse_source):
+    """Test deeply nested dynamic components with children at each level"""
+    App, _ = parse_source(
+        """
+        <component :is="level1">
+          <l1-before />
+          <component :is="level2">
+            <l2-before />
+            <component :is="level3">
+              <l3-content />
+            </component>
+            <l2-after />
+          </component>
+          <l1-after />
+        </component>
+        <script>
+        from collagraph import Component
+        class App(Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"level1": "div", "level2": "section", "level3": "article"})
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    # Initial render
+    level1 = container["children"][0]
+    assert level1["type"] == "div"
+    assert len(level1["children"]) == 3
+    assert level1["children"][0]["type"] == "l1-before"
+    assert level1["children"][2]["type"] == "l1-after"
+
+    level2 = level1["children"][1]
+    assert level2["type"] == "section"
+    assert len(level2["children"]) == 3
+    assert level2["children"][0]["type"] == "l2-before"
+    assert level2["children"][2]["type"] == "l2-after"
+
+    level3 = level2["children"][1]
+    assert level3["type"] == "article"
+    assert len(level3["children"]) == 1
+    assert level3["children"][0]["type"] == "l3-content"
+
+    # Change deepest level
+    state["level3"] = "aside"
+    level1 = container["children"][0]
+    level2 = level1["children"][1]
+    level3 = level2["children"][1]
+    assert level3["type"] == "aside"
+    assert len(level3["children"]) == 1
+    assert level3["children"][0]["type"] == "l3-content"
+
+    # Change middle level
+    state["level2"] = "nav"
+    level1 = container["children"][0]
+    level2 = level1["children"][1]
+    assert level2["type"] == "nav"
+    assert len(level2["children"]) == 3
+    level3 = level2["children"][1]
+    assert level3["type"] == "aside"
+    assert len(level3["children"]) == 1
+
+    # Change top level
+    state["level1"] = "main"
+    level1 = container["children"][0]
+    assert level1["type"] == "main"
+    assert len(level1["children"]) == 3
+    level2 = level1["children"][1]
+    assert level2["type"] == "nav"
+    level3 = level2["children"][1]
+    assert level3["type"] == "aside"
+
+    # Change all levels at once
+    state["level1"] = "header"
+    state["level2"] = "footer"
+    state["level3"] = "span"
+    level1 = container["children"][0]
+    assert level1["type"] == "header"
+    level2 = level1["children"][1]
+    assert level2["type"] == "footer"
+    level3 = level2["children"][1]
+    assert level3["type"] == "span"
+    assert level3["children"][0]["type"] == "l3-content"
+
+    # Verify no old elements accumulated at any level
+    assert len(level1["children"]) == 3
+    assert len(level2["children"]) == 3
+    assert len(level3["children"]) == 1

@@ -755,7 +755,8 @@ class DynamicFragment(Fragment):
 
             # Unmount current fragment
             if self._active_fragment:
-                self.children.remove(self._active_fragment)
+                # Note: _active_fragment is no longer in self.children
+                # (it's removed in _create_fragment_for_tag)
                 self._active_fragment.unmount(destroy=False)
 
             # Create new fragment
@@ -775,23 +776,27 @@ class DynamicFragment(Fragment):
         """Create appropriate fragment for the given tag"""
         if callable(tag):
             # Component class - create ComponentFragment
-            # Don't transfer children - ComponentFragment creates its own from rendering
+            # Don't pass parent, so that the register_child method is skipped
+            # so that the _active_fragment won't be part of the children
+            # which are whatever is specified in the template
             self._active_fragment = ComponentFragment(
                 self.renderer,
                 tag=tag,
-                parent=self,
                 props=reactive({}),
             )
+            # Manually set the parent
+            self._active_fragment._parent = ref(self)
+            # Don't transfer children - ComponentFragment creates its own from rendering
         else:
             # String tag - create regular Fragment
-            # Transfer any existing children for supporting 'slot' functionality:
-            # setting children on 'regular' elements
+            # Also don't pass parent here
             existing_children = self.children.copy()
             self._active_fragment = Fragment(
                 self.renderer,
                 tag=tag,
-                parent=self,
             )
+            # Manually set the parent
+            self._active_fragment._parent = ref(self)
 
             # # Transfer existing children to the active fragment
             for child in existing_children:
