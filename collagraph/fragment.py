@@ -435,8 +435,8 @@ class ListFragment(Fragment):
 
         if self.is_keyed and self.key_extractor:
             # Key-based reconciliation
-            # Track fragments and contexts (tuple) by their keys
-            self.key_to_fragment: dict[str, tuple] = {}
+            # Track fragments by their keys
+            self.key_to_fragment: dict[str, Fragment] = {}
 
             @weak(self)
             def update_children_keyed(self):
@@ -467,10 +467,9 @@ class ListFragment(Fragment):
                 # Keys that are no longer present - unmount them
                 removed_keys = old_key_set - new_key_set
                 for key in removed_keys:
-                    fragment, _ = self.key_to_fragment.pop(key)
+                    fragment = self.key_to_fragment.pop(key)
                     # Remove from children list
-                    if fragment in self.children:
-                        self.children.remove(fragment)
+                    self.children.remove(fragment)
                     fragment.unmount()
 
                 # Build new children array in the correct order
@@ -480,16 +479,15 @@ class ListFragment(Fragment):
 
                     if key in self.key_to_fragment:
                         # Reuse existing fragment
-                        fragment, context = self.key_to_fragment[key]
+                        fragment = self.key_to_fragment[key]
                         # Update the context with new item value
-                        context["context"] = item
                         new_children.append(fragment)
                     else:
                         # Create new fragment for new key
                         context = reactive({"context": item})
                         fragment = self.create_fragment(lambda c=context: c["context"])
                         fragment.parent = self
-                        self.key_to_fragment[key] = fragment, context
+                        self.key_to_fragment[key] = fragment
                         new_children.append(fragment)
 
                 # Now we need to reorder/mount the DOM elements to match new_children
