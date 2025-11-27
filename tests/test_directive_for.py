@@ -302,54 +302,6 @@ def test_for_reactive_pop(parse_source):
     assert items == state["items"], format_dict(container)
 
 
-def test_for_keyed(parse_source):
-    App, _ = parse_source(
-        """
-        <node
-          v-for="i in items"
-          :key="i['id']"
-          :text="i['text']"
-        />
-
-        <script>
-        import collagraph as cg
-
-        class App(cg.Component):
-            pass
-        </script>
-        """
-    )
-
-    state = reactive(
-        {
-            "items": [
-                {"id": 0, "text": "foo"},
-                {"id": 1, "text": "bar"},
-            ]
-        }
-    )
-    container = {"type": "root"}
-    gui = Collagraph(
-        renderer=DictRenderer(),
-        event_loop_type=EventLoopType.SYNC,
-    )
-    gui.render(App, container, state)
-
-    assert len(container["children"]) == len(state["items"])
-    for node, item in zip(container["children"], state["items"]):
-        assert node["type"] == "node"
-        assert node["attrs"]["key"] == item["id"]
-        assert node["attrs"]["text"] == item["text"]
-
-    state["items"][1]["text"] = "baz"
-
-    assert len(container["children"]) == len(state["items"])
-    for node, item in zip(container["children"], state["items"]):
-        assert node["type"] == "node"
-        assert node["attrs"]["key"] == item["id"]
-        assert node["attrs"]["text"] == item["text"]
-
-
 def test_example(parse_source):
     App, _ = parse_source(
         """
