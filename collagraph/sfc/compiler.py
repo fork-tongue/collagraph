@@ -728,9 +728,19 @@ def create_collagraph_render_function(
                     )
                 )
             else:
+                # Check if this tag is a loop variable (from v-for)
+                # Loop variables should not be treated as components
+                is_loop_variable = any(
+                    child.tag in loop_vars
+                    for loop_dict in list_names
+                    for loop_vars in loop_dict.values()
+                )
+
                 # Create regular Fragment or ComponentFragment
                 is_component = (
-                    child.tag in names or child.tag[0].isupper() or "." in child.tag
+                    (child.tag in names and not is_loop_variable)
+                    or child.tag[0].isupper()
+                    or "." in child.tag
                 )
                 result.append(
                     ast_create_fragment(
