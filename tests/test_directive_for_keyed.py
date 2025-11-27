@@ -124,13 +124,13 @@ class TrackingRenderer(CustomElementRenderer):
         self.operations = []
 
 
-def test_for_keyed(parse_source):
+def test_for_keyed(parse_source, process_events):
     App, _ = parse_source(
         """
         <node
-          v-for="i in items"
-          :key="i['id']"
-          :text="i['text']"
+          v-for="item in items"
+          :key="item['id']"
+          :text="item['text']"
         />
 
         <script>
@@ -153,7 +153,7 @@ def test_for_keyed(parse_source):
     container = {"type": "root"}
     gui = Collagraph(
         renderer=DictRenderer(),
-        event_loop_type=EventLoopType.SYNC,
+        event_loop_type=EventLoopType.DEFAULT,
     )
     gui.render(App, container, state)
 
@@ -164,6 +164,17 @@ def test_for_keyed(parse_source):
         assert node["attrs"]["text"] == item["text"]
 
     state["items"][1]["text"] = "baz"
+    process_events()
+
+    assert len(container["children"]) == len(state["items"])
+    for node, item in zip(container["children"], state["items"]):
+        assert node["type"] == "node"
+        assert node["attrs"]["key"] == item["id"]
+        assert node["attrs"]["text"] == item["text"]
+
+    state["items"].insert(0, {"id": 2, "text": "baz"})
+    state["items"].insert(2, {"id": 3, "text": "qux"})
+    process_events()
 
     assert len(container["children"]) == len(state["items"])
     for node, item in zip(container["children"], state["items"]):
