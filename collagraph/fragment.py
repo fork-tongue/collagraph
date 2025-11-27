@@ -580,6 +580,12 @@ class ComponentFragment(Fragment):
         else:
             self.children.append(child)
 
+    def first(self) -> Any | None:
+        """Return the first element from the rendered component fragment"""
+        if self.fragment:
+            return self.fragment.first()
+        return super().first()
+
     def create(self):
         if self.tag is None:
             return
@@ -744,12 +750,17 @@ class DynamicFragment(Fragment):
         # Set up watcher for tag changes
         @weak(self)
         def update_type(self, new_tag):
+            # Calculate anchor before unmounting
             anchor = self.anchor()
+
             # Unmount current fragment
             if self._active_fragment:
+                self.children.remove(self._active_fragment)
                 self._active_fragment.unmount(destroy=False)
+
             # Create new fragment
             self._create_fragment_for_tag(new_tag)
+
             # Mount it
             if self._active_fragment:
                 self._active_fragment.mount(self.target, anchor)
@@ -762,11 +773,9 @@ class DynamicFragment(Fragment):
 
     def _create_fragment_for_tag(self, tag):
         """Create appropriate fragment for the given tag"""
-        # Store existing children before creating active fragment
-        existing_children = self.children.copy()
-
         if callable(tag):
             # Component class - create ComponentFragment
+            # Don't transfer children - ComponentFragment creates its own from rendering
             self._active_fragment = ComponentFragment(
                 self.renderer,
                 tag=tag,
@@ -775,23 +784,25 @@ class DynamicFragment(Fragment):
             )
         else:
             # String tag - create regular Fragment
+            # Transfer any existing children for supporting 'slot' functionality:
+            # setting children on 'regular' elements
+            existing_children = self.children.copy()
             self._active_fragment = Fragment(
                 self.renderer,
                 tag=tag,
                 parent=self,
             )
 
+            # # Transfer existing children to the active fragment
+            for child in existing_children:
+                assert child is not self._active_fragment
+                child._parent = ref(self._active_fragment)
+                self._active_fragment.children.append(child)
+
         # Transfer attributes, bindings, events from self to active fragment
         self._active_fragment._attributes.update(self._attributes)
         self._active_fragment._binds.extend(self._binds)
         self._active_fragment._events.update(self._events)
-
-        # Transfer existing children to the active fragment
-        # These are children that were registered before the active fragment was created
-        for child in existing_children:
-            if child is not self._active_fragment:
-                child._parent = ref(self._active_fragment)
-                self._active_fragment.children.append(child)
 
         # Create the fragment
         self._active_fragment.create()

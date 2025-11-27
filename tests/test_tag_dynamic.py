@@ -1,4 +1,3 @@
-import pytest
 from observ import reactive
 
 from collagraph import Collagraph, EventLoopType
@@ -233,12 +232,6 @@ def test_dynamic_component_with_vfor(parse_source):
     assert div["children"][1]["attrs"]["name"] == "bar"
 
 
-@pytest.mark.skip(
-    reason="Complex issue: ComponentFragment.first() returns None during type switches "
-    "in v-for, causing element reordering. Initial ComponentFragment has polluted "
-    "children list from parent registration. Needs deeper investigation of "
-    "DynamicFragment/ComponentFragment interaction."
-)
 def test_dynamic_component_with_vfor_components(parse_source):
     """Test dynamic component with Component classes inside v-for"""
     A, _ = parse_source(
@@ -419,3 +412,68 @@ def test_dynamic_component_nested_vfor(parse_source):
     assert group1["children"][0]["type"] == "x"
     assert group1["children"][1]["type"] == "y"
     assert group1["children"][2]["type"] == "z"
+
+
+def test_dynamic_component_old_elements_removed(parse_source):
+    """
+    Regression test: Ensure old active_fragment elements don't accumulate
+    when DynamicFragment changes tags.
+
+    Bug: When changing from tag 'div' to 'span', the old 'div' element
+    was being added as a child of the new 'span' element because
+    active fragments were incorrectly registered in DynamicFragment.children
+    and then transferred to the new active fragment.
+    """
+    App, _ = parse_source(
+        """
+        <component :is="tag">
+          <child />
+        </component>
+        <script>
+        from collagraph import Component
+        class App(Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"tag": "div"})
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    # Initial render: div with one child
+    assert len(container["children"]) == 1
+    assert container["children"][0]["type"] == "div"
+    assert "children" in container["children"][0], format_dict(container)
+    assert len(container["children"][0]["children"]) == 1
+    assert container["children"][0]["children"][0]["type"] == "child"
+
+    # Change to span - old div should be removed, not become a child
+    state["tag"] = "span"
+
+    assert len(container["children"]) == 1, format_dict(container)
+    assert container["children"][0]["type"] == "span"
+    assert "children" in container["children"][0], format_dict(container)
+    assert len(container["children"][0]["children"]) == 1, format_dict(container)
+    assert container["children"][0]["children"][0]["type"] == "child"
+    # Bug would cause: children = ["child", "div"] - old div becomes a child!
+
+    # Multiple changes should not accumulate old elements
+    state["tag"] = "section"
+    assert len(container["children"][0]["children"]) == 1, format_dict(container)
+    assert container["children"][0]["children"][0]["type"] == "child"
+
+    state["tag"] = "article"
+    assert len(container["children"][0]["children"]) == 1, format_dict(container)
+    assert container["children"][0]["children"][0]["type"] == "child"
+
+    # Verify no old elements (span, section) accumulated
+    child_types = [child["type"] for child in container["children"][0]["children"]]
+    assert child_types == ["child"], f"Expected ['child'], got {child_types}"
+    assert "span" not in child_types
+    assert "section" not in child_types
+    assert "div" not in child_types
