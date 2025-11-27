@@ -606,6 +606,52 @@ def create_collagraph_render_function(
                     ) = create_fragments_function(child, targets, names, list_names)
                     is_keyed = ":key" in child.attrs
                     result.append(create_frag_function)
+
+                    # Create key extractor function if this is a keyed list
+                    key_extractor = None
+                    if is_keyed:
+                        key_expr = child.attrs[":key"]
+                        # Parse the key expression
+                        key_ast = ast.parse(key_expr, mode="eval").body
+
+                        # Create a function that takes context and returns the key
+                        # def key_fn(context):
+                        #     item, i = context()
+                        #     return <key_expr>
+                        key_fn_name = f"key_fn{counter['key_fn']}"
+                        counter["key_fn"] = counter.get("key_fn", 0) + 1
+
+                        # Create the unpacking assignment
+                        unpacking = ast.Assign(
+                            targets=[targets],
+                            value=ast.Call(
+                                func=ast.Name(id="context", ctx=ast.Load()),
+                                args=[],
+                                keywords=[],
+                            ),
+                        )
+
+                        # Rewrite variable names in the key expression
+                        # We need to rewrite references to loop variables
+                        key_fn = ast.FunctionDef(
+                            name=key_fn_name,
+                            args=ast.arguments(
+                                posonlyargs=[],
+                                args=[ast.arg("context")],
+                                kwonlyargs=[],
+                                kw_defaults=[],
+                                defaults=[],
+                            ),
+                            body=[
+                                unpacking,
+                                ast.Return(value=key_ast),
+                            ],
+                            decorator_list=[],
+                            returns=None,
+                        )
+                        result.append(key_fn)
+                        key_extractor = ast.Name(id=key_fn_name, ctx=ast.Load())
+
                     result.append(
                         ast.Expr(
                             value=ast.Call(
@@ -620,7 +666,13 @@ def create_collagraph_render_function(
                                 keywords=[
                                     ast.keyword(
                                         "is_keyed", ast.Constant(value=is_keyed)
-                                    )
+                                    ),
+                                    ast.keyword(
+                                        "key_extractor",
+                                        key_extractor
+                                        if key_extractor
+                                        else ast.Constant(value=None),
+                                    ),
                                 ],
                             )
                         )
