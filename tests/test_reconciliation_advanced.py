@@ -131,9 +131,9 @@ def test_keyed_list_efficiency(parse_source):
         """
         <items>
           <item
-            v-for="it in items"
-            :key="it"
-            :content="it"
+            v-for="item in items"
+            :key="item"
+            :content="item"
           />
         </items>
 
@@ -208,7 +208,7 @@ def test_keyed_vs_unkeyed_efficiency(parse_source):
     KeyedItems, _ = parse_source(
         """
         <items>
-          <item v-for="it in items" :key="it" :content="it" />
+          <item v-for="item in items" :key="item" :content="item" />
         </items>
 
         <script>
@@ -223,7 +223,7 @@ def test_keyed_vs_unkeyed_efficiency(parse_source):
     UnkeyedItems, _ = parse_source(
         """
         <items>
-          <item v-for="it in items" :content="it" />
+          <item v-for="item in items" :content="item" />
         </items>
 
         <script>
@@ -419,7 +419,7 @@ def test_duplicate_keys_behavior(parse_source):
     Items, _ = parse_source(
         """
         <items>
-          <item v-for="it in items" :key="it['id']" :text="it['text']" />
+          <item v-for="item in items" :key="item['id']" :text="item['text']" />
         </items>
 
         <script>
@@ -461,9 +461,9 @@ def test_complex_key_expressions(parse_source):
         """
         <items>
           <item
-            v-for="it in items"
-            :key="str(it['category']) + '_' + str(it['id'])"
-            :label="it['label']"
+            v-for="item in items"
+            :key="str(item['category']) + '_' + str(item['id'])"
+            :label="item['label']"
           />
         </items>
 
@@ -529,11 +529,11 @@ def test_nested_keyed_lists(parse_source):
     Items, _ = parse_source(
         """
         <container>
-          <group v-for="gr in groups" :key="gr['id']" :name="gr['name']">
+          <group v-for="group in groups" :key="group['id']" :name="group['name']">
             <item
-              v-for="it in gr['items']"
-              :key="it['id']"
-              :text="it['text']"
+              v-for="item in group['items']"
+              :key="item['id']"
+              :text="item['text']"
             />
           </group>
         </container>
@@ -712,7 +712,7 @@ def test_no_memory_leaks_on_item_removal(parse_source):
     Items, _ = parse_source(
         """
         <items>
-          <item v-for="it in items" :key="it" :content="it" />
+          <item v-for="item in items" :key="item" :content="item" />
         </items>
 
         <script>
@@ -763,7 +763,7 @@ def test_keyed_list_edge_cases(parse_source):
     Items, _ = parse_source(
         """
         <items>
-          <item v-for="it in items" :key="it['id']" :value="it['value']" />
+          <item v-for="item in items" :key="item['id']" :value="item['value']" />
         </items>
 
         <script>
@@ -815,7 +815,7 @@ def test_different_key_types(parse_source):
     Items, _ = parse_source(
         """
         <items>
-          <item v-for="it in items" :key="it['id']" :text="it['text']" />
+          <item v-for="item in items" :key="item['id']" :text="item['text']" />
         </items>
 
         <script>
@@ -871,7 +871,7 @@ def test_reactive_key_changes(parse_source):
     Items, _ = parse_source(
         """
         <items>
-          <item v-for="it in items" :key="it['id']" :text="it['text']" />
+          <item v-for="item in items" :key="item['id']" :text="item['text']" />
         </items>
 
         <script>
@@ -933,7 +933,7 @@ def test_complex_reconciliation_scenario(parse_source):
     Items, _ = parse_source(
         """
         <items>
-          <item v-for="it in items" :key="it['id']" :text="it['text']" />
+          <item v-for="item in items" :key="item['id']" :text="item['text']" />
         </items>
 
         <script>
