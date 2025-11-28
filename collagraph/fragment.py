@@ -57,6 +57,8 @@ class Fragment:
         self._watchers: dict[str, Watcher] = {}
         # Conditional expression for whether the DOM element should be rendered
         self._condition: Callable | None = None
+        # Reference name for template refs
+        self._ref_name: str | None = None
 
         self._mounted = False
 
@@ -175,6 +177,13 @@ class Fragment:
         """
         self._events[event] = handler
 
+    def set_ref(self, ref_name: str):
+        """
+        Set the reference name for this fragment.
+        The element will be stored in the parent component's refs dict.
+        """
+        self._ref_name = ref_name
+
     def _watch_bind(self, attr, expression):
         """
         Install a watcher for a bound attribute with the given expression
@@ -258,6 +267,12 @@ class Fragment:
         for child in self.children:
             child.mount(self.element or target)
 
+        # Register ref after element is mounted
+        if self._ref_name and self.element:
+            component = self._component_parent()
+            if component:
+                component._refs[self._ref_name] = self.element
+
         self._mounted = True
 
     def _set_attr(self, attr, value):
@@ -282,6 +297,12 @@ class Fragment:
     def unmount(self, destroy=True):
         self._mounted = False
 
+        # Clean up ref before unmounting
+        if self._ref_name:
+            component = self._component_parent()
+            if component and self._ref_name in component._refs:
+                del component._refs[self._ref_name]
+
         for child in self.children:
             child.unmount(destroy=destroy)
 
@@ -300,6 +321,7 @@ class Fragment:
             self._watchers = {}
             self._condition = None
             self.tag = None
+            self._ref_name = None
         else:
             self.element = None
             # Disable the fn and callback of the watcher to disable
@@ -648,6 +670,12 @@ class ComponentFragment(Fragment):
             except IndexError:
                 pass
 
+            # Register component ref after component is mounted
+            if self._ref_name:
+                parent_component = self._component_parent()
+                if parent_component:
+                    parent_component._refs[self._ref_name] = self.component
+
             self.component.mounted()
 
         self._mounted = True
@@ -665,6 +693,13 @@ class ComponentFragment(Fragment):
         self.props = None
 
     def unmount(self, destroy=True):
+        # Clean up component ref before unmounting
+        # (ComponentFragment stores component, not element)
+        if self._ref_name and self.component:
+            parent_component = self._component_parent()
+            if parent_component and self._ref_name in parent_component._refs:
+                del parent_component._refs[self._ref_name]
+
         if self.component:
             self.component.before_unmount()
 
@@ -672,7 +707,12 @@ class ComponentFragment(Fragment):
         for slot_content in self.slot_contents:
             slot_content.unmount(destroy=destroy)
 
+        # Set _ref_name to None before calling super to prevent double cleanup
+        temp_ref_name = self._ref_name
+        self._ref_name = None
         super().unmount(destroy=destroy)
+        if not destroy:
+            self._ref_name = temp_ref_name
 
 
 class SlotFragment(Fragment):
