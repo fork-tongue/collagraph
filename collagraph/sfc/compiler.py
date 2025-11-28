@@ -209,12 +209,46 @@ def ast_named_lambda(
     )
 
 
-def ast_set_dynamic_type(
-    el: str, value: str, names: set[str], list_names: list[dict[str, set[str]]]
-) -> ast.Expr:
-    source = ast.parse(f"{el}.set_type(lambda: {value})", mode="eval")
-    return ast_named_lambda(
-        source, {"renderer", "new", el, "watch"} | names, list_names
+def ast_create_dynamic_fragment(
+    el: str,
+    expression: str,
+    parent: str | None,
+    names: set[str],
+    list_names: list[dict[str, set[str]]],
+) -> ast.Assign:
+    """
+    Create a DynamicFragment with the :is expression.
+    Used for <component :is="expression" /> tags.
+    """
+    # Build the lambda for the expression and rewrite variable names
+    lambda_source = ast.parse(f"lambda: {expression}", mode="eval")
+    lambda_names = LambdaNamesCollector()
+    lambda_names.visit(lambda_source)
+
+    # Rewrite the lambda to use _lookup for variables
+    rewritten_lambda = (
+        RewriteName(
+            skip=lambda_names.names | names | {"renderer"}, list_names=list_names
+        )
+        .visit(lambda_source)
+        .body
+    )
+
+    keywords = [
+        ast.keyword(arg="expression", value=rewritten_lambda),
+    ]
+    if parent:
+        keywords.append(
+            ast.keyword(arg="parent", value=ast.Name(id=parent, ctx=ast.Load()))
+        )
+
+    return ast.Assign(
+        targets=[ast.Name(id=el, ctx=ast.Store())],
+        value=ast.Call(
+            func=ast.Name(id="DynamicFragment", ctx=ast.Load()),
+            args=[ast.Name(id="renderer", ctx=ast.Load())],
+            keywords=keywords,
+        ),
     )
 
 
@@ -363,6 +397,7 @@ def create_collagraph_render_function(
                 # TODO: import only the needed items
                 ast.alias(name="ControlFlowFragment"),
                 ast.alias(name="ComponentFragment"),
+                ast.alias(name="DynamicFragment"),
                 ast.alias(name="ListFragment"),
                 ast.alias(name="Fragment"),
                 ast.alias(name="SlotFragment"),
@@ -680,6 +715,10 @@ def create_collagraph_render_function(
                 # Reset the control flow parent
                 control_flow_parent = None
 
+            # Check if this is a dynamic component tag (<component :is="...">)
+            is_dynamic_component = child.tag == "component" and ":is" in child.attrs
+            is_expression = child.attrs.get(":is") if is_dynamic_component else None
+
             added_slot_name = False
             for key, value in child.attrs.items():
                 if not is_directive(key):
@@ -687,8 +726,9 @@ def create_collagraph_render_function(
                 elif key.startswith((DIRECTIVE_BIND, ":")):
                     if key == DIRECTIVE_BIND:
                         binds.append(ast_set_bind_dict(el, value, names, list_names))
-                    elif key == ":is" and el.startswith("component"):
-                        binds.append(ast_set_dynamic_type(el, value, names, list_names))
+                    elif key == ":is" and is_dynamic_component:
+                        # Skip :is for dynamic components - handled in fragment creation
+                        pass
                     else:
                         binds.append(ast_set_bind(el, key, value, names, list_names))
                 elif key.startswith((DIRECTIVE_ON, "@")):
@@ -727,28 +767,42 @@ def create_collagraph_render_function(
                     if parent_node.tag and parent_node.tag[0].isupper():
                         attributes.append(ast_set_slot_name(el, "default"))
 
-            # Check if this tag is a loop variable (from v-for)
-            # Loop variables should not be treated as components
-            is_loop_variable = any(
-                child.tag in loop_vars
-                for loop_dict in list_names
-                for loop_vars in loop_dict.values()
-            )
-
-            is_component = (
-                (child.tag in names and not is_loop_variable)
-                or child.tag[0].isupper()
-                or "." in child.tag
-            )
-            result.append(
-                ast_create_fragment(
-                    el,
-                    child.tag,
-                    is_component=is_component,
-                    parent=control_flow_parent or parent,
-                    node=child,
+            # Create the appropriate fragment type
+            if is_dynamic_component:
+                # Create DynamicFragment for <component :is="...">
+                result.append(
+                    ast_create_dynamic_fragment(
+                        el,
+                        is_expression,
+                        parent=control_flow_parent or parent,
+                        names=names,
+                        list_names=list_names,
+                    )
                 )
-            )
+            else:
+                # Check if this tag is a loop variable (from v-for)
+                # Loop variables should not be treated as components
+                is_loop_variable = any(
+                    child.tag in loop_vars
+                    for loop_dict in list_names
+                    for loop_vars in loop_dict.values()
+                )
+
+                # Create regular Fragment or ComponentFragment
+                is_component = (
+                    (child.tag in names and not is_loop_variable)
+                    or child.tag[0].isupper()
+                    or "." in child.tag
+                )
+                result.append(
+                    ast_create_fragment(
+                        el,
+                        child.tag,
+                        is_component=is_component,
+                        parent=control_flow_parent or parent,
+                        node=child,
+                    )
+                )
             if condition:
                 result.append(condition)
             result.extend(attributes)

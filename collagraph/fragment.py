@@ -160,28 +160,6 @@ class Fragment:
         """
         self._binds.append((name, expression, False))
 
-    def set_type(self, expression: Callable[[], str | Callable]):
-        """
-        Set a dynamic type/tag based on the expression.
-        """
-
-        @weak(self)
-        def update_type(self, tag):
-            anchor = self.anchor()
-            self.unmount(destroy=False)
-            self.tag = tag
-            self.mount(self.target, anchor)
-
-        # Set the tag immediately
-        # TODO: In case of a component tag, do we maybe want to wait???
-        # So that we can build up a reactive props object or something?
-        self.tag = expression()
-        self._watchers["type"] = watch(
-            expression,
-            update_type,
-            immediate=False,
-        )
-
     def set_condition(self, expression: Callable[[], bool]):
         """
         Set a expression that determines whether this fragment
@@ -300,9 +278,6 @@ class Fragment:
         if self.element:
             self.renderer.remove(self.element, self.target)
             self.element = None
-
-    def _has_content(self):
-        return bool(self.element)
 
     def unmount(self, destroy=True):
         self._mounted = False
@@ -605,6 +580,12 @@ class ComponentFragment(Fragment):
         else:
             self.children.append(child)
 
+    def first(self) -> Any | None:
+        """Return the first element from the rendered component fragment"""
+        if self.fragment:
+            return self.fragment.first()
+        return super().first()
+
     def create(self):
         if self.tag is None:
             return
@@ -683,12 +664,14 @@ class ComponentFragment(Fragment):
     def _remove(self):
         self.props = None
 
-    def _has_content(self):
-        return bool(self.props)
-
     def unmount(self, destroy=True):
         if self.component:
             self.component.before_unmount()
+
+        # Unmount slot contents before calling super
+        for slot_content in self.slot_contents:
+            slot_content.unmount(destroy=destroy)
+
         super().unmount(destroy=destroy)
 
 
@@ -736,3 +719,185 @@ class SlotFragment(Fragment):
                     item.mount(target, anchor)
         else:
             super().mount(target, anchor)
+
+
+class DynamicFragment(Fragment):
+    """
+    Fragment for dynamic component tags: <component :is="expression" />
+
+    Handles switching between different tag types (components or elements)
+    based on a reactive expression.
+    """
+
+    def __init__(
+        self, renderer: Renderer, expression: Callable, parent: Fragment | None = None
+    ):
+        # Don't pass tag to parent - it will be dynamic
+        super().__init__(renderer, tag=None, parent=parent)
+
+        # Store the expression that determines the tag
+        self._expression = expression
+
+        # Current active fragment (ComponentFragment or regular Fragment)
+        self._active_fragment: Fragment | None = None
+
+        # Watcher for the expression
+        self._type_watcher: Watcher | None = None
+
+    def create(self):
+        """Create the initial fragment based on expression value"""
+        # Evaluate expression to get initial tag
+        tag = self._expression()
+
+        # Create fragment for this tag
+        self._create_fragment_for_tag(tag)
+
+        # Set up watcher for tag changes
+        @weak(self)
+        def update_type(self, new_tag):
+            # Calculate anchor before unmounting
+            anchor = self.anchor()
+
+            # Unmount current fragment
+            if self._active_fragment:
+                # Note: _active_fragment is no longer in self.children
+                # (it's removed in _create_fragment_for_tag)
+                self._active_fragment.unmount(destroy=False)
+
+            # Create new fragment
+            self._create_fragment_for_tag(new_tag)
+
+            # Mount it
+            if self._active_fragment:
+                self._active_fragment.mount(self.target, anchor)
+
+        self._type_watcher = watch(
+            self._expression,
+            update_type,
+            immediate=False,
+        )
+
+    def _create_fragment_for_tag(self, tag):
+        """Create appropriate fragment for the given tag"""
+        # Save existing children before creating active fragment
+        # If we had a ComponentFragment, children are in its slot_contents
+        if (
+            self._active_fragment
+            and isinstance(self._active_fragment, ComponentFragment)
+            and self._active_fragment.tag is not None
+        ):
+            # Get children from previous ComponentFragment's slot_contents
+            existing_children = self._active_fragment.slot_contents.copy()
+        else:
+            # Get children from DynamicFragment's children
+            existing_children = self.children.copy()
+
+        if callable(tag):
+            # Component class - create ComponentFragment
+            # Don't pass parent, so that the register_child method is skipped
+            # so that the _active_fragment won't be part of the children
+            # which are whatever is specified in the template
+            self._active_fragment = ComponentFragment(
+                self.renderer,
+                tag=tag,
+                props=reactive({}),
+            )
+            # Manually set the parent
+            self._active_fragment._parent = ref(self)
+
+            # Transfer existing children as slot content
+            # ComponentFragment.register_child() adds them to slot_contents
+            # when tag is set
+            for child in existing_children:
+                child._parent = ref(self._active_fragment)
+                # Set slot_name to "default" if not already set (e.g., by v-slot:name)
+                if not hasattr(child, "slot_name") or child.slot_name is None:
+                    child.slot_name = "default"
+                self._active_fragment.register_child(child)
+        else:
+            # String tag - create regular Fragment
+            # Also don't pass parent here
+            self._active_fragment = Fragment(
+                self.renderer,
+                tag=tag,
+            )
+            # Manually set the parent
+            self._active_fragment._parent = ref(self)
+
+            # Transfer existing children to the active fragment
+            for child in existing_children:
+                child._parent = ref(self._active_fragment)
+                self._active_fragment.children.append(child)
+
+        # Transfer attributes, bindings, events from self to active fragment
+        self._active_fragment._attributes.update(self._attributes)
+        self._active_fragment._binds.extend(self._binds)
+        self._active_fragment._events.update(self._events)
+
+        # Create the fragment
+        self._active_fragment.create()
+
+    def mount(self, target: Any, anchor: Any | None = None):
+        if self._mounted:
+            return
+
+        self.target = target
+        self.create()
+
+        # Mount the active fragment
+        if self._active_fragment:
+            self._active_fragment.mount(target, anchor)
+
+        self._mounted = True
+
+    def unmount(self, destroy=True):
+        self._mounted = False
+
+        # Unmount active fragment
+        if self._active_fragment:
+            self._active_fragment.unmount(destroy=destroy)
+            if destroy:
+                self._active_fragment = None
+
+        # Standard cleanup
+        for child in self.children:
+            child.unmount(destroy=destroy)
+
+        self._remove()
+
+        if destroy:
+            self.element = None
+            self.target = None
+            self._attributes = {}
+            self._events = {}
+            if self._type_watcher:
+                self._type_watcher.fn = lambda: ()
+                self._type_watcher.callback = None
+                self._type_watcher = None
+            self._condition = None
+            self._expression = None
+        else:
+            self.element = None
+            # Keep _type_watcher alive for dynamic tag switching
+
+    def first(self) -> Any | None:
+        if self._active_fragment:
+            return self._active_fragment.first()
+        return None
+
+    def _set_attr(self, attr, value):
+        # Update our attributes (for transfer to next fragment)
+        self._attributes[attr] = value
+        # Apply to active fragment
+        if self._active_fragment:
+            self._active_fragment._set_attr(attr, value)
+
+    def _rem_attr(self, attr):
+        if attr in self._attributes:
+            del self._attributes[attr]
+        if self._active_fragment:
+            self._active_fragment._rem_attr(attr)
+
+    def _remove(self):
+        if self._active_fragment:
+            self._active_fragment._remove()
