@@ -313,23 +313,6 @@ def ast_set_event(
     )
 
 
-def ast_set_ref(el: str, ref_name: str) -> ast.Expr:
-    """
-    Generate AST to register a template ref.
-    """
-    return ast.Expr(
-        value=ast.Call(
-            func=ast.Attribute(
-                value=ast.Name(id=el, ctx=ast.Load()),
-                attr="set_ref",
-                ctx=ast.Load(),
-            ),
-            args=[ast.Constant(value=ref_name)],
-            keywords=[],
-        )
-    )
-
-
 def ast_set_condition(
     child: str, condition: str, names: set[str], list_names: list[dict[str, set[str]]]
 ) -> ast.Expr:
@@ -587,7 +570,6 @@ def create_collagraph_render_function(
             attributes: list[ast.stmt] = []
             binds: list[ast.stmt] = []
             events: list[ast.stmt] = []
-            refs: list[ast.stmt] = []
             condition = None
 
             node_with_list_expression = False
@@ -739,10 +721,7 @@ def create_collagraph_render_function(
 
             added_slot_name = False
             for key, value in child.attrs.items():
-                if key == "ref":
-                    # Handle template ref attribute
-                    refs.append(ast_set_ref(el, value))
-                elif not is_directive(key):
+                if not is_directive(key):
                     attributes.append(ast_set_attribute(el, key, value))
                 elif key.startswith((DIRECTIVE_BIND, ":")):
                     if key == DIRECTIVE_BIND:
@@ -829,7 +808,6 @@ def create_collagraph_render_function(
             result.extend(attributes)
             result.extend(binds)
             result.extend(events)
-            result.extend(refs)
 
             # Process the children
             result.extend(create_children(child.children, el, names, list_names))

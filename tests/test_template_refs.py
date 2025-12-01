@@ -490,3 +490,304 @@ def test_ref_empty_name(parse_source):
     component = App.instance
 
     assert "" not in component.refs and len(component.refs) == 0
+
+
+def test_ref_dynamic_basic(parse_source):
+    """Test dynamic ref with expression that changes"""
+    App, _ = parse_source(
+        """
+        <app>
+          <button :ref="refName" text="Button" />
+        </app>
+
+        <script>
+        import collagraph as cg
+
+        class App(cg.Component):
+            instance = None
+
+            def mounted(self):
+                App.instance = self
+        </script>
+        """
+    )
+
+    state = reactive({"refName": "firstRef"})
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+    component = App.instance
+
+    # Initial ref should be registered
+    assert "firstRef" in component.refs
+    assert "secondRef" not in component.refs
+    button = component.refs["firstRef"]
+
+    # Change the ref name
+    state["refName"] = "secondRef"
+
+    # Old ref should be unregistered, new ref should be registered
+    assert "firstRef" not in component.refs
+    assert "secondRef" in component.refs
+    assert component.refs["secondRef"] == button  # Same element
+
+    # Change to empty string (should unregister)
+    state["refName"] = ""
+
+    assert "firstRef" not in component.refs
+    assert "secondRef" not in component.refs
+
+
+def test_ref_dynamic_component(parse_source):
+    """Test dynamic ref on a component"""
+    Child, namespace = parse_source(
+        """
+        <child />
+
+        <script>
+        import collagraph as cg
+
+        class Child(cg.Component):
+            def get_value(self):
+                return 42
+        </script>
+        """
+    )
+
+    Parent, namespace = parse_source(
+        """
+        <parent>
+          <Child :ref="childRefName" />
+        </parent>
+
+        <script>
+        import collagraph as cg
+        try:
+            import Child
+        except ImportError:
+            pass
+
+        class Parent (cg.Component):
+            instance = None
+
+            def mounted(self):
+                Parent.instance = self
+        </script>
+        """,
+        namespace=namespace,
+    )
+
+    state = reactive({"childRefName": "myChild"})
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(Parent, container, state=state)
+    component = Parent.instance
+
+    # Ref should point to component instance
+    assert "myChild" in component.refs
+    assert isinstance(component.refs["myChild"], Child)
+    assert component.refs["myChild"].get_value() == 42
+
+    # Change ref name
+    state["childRefName"] = "renamedChild"
+
+    assert "myChild" not in component.refs
+    assert "renamedChild" in component.refs
+    assert isinstance(component.refs["renamedChild"], Child)
+
+
+def test_ref_function_basic(parse_source):
+    """Test function ref - callable receives element on mount and None on unmount"""
+    App, _ = parse_source(
+        """
+        <app>
+          <button v-if="show" :ref="handle_ref" text="Button" />
+        </app>
+
+        <script>
+        import collagraph as cg
+
+        class App (cg.Component):
+            instance = None
+            ref_calls = []
+
+            def init(self):
+                App.instance = self
+
+            def handle_ref(self, el):
+                App.ref_calls.append(el)
+        </script>
+        """
+    )
+
+    state = reactive({"show": True})
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    # Function ref should have been called with element on mount
+    assert len(App.ref_calls) == 1
+    button = container["children"][0]["children"][0]
+    assert App.ref_calls[0] == button
+
+    # Hide the button - function should be called with None
+    state["show"] = False
+
+    assert len(App.ref_calls) == 2
+    assert App.ref_calls[1] is None
+
+
+def test_ref_function_lambda(parse_source):
+    """Test function ref with inline lambda"""
+    App, _ = parse_source(
+        """
+        <app>
+          <button :ref="lambda el: ref_handler(el)" text="Button" />
+        </app>
+
+        <script>
+        import collagraph as cg
+
+        class App(cg.Component):
+            instance = None
+            received_element = None
+
+            def init(self):
+                App.instance = self
+
+            def ref_handler(self, el):
+                App.received_element = el
+        </script>
+        """
+    )
+
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container)
+
+    # Lambda function ref should have been called with element
+    button = container["children"][0]["children"][0]
+    assert App.received_element == button
+
+
+def test_ref_function_component(parse_source):
+    """Test function ref on a component - receives component instance"""
+    Child, namespace = parse_source(
+        """
+        <child />
+
+        <script>
+        import collagraph as cg
+
+        class Child(cg.Component):
+            pass
+        </script>
+        """
+    )
+
+    Parent, namespace = parse_source(
+        """
+        <parent>
+          <Child :ref="handle_child_ref" />
+        </parent>
+
+        <script>
+        import collagraph as cg
+        try:
+            import Child
+        except ImportError:
+            pass
+
+        class Parent(cg.Component):
+            instance = None
+            received_child = None
+
+            def init(self):
+                Parent.instance = self
+
+            def handle_child_ref(self, child_component):
+                Parent.received_child = child_component
+        </script>
+        """,
+        namespace=namespace,
+    )
+
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(Parent, container)
+
+    # Function ref should receive component instance, not element
+    assert Parent.received_child is not None
+    assert isinstance(Parent.received_child, Child)
+
+
+def test_ref_dynamic_switching_types(parse_source):
+    """Test switching between string and function refs dynamically"""
+    App, _ = parse_source(
+        """
+        <app>
+          <button :ref="currentRef" text="Button" />
+        </app>
+
+        <script>
+        import collagraph as cg
+
+        class App(cg.Component):
+            instance = None
+            func_ref_calls = []
+
+            def init(self):
+                App.instance = self
+
+            def func_ref(self, el):
+                App.func_ref_calls.append(el)
+        </script>
+        """
+    )
+
+    def get_func_ref(component):
+        return component.func_ref
+
+    state = reactive({"currentRef": "stringRef"})
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+    component = App.instance
+
+    # Initially a string ref
+    assert "stringRef" in component.refs
+    button = component.refs["stringRef"]
+
+    # Switch to function ref
+    state["currentRef"] = get_func_ref(component)
+
+    # String ref should be unregistered, function should be called
+    assert "stringRef" not in component.refs
+    assert len(App.func_ref_calls) == 1
+    assert App.func_ref_calls[0] == button
+
+    # Switch back to string ref
+    state["currentRef"] = "anotherStringRef"
+
+    # Function ref should be called with None, new string ref registered
+    assert len(App.func_ref_calls) == 2
+    assert App.func_ref_calls[1] is None
+    assert "anotherStringRef" in component.refs
