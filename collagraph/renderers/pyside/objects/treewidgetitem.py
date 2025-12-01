@@ -11,7 +11,7 @@ def insert(self, el: QTreeWidgetItem, anchor=None):
 
     if anchor is not None:
         index = self.indexOfChild(anchor)
-        if el.parent():
+        if self.treeWidget():
             self.removeChild(el)
         self.insertChild(index, el)
     else:
@@ -46,12 +46,12 @@ def set_attribute(self, attr, value):
             for col, data in value.items():
                 self.setText(col, data)
         case "expanded":
-            if not self.parent():
+            if not tree_widget:
                 self._expanded = value
             else:
                 self.setExpanded(value)
         case "selected":
-            if not self.parent():
+            if not tree_widget:
                 self._selected = value
             else:
                 self.setSelected(value)
