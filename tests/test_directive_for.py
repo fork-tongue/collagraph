@@ -1,4 +1,3 @@
-import pytest
 from observ import reactive
 
 from collagraph import Collagraph, EventLoopType
@@ -301,57 +300,6 @@ def test_for_reactive_pop(parse_source):
 
     items = [child["attrs"]["value"] for child in container["children"][1:-1]]
     assert items == state["items"], format_dict(container)
-
-
-@pytest.mark.xfail
-def test_for_keyed(parse_source):
-    App, _ = parse_source(
-        """
-        <node
-          v-for="i in items"
-          :key="i['id']"
-          :text="i['text']"
-        />
-
-        <script>
-        import collagraph as cg
-
-        class App(cg.Component):
-            pass
-        </script>
-        """
-    )
-
-    state = reactive(
-        {
-            "items": [
-                {"id": 0, "text": "foo"},
-                {"id": 1, "text": "bar"},
-            ]
-        }
-    )
-    container = {"type": "root"}
-    gui = Collagraph(
-        renderer=DictRenderer(),
-        event_loop_type=EventLoopType.SYNC,
-    )
-    gui.render(App, container, state)
-
-    assert len(container["children"]) == len(state["items"])
-    for node, item in zip(container["children"], state["items"]):
-        assert node["type"] == "node"
-        assert node["attrs"]["key"] == item["id"]
-        assert node["attrs"]["text"] == item["text"]
-
-    state["items"][1]["text"] = "baz"
-
-    assert len(container["children"]) == len(state["items"])
-    for node, item in zip(container["children"], state["items"]):
-        assert node["type"] == "node"
-        assert node["attrs"]["key"] == item["id"]
-        assert node["attrs"]["text"] == item["text"]
-
-    assert False, "Figure out how to make sure keyed lists perform better than unkeyed"
 
 
 def test_example(parse_source):
@@ -698,3 +646,32 @@ def test_for_lambdas(parse_source):
         handler()
 
     assert calls == ["first", "second"]
+
+
+def test_for_context_and_naming(parse_source):
+    """
+    Make sure that using a loop variable can have the same
+    name as an element.
+    """
+    Items, _ = parse_source(
+        """
+        <item
+          v-for="item in items"
+          :value="item['value']"
+        />
+        <script>
+        import collagraph as cg
+        class Items(cg.Component):
+            pass
+        </script>
+        """
+    )
+    state = reactive({"items": [{"value": "a"}, {"value": "b"}]})
+
+    gui = Collagraph(DictRenderer())
+    container = {"type": "root"}
+    gui.render(Items, container, state)
+
+    first_item, second_item = container["children"]
+    assert first_item["attrs"]["value"] == "a"
+    assert second_item["attrs"]["value"] == "b"

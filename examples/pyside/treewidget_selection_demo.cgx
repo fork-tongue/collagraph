@@ -1,0 +1,185 @@
+<!--
+  Run this example as follows:
+  uv run collagraph examples/pyside/treewidget_selection_demo.cgx
+
+  This example demonstrates reactive selection and expanded states
+  on QTreeWidgetItems. Click the buttons to toggle selection and
+  expanded states of individual items.
+-->
+<window title="Tree Widget Selection Demo" :size="[600, 500]">
+  <widget :layout="{'type': 'Box', 'direction': 'TopToBottom'}">
+    <label text="Tree Widget Selection and Expanded State Demo" />
+    <label text="Use the buttons below to toggle selection and expanded states" />
+
+    <widget :layout="{'type': 'Box', 'direction': 'LeftToRight'}">
+      <!-- Tree widget -->
+      <treewidget
+        :column-count="1"
+        :header-labels="['Item']"
+      >
+        <treewidgetitem
+          :selected="item1_selected"
+          :expanded="item1_expanded"
+          :content="{0: 'Parent Item 1'}"
+        >
+          <treewidgetitem :content="{0: 'Child 1.1'}">
+          </treewidgetitem>
+          <treewidgetitem :content="{0: 'Child 1.2'}">
+          </treewidgetitem>
+        </treewidgetitem>
+
+        <treewidgetitem
+          :selected="item2_selected"
+          :expanded="item2_expanded"
+          :content="{0: 'Parent Item 2'}"
+        >
+          <treewidgetitem :content="{0: 'Child 2.1'}">
+          </treewidgetitem>
+          <treewidgetitem :content="{0: 'Child 2.2'}">
+          </treewidgetitem>
+          <treewidgetitem :content="{0: 'Child 2.3'}">
+          </treewidgetitem>
+        </treewidgetitem>
+
+        <treewidgetitem
+          :selected="item3_selected"
+          :expanded="item3_expanded"
+          :content="{0: 'Parent Item 3'}"
+        >
+          <treewidgetitem :content="{0: 'Child 3.1'}">
+          </treewidgetitem>
+        </treewidgetitem>
+      </treewidget>
+
+      <!-- Control panel -->
+      <widget :layout="{'type': 'Box', 'direction': 'TopToBottom'}">
+        <groupbox title="Item 1 Controls">
+          <widget :layout="{'type': 'Box', 'direction': 'TopToBottom'}">
+            <button
+              :text="'Selected: ' + str(item1_selected)"
+              @clicked="toggle_item1_selected"
+            />
+            <button
+              :text="'Expanded: ' + str(item1_expanded)"
+              @clicked="toggle_item1_expanded"
+            />
+          </widget>
+        </groupbox>
+
+        <groupbox title="Item 2 Controls">
+          <widget :layout="{'type': 'Box', 'direction': 'TopToBottom'}">
+            <button
+              :text="'Selected: ' + str(item2_selected)"
+              @clicked="toggle_item2_selected"
+            />
+            <button
+              :text="'Expanded: ' + str(item2_expanded)"
+              @clicked="toggle_item2_expanded"
+            />
+          </widget>
+        </groupbox>
+
+        <groupbox title="Item 3 Controls">
+          <widget :layout="{'type': 'Box', 'direction': 'TopToBottom'}">
+            <button
+              :text="'Selected: ' + str(item3_selected)"
+              @clicked="toggle_item3_selected"
+            />
+            <button
+              :text="'Expanded: ' + str(item3_expanded)"
+              @clicked="toggle_item3_expanded"
+            />
+          </widget>
+        </groupbox>
+
+        <groupbox title="Bulk Actions">
+          <widget :layout="{'type': 'Box', 'direction': 'TopToBottom'}">
+            <button
+              text="Select All"
+              @clicked="select_all"
+            />
+            <button
+              text="Deselect All"
+              @clicked="deselect_all"
+            />
+            <button
+              text="Expand All"
+              @clicked="expand_all"
+            />
+            <button
+              text="Collapse All"
+              @clicked="collapse_all"
+            />
+          </widget>
+        </groupbox>
+      </widget>
+    </widget>
+
+    <label :text="status_text()" />
+  </widget>
+</window>
+
+<script>
+import collagraph as cg
+
+
+class TreeWidgetSelectionDemo(cg.Component):
+    def init(self):
+        self.state["item1_selected"] = True
+        self.state["item1_expanded"] = True
+        self.state["item2_selected"] = False
+        self.state["item2_expanded"] = True
+        self.state["item3_selected"] = False
+        self.state["item3_expanded"] = False
+
+    def toggle_item1_selected(self):
+        self.state["item1_selected"] = not self.state["item1_selected"]
+
+    def toggle_item1_expanded(self):
+        self.state["item1_expanded"] = not self.state["item1_expanded"]
+
+    def toggle_item2_selected(self):
+        self.state["item2_selected"] = not self.state["item2_selected"]
+
+    def toggle_item2_expanded(self):
+        self.state["item2_expanded"] = not self.state["item2_expanded"]
+
+    def toggle_item3_selected(self):
+        self.state["item3_selected"] = not self.state["item3_selected"]
+
+    def toggle_item3_expanded(self):
+        self.state["item3_expanded"] = not self.state["item3_expanded"]
+
+    def select_all(self):
+        self.state["item1_selected"] = True
+        self.state["item2_selected"] = True
+        self.state["item3_selected"] = True
+
+    def deselect_all(self):
+        self.state["item1_selected"] = False
+        self.state["item2_selected"] = False
+        self.state["item3_selected"] = False
+
+    def expand_all(self):
+        self.state["item1_expanded"] = True
+        self.state["item2_expanded"] = True
+        self.state["item3_expanded"] = True
+
+    def collapse_all(self):
+        self.state["item1_expanded"] = False
+        self.state["item2_expanded"] = False
+        self.state["item3_expanded"] = False
+
+    def status_text(self):
+        selected_count = sum([
+            int(self.state["item1_selected"]),
+            int(self.state["item2_selected"]),
+            int(self.state["item3_selected"]),
+        ])
+        expanded_count = sum([
+            int(self.state["item1_expanded"]),
+            int(self.state["item2_expanded"]),
+            int(self.state["item3_expanded"]),
+        ])
+        return f"Status: {selected_count} items selected, {expanded_count} items expanded"
+</script>
