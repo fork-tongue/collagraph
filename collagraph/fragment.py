@@ -490,7 +490,7 @@ class ListFragment(Fragment):
                     if not fragment._mounted:
                         # Mount new fragment at the correct position
                         fragment.mount(target, anchor=anchor)
-                    else:
+                    elif fragment.element:
                         # Fragment is already mounted, check if it needs to be moved
                         # Count how many mounted fragments should come before this one
                         expected_prev_count = sum(
@@ -504,13 +504,12 @@ class ListFragment(Fragment):
                         # to other mounted fragments
                         if current_pos != expected_prev_count:
                             # Fragment needs to be moved in the DOM
-                            if fragment.element:
-                                # Remove from current position
-                                self.renderer.remove(fragment.element, target)
-                                # Insert at new position
-                                self.renderer.insert(
-                                    fragment.element, parent=target, anchor=anchor
-                                )
+                            # Remove from current position
+                            self.renderer.remove(fragment.element, target)
+                            # Insert at new position
+                            self.renderer.insert(
+                                fragment.element, parent=target, anchor=anchor
+                            )
 
                 # Update children list to match new_children
                 # This removes any unmounted fragments and ensures correct order
