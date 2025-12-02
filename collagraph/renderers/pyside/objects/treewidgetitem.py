@@ -17,19 +17,32 @@ def insert(self, el: QTreeWidgetItem, anchor=None):
     else:
         self.addChild(el)
 
-    # After mounting, process some attributes that can only
-    # be adjusted when the item is mounted in the tree structure
-    if hasattr(el, "_expanded"):
-        el.setExpanded(el._expanded)
-        delattr(el, "_expanded")
-
-    if hasattr(el, "_selected"):
-        el.setSelected(el._selected)
-        delattr(el, "_selected")
+    # After insertion, restore state that was saved during removal (for moves/reorders)
+    if hasattr(el, "_saved_selected") or hasattr(el, "_saved_expanded"):
+        if hasattr(el, "_saved_selected"):
+            el.setSelected(el._saved_selected)
+            delattr(el, "_saved_selected")
+        if hasattr(el, "_saved_expanded"):
+            el.setExpanded(el._saved_expanded)
+            delattr(el, "_saved_expanded")
+    else:
+        # Initial mounting - use temp attributes set before mounting
+        if hasattr(el, "_expanded"):
+            el.setExpanded(el._expanded)
+            delattr(el, "_expanded")
+        if hasattr(el, "_selected"):
+            el.setSelected(el._selected)
+            delattr(el, "_selected")
 
 
 @PySideRenderer.register_remove(QTreeWidgetItem)
 def remove(self, el: QTreeWidgetItem):
+    # Save selection/expanded state before removing
+    # because Qt clears these when the item is detached
+    # These will be restored when the item is re-inserted (for moves/reorders)
+    if el.treeWidget() is not None:
+        el._saved_selected = el.isSelected()
+        el._saved_expanded = el.isExpanded()
     self.removeChild(el)
 
 
