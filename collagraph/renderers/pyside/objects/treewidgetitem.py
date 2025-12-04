@@ -11,7 +11,8 @@ def insert(self, el: QTreeWidgetItem, anchor=None):
 
     if anchor is not None:
         index = self.indexOfChild(anchor)
-        if self.treeWidget():
+        # Only remove if el is actually a child (not already removed)
+        if self.indexOfChild(el) >= 0:
             self.removeChild(el)
         self.insertChild(index, el)
     else:
