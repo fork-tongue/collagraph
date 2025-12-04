@@ -9,6 +9,9 @@ def insert(self, el: QTreeWidgetItem, anchor=None):
     if not isinstance(el, QTreeWidgetItem):
         raise NotImplementedError(f"No insert defined for: {type(el).__name__}")
 
+    tree_widget = self.treeWidget()
+    tree_widget and tree_widget.blockSignals(True)
+
     if anchor is not None:
         index = self.indexOfChild(anchor)
         if self.treeWidget():
@@ -27,10 +30,17 @@ def insert(self, el: QTreeWidgetItem, anchor=None):
         el.setSelected(el._selected)
         delattr(el, "_selected")
 
+    tree_widget and tree_widget.blockSignals(False)
+
 
 @PySideRenderer.register_remove(QTreeWidgetItem)
 def remove(self, el: QTreeWidgetItem):
+    tree_widget = self.treeWidget()
+    tree_widget and tree_widget.blockSignals(True)
+
     self.removeChild(el)
+
+    tree_widget and tree_widget.blockSignals(False)
 
 
 @PySideRenderer.register_set_attr(QTreeWidgetItem)
@@ -38,8 +48,7 @@ def set_attribute(self, attr, value):
     # Before setting any attribute, make sure to disable
     # all signals for the tree widget
     tree_widget = self.treeWidget()
-    if tree_widget:
-        tree_widget.blockSignals(True)
+    tree_widget and tree_widget.blockSignals(True)
 
     match attr:
         case "content":
@@ -59,5 +68,4 @@ def set_attribute(self, attr, value):
             qobject_set_attribute(self, attr, value)
 
     # And don't forget to enable signals when done
-    if tree_widget:
-        tree_widget.blockSignals(False)
+    tree_widget and tree_widget.blockSignals(False)
