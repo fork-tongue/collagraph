@@ -1,0 +1,83 @@
+<widget>
+  <label text="Key-based List Reconciliation Demo" />
+  <button
+    text="Shuffle"
+    @clicked="shuffle_items"
+  />
+  <button
+    text="Reverse"
+    @clicked="reverse_items"
+  />
+  <button
+    text="Add Item"
+    @clicked="add_item"
+  />
+  <button
+    text="Remove First"
+    @clicked="remove_first"
+  />
+  <button
+    text="check"
+    @clicked="check_items"
+  />
+  <!-- Keyed list - items maintain their identity when reordered -->
+  <treeview>
+    <itemmodel>
+      <standarditem
+        v-for="item in items"
+        :key="item['id']"
+        :text="item['text']"
+        :value="item['id']"
+      />
+    </itemmodel>
+  </treeview>
+  <label :text="'Total items: ' + str(len(items))" />
+</widget>
+
+<script>
+import random
+
+import collagraph as cg
+from PySide6 import QtWidgets
+
+
+class App(cg.Component):
+    def init(self):
+        self.state["items"] = [
+            {"id": 1, "text": "Item 1"},
+            {"id": 2, "text": "Item 2"},
+            {"id": 3, "text": "Item 3"},
+            {"id": 4, "text": "Item 4"},
+        ]
+        self.state["next_id"] = 5
+
+    def shuffle_items(self):
+        items = list(self.state["items"])
+        random.shuffle(items)
+        self.state["items"] = items
+
+    def reverse_items(self):
+        self.state["items"] = list(reversed(self.state["items"]))
+
+    def check_items(self):
+        tree_view = self.element.findChild(QtWidgets.QTreeView)
+        assert tree_view
+        print("selected items", len(tree_view.selectionModel().selectedIndexes()))
+
+        for idx, item in enumerate(self.state["items"]):
+            standard_item = tree_view.model().item(idx, 0)
+            assert standard_item.text() == item["text"]
+
+    def add_item(self):
+        new_item = {
+            "id": self.state["next_id"],
+            "text": f"Item {self.state['next_id']}",
+        }
+        self.state["next_id"] += 1
+        self.state["items"] = [*self.state["items"], new_item]
+
+    def remove_first(self):
+        if len(self.state["items"]) > 0:
+            self.state["items"] = self.state["items"][1:]
+</script>
+

@@ -1,0 +1,153 @@
+<!--
+  Run this example as follows:
+  uv run collagraph examples/pyside/keyed_tree_demo.cgx
+
+  This example demonstrates key-based reconciliation with hierarchical tree items.
+  Select items and use the buttons to reorder parents while preserving selection.
+-->
+<widget>
+  <label text="Key-based Tree Reconciliation Demo" />
+  <button
+    text="Shuffle Parents"
+    @clicked="shuffle_parents"
+  />
+  <button
+    text="Reverse Parents"
+    @clicked="reverse_parents"
+  />
+  <button
+    text="Add Parent"
+    @clicked="add_parent"
+  />
+  <button
+    text="Remove First Parent"
+    @clicked="remove_first_parent"
+  />
+  <button
+    text="Add Child to Selected"
+    @clicked="add_child_to_selected"
+  />
+  <button
+    text="Remove First Child from Selected"
+    @clicked="remove_child_from_selected"
+  />
+  <!-- Keyed tree - items maintain their identity when reordered -->
+  <treeview>
+    <itemmodel>
+      <standarditem
+        v-for="item in items"
+        :key="item['id']"
+        :text="item['text']"
+        :value="item['id']"
+      >
+        <standarditem
+          v-for="child in item['children']"
+          :key="child['id']"
+          :text="child['text']"
+          :value="child['id']"
+        />
+      </standarditem>
+    </itemmodel>
+  </treeview>
+  <label :text="status_text()" />
+</widget>
+
+<script>
+import random
+
+import collagraph as cg
+
+
+class App(cg.Component):
+    def init(self):
+        self.state["items"] = [
+            {
+                "id": 1,
+                "text": "Parent 1",
+                "children": [
+                    {"id": 11, "text": "Child 1.1"},
+                    {"id": 12, "text": "Child 1.2"},
+                ],
+            },
+            {
+                "id": 2,
+                "text": "Parent 2",
+                "children": [
+                    {"id": 21, "text": "Child 2.1"},
+                    {"id": 22, "text": "Child 2.2"},
+                    {"id": 23, "text": "Child 2.3"},
+                ],
+            },
+            {
+                "id": 3,
+                "text": "Parent 3",
+                "children": [
+                    {"id": 31, "text": "Child 3.1"},
+                ],
+            },
+            {
+                "id": 4,
+                "text": "Parent 4",
+                "children": [
+                    {"id": 41, "text": "Child 4.1"},
+                    {"id": 42, "text": "Child 4.2"},
+                ],
+            },
+        ]
+        self.state["next_parent_id"] = 5
+        self.state["next_child_id"] = 100
+
+    def shuffle_parents(self):
+        items = list(self.state["items"])
+        random.shuffle(items)
+        self.state["items"] = items
+
+    def reverse_parents(self):
+        self.state["items"] = list(reversed(self.state["items"]))
+
+    def add_parent(self):
+        parent_id = self.state["next_parent_id"]
+        new_parent = {
+            "id": parent_id,
+            "text": f"Parent {parent_id}",
+            "children": [
+                {"id": self.state["next_child_id"], "text": f"Child {parent_id}.1"},
+            ],
+        }
+        self.state["next_parent_id"] += 1
+        self.state["next_child_id"] += 1
+        self.state["items"] = [*self.state["items"], new_parent]
+
+    def remove_first_parent(self):
+        if len(self.state["items"]) > 0:
+            self.state["items"] = self.state["items"][1:]
+
+    def add_child_to_selected(self):
+        # This is a simplified version - in a real app you'd track which parent is selected
+        # For now, just add to the first parent
+        if len(self.state["items"]) > 0:
+            parent = self.state["items"][0]
+            child_id = self.state["next_child_id"]
+            new_child = {
+                "id": child_id,
+                "text": f"Child {parent['id']}.{len(parent['children']) + 1}",
+            }
+            parent["children"] = [*parent["children"], new_child]
+            self.state["next_child_id"] += 1
+            # Trigger update
+            self.state["items"] = list(self.state["items"])
+
+    def remove_child_from_selected(self):
+        # Remove first child from first parent that has children
+        for parent in self.state["items"]:
+            if len(parent["children"]) > 0:
+                parent["children"] = parent["children"][1:]
+                # Trigger update
+                self.state["items"] = list(self.state["items"])
+                break
+
+    def status_text(self):
+        total_parents = len(self.state["items"])
+        total_children = sum(len(item["children"]) for item in self.state["items"])
+        return f"Total: {total_parents} parents, {total_children} children"
+</script>

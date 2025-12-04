@@ -28,9 +28,8 @@ def _restore_all_selections(model: QStandardItemModel):
     # Clear all selections first
     selection_model.clear()
 
-    # Find all items that should be selected and select them
-    for row in range(model.rowCount()):
-        item = model.item(row)
+    # Recursively find all items that should be selected and select them
+    def restore_item_selection(item):
         if item and hasattr(item, "_saved_selected") and item._saved_selected:
             index = model.indexFromItem(item)
             selection_model.select(
@@ -39,6 +38,17 @@ def _restore_all_selections(model: QStandardItemModel):
                 | QItemSelectionModel.SelectionFlag.Rows,
             )
             delattr(item, "_saved_selected")
+
+        # Recursively check children
+        if item:
+            for row in range(item.rowCount()):
+                child = item.child(row)
+                restore_item_selection(child)
+
+    # Check all top-level items
+    for row in range(model.rowCount()):
+        item = model.item(row)
+        restore_item_selection(item)
 
 
 @PySideRenderer.register_insert(QStandardItemModel)
@@ -55,27 +65,54 @@ def insert(self, el, anchor=None):
         else:
             self.appendRow(el)
 
+        # Check if this item or any of its children have saved selection state
+        def has_saved_selection_recursive(item):
+            if hasattr(item, "_saved_selected") and item._saved_selected:
+                return True
+            for row in range(item.rowCount()):
+                child = item.child(row)
+                if child and has_saved_selection_recursive(child):
+                    return True
+            return False
+
+        # Check if the inserted item has any saved selections (including children)
+        item_has_saved_selections = has_saved_selection_recursive(el)
+
         # Defer selection restoration until after ALL items are inserted
         # because inserting items shifts row indices around
-        if hasattr(el, "_saved_selected"):
-            if el._saved_selected:
-                # Keep the attribute for later restoration
+        if item_has_saved_selections:
+            # Keep the attributes for later restoration
 
-                # Check if this is the last item with saved selection state
-                # Only check after inserting an item that WAS selected
-                has_pending = False
-                for row in range(self.rowCount()):
-                    item = self.item(row)
-                    if item and item != el and hasattr(item, "_saved_selected"):
-                        has_pending = True
-                        break
+            # Check if this is the last item with saved selection state
+            # Only check after inserting an item that WAS selected
+            # (or has selected children)
+            def has_pending_selections_in_item(item, skip_item):
+                """
+                Recursively check if item or its children have pending _saved_selected.
+                """
+                if item and item != skip_item:
+                    if hasattr(item, "_saved_selected") and item._saved_selected:
+                        return True
+                    for row in range(item.rowCount()):
+                        child = item.child(row)
+                        if has_pending_selections_in_item(child, skip_item):
+                            return True
+                return False
 
-                if not has_pending:
-                    # This is the last item with saved selection
-                    # - restore all selections now
-                    _restore_all_selections(self)
-            else:
-                delattr(el, "_saved_selected")
+            has_pending = False
+            for row in range(self.rowCount()):
+                item = self.item(row)
+                if has_pending_selections_in_item(item, el):
+                    has_pending = True
+                    break
+
+            if not has_pending:
+                # This is the last item with saved selection
+                # - restore all selections now
+                _restore_all_selections(self)
+        elif hasattr(el, "_saved_selected"):
+            # Item had _saved_selected but it was False - clean it up
+            delattr(el, "_saved_selected")
 
         # Expanded state can be restored immediately since it doesn't interfere
         if hasattr(el, "_saved_expanded"):
@@ -117,6 +154,26 @@ def insert(self, el, anchor=None):
         raise NotImplementedError(type(self).__name__)
 
 
+def _save_item_state_recursively(item, view, model):
+    """Recursively save selection/expanded state for an item and all its children."""
+    from PySide6.QtWidgets import QTreeView
+
+    index = model.indexFromItem(item)
+    selection_model = view.selectionModel()
+
+    # Save this item's state
+    item._saved_selected = selection_model.isSelected(index)
+
+    if isinstance(view, QTreeView):
+        item._saved_expanded = view.isExpanded(index)
+
+    # Recursively save children's state
+    for row in range(item.rowCount()):
+        child = item.child(row)
+        if child:
+            _save_item_state_recursively(child, view, model)
+
+
 @PySideRenderer.register_remove(QStandardItemModel)
 def remove(self, el):
     # Save selection/expanded state before removing
@@ -124,15 +181,8 @@ def remove(self, el):
     # These will be restored when the item is re-inserted (for moves/reorders)
     view = _get_view_from_model(self)
     if view:
-        from PySide6.QtWidgets import QTreeView
-
-        index = self.indexFromItem(el)
-
-        selection_model = view.selectionModel()
-        el._saved_selected = selection_model.isSelected(index)
-
-        if isinstance(view, QTreeView):
-            el._saved_expanded = view.isExpanded(index)
+        # Recursively save state for this item and all its children
+        _save_item_state_recursively(el, view, self)
 
     index = self.indexFromItem(el)
     self.takeRow(index.row())

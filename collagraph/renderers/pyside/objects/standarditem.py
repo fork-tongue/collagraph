@@ -4,6 +4,38 @@ from ... import PySideRenderer
 from .qobject import set_attribute as qobject_set_attribute
 
 
+def _check_and_restore_selections(item):
+    """Check if this is the last item with saved selection, and restore all if so."""
+    model = item.model()
+    if not model:
+        return
+
+    # Recursively check if any items still have pending _saved_selected attributes
+    def has_pending_selections(check_item):
+        if check_item and check_item != item and hasattr(check_item, "_saved_selected"):
+            return True
+        if check_item:
+            for row in range(check_item.rowCount()):
+                child = check_item.child(row)
+                if has_pending_selections(child):
+                    return True
+        return False
+
+    # Check all top-level items in the model
+    has_pending = False
+    for row in range(model.rowCount()):
+        top_item = model.item(row)
+        if has_pending_selections(top_item):
+            has_pending = True
+            break
+
+    if not has_pending:
+        # This is the last item - restore all selections now
+        from .itemmodel import _restore_all_selections
+
+        _restore_all_selections(model)
+
+
 @PySideRenderer.register_insert(QStandardItem)
 def insert(self, el, anchor=None):
     if hasattr(el, "model_index"):
@@ -24,33 +56,27 @@ def insert(self, el, anchor=None):
     else:
         self.appendRow(el)
 
-    # After insertion, restore state that was saved during removal (for moves/reorders)
-    if hasattr(el, "_saved_selected") or hasattr(el, "_saved_expanded"):
+    # Defer selection restoration until after ALL items are inserted
+    # (same approach as itemmodel.py)
+    if hasattr(el, "_saved_selected"):
+        if el._saved_selected:
+            # Keep the attribute for later restoration
+            # Check if this is the last item with saved selection
+            _check_and_restore_selections(el)
+        else:
+            delattr(el, "_saved_selected")
+
+    # Expanded state can be restored immediately since it doesn't interfere
+    if hasattr(el, "_saved_expanded"):
         view = _get_view_from_item(el)
         if view:
-            from PySide6.QtCore import QItemSelectionModel
             from PySide6.QtWidgets import QTreeView
 
-            model = el.model()
-            index = model.indexFromItem(el)
-
-            if hasattr(el, "_saved_selected"):
-                selection_model = view.selectionModel()
-                if el._saved_selected:
-                    # Use ClearAndSelect to replace the current selection rather
-                    # than add to it
-                    # This prevents stale selections from persisting
-                    selection_model.select(
-                        index,
-                        QItemSelectionModel.SelectionFlag.ClearAndSelect
-                        | QItemSelectionModel.SelectionFlag.Rows,
-                    )
-                delattr(el, "_saved_selected")
-
-            if hasattr(el, "_saved_expanded"):
-                if isinstance(view, QTreeView):
-                    view.setExpanded(index, el._saved_expanded)
-                delattr(el, "_saved_expanded")
+            if isinstance(view, QTreeView):
+                model = el.model()
+                index = model.indexFromItem(el)
+                view.setExpanded(index, el._saved_expanded)
+        delattr(el, "_saved_expanded")
     else:
         # Initial mounting - use temp attributes set before mounting
         if hasattr(el, "_expanded"):
