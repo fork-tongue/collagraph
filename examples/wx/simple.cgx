@@ -1,0 +1,14 @@
+<frame>
+  <window>
+  	<statictext label="Hello World" />
+  	<textctrl value="I am a text field" />
+  	<button :id="13" label="Press me" />
+  </window>
+</frame>
+
+<script>
+import collagraph as cg
+
+class Label(cg.Component):
+	pass
+</script>

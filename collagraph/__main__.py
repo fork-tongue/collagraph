@@ -16,6 +16,7 @@ def available_renderers():
         "PySideRenderer": "pyside",
         "PygfxRenderer": "pygfx",
         "DictRenderer": "dict",
+        "WxRenderer": "wx",
     }.items():
         try:
             importlib.import_module("collagraph", renderer_type)
@@ -75,6 +76,19 @@ def init_collagraph(
         # Start debugger to allow for inspection of container
         # and manipulation of props
         breakpoint()  # noqa: T100
+    elif renderer_type == "wx":
+        import wx
+
+        app = wx.App()
+
+        # frame = wx.Frame(None)
+        gui = cg.Collagraph(
+            renderer=cg.WxRenderer(),
+            event_loop_type=cg.EventLoopType.SYNC,
+        )
+        gui.render(component_class, app, state=props)
+        # frame.Show()
+        app.MainLoop()
 
 
 def existing_component_file(value):

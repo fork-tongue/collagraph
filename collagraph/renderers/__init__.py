@@ -86,3 +86,10 @@ else:
 
     # Need to import the objects in order to register their methods
     from .pyside import objects
+
+try:
+    import wx
+except ImportError:  # pragma: no cover
+    pass
+else:
+    from .wx_renderer import WxRenderer
