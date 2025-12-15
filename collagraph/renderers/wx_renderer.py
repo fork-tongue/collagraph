@@ -20,7 +20,7 @@ TYPE_MAPPING = {
     "combobox": wx.ComboBox,
     "frame": wx.Frame,
     "label": wx.StaticText,
-    "lineedit": wx.TextEntry,
+    "lineedit": wx.TextCtrl,
     "menu": wx.Menu,
     "menubar": wx.MenuBar,
     "radiobutton": wx.RadioButton,
@@ -42,13 +42,10 @@ LAYOUT_MAPPING = {}
 
 # Default arguments for types that need
 # constructor arguments
-DEFAULT_ARGS = {
-    wx.Window: ((None,), {}),
-    wx.Frame: ((None,), {}),
-    wx.StaticText: ((None,), {}),
-    wx.TextCtrl: ((None,), {}),
-    wx.Button: ((None,), {}),
-}
+# Note: For most widgets, we'll need to provide a parent
+# during creation. We use a placeholder that will be replaced
+# in create_instance
+DEFAULT_ARGS = {}
 
 # Cache for wrapped types
 WRAPPED_TYPES = {}
@@ -73,13 +70,10 @@ class WxRenderer(Renderer):
         return EventLoopType.DEFAULT
 
     def register_asyncio(self):
-        import asyncio
-
-        from PySide6.QtAsyncio import QAsyncioEventLoopPolicy
-
-        policy = asyncio.get_event_loop_policy()
-        if not isinstance(policy, QAsyncioEventLoopPolicy):
-            asyncio.set_event_loop_policy(QAsyncioEventLoopPolicy())
+        # TODO: Implement asyncio integration for wxPython
+        # wxPython doesn't have built-in asyncio support like PySide6
+        # Consider using libraries like wxasync if async support is needed
+        pass
 
     @classmethod
     def register_element(cls, type_name, typ=None):
@@ -95,12 +89,12 @@ class WxRenderer(Renderer):
         type_name = normalize_name(type_name)
         if type_name in TYPE_MAPPING:
             warn(f"{type_name} element already registered")
-        # Check that the custom type is a subclass of QWidget.
+        # Check that the custom type is a subclass of wx.Window.
         # This ensures that the custom widget can be properly wrapped
         # and will get the `insert`, `remove` and `set_attribute`
         # methods.
-        if wx.Widget not in typ.__mro__:
-            raise TypeError(f"Specified type '{typ}' not a subclass of QWidget")
+        if wx.Window not in typ.__mro__:
+            raise TypeError(f"Specified type '{typ}' not a subclass of wx.Window")
 
         TYPE_MAPPING[type_name] = typ
 
@@ -118,12 +112,12 @@ class WxRenderer(Renderer):
         layout_name = normalize_name(layout_name)
         if layout_name in LAYOUT_MAPPING:
             warn(f"{layout_name} layout already registered")
-        # Check that the custom type is a subclass of QLayout.
-        # This ensures that the custom layout can be properly wrapped
+        # Check that the custom type is a subclass of wx.Sizer.
+        # This ensures that the custom sizer can be properly wrapped
         # and will get the `insert`, `remove` and `set_attribute`
         # methods.
-        if wx.Layout not in typ.__mro__:
-            raise TypeError(f"Specified type '{typ}' not a subclass of QLayout")
+        if wx.Sizer not in typ.__mro__:
+            raise TypeError(f"Specified type '{typ}' not a subclass of wx.Sizer")
 
         LAYOUT_MAPPING[layout_name] = typ
 
@@ -352,57 +346,53 @@ class WxRenderer(Renderer):
     def add_event_listener(self, el: Any, event_type: str, value: Callable):
         """Add event listener for `event_type` to the element `el`."""
         event_type = event_type.replace("-", "_")
-        signal_name = camel_case(event_type, "_")
 
-        # Try and get the signal from the object
-        signal = getattr(el, signal_name, None)
-        if signal and hasattr(signal, "connect"):
-            # Add a slots attribute to hold all the generated slots, keyed on event_type
-            if not hasattr(el, "slots"):
-                el.slots = defaultdict(set)
+        # Add a handlers attribute to track event handlers
+        if not hasattr(el, "_event_handlers"):
+            el._event_handlers = defaultdict(list)
 
-            # Create a slot with the given value
-            # Note that the slot apparently does not need arguments to specify the type
-            # or amount of arguments the enclosed callback needs. If the callback has
-            # arguments, then those will be set to the parameter(s) of the signal when
-            # it is emitted.
-            try:
-                # Creating a slot of a bound method on an instance (that is not
-                # a QObject?) results in a SystemError. Lambdas though _can_ function
-                # as a slot, so when creating a slot of the value fails, retry with
-                # a simple lambda.
-                slot = QtCore.Slot()(value)
-            except SystemError:
-                # TODO: with some inspection we might be able to figure out the
-                # signature of the 'value' function and adjust the lambda accordingly
-                slot = QtCore.Slot()(lambda *args: value(*args))
-            el.slots[event_type].add(slot)
+        # Store the handler
+        el._event_handlers[event_type].append(value)
 
-            signal.connect(slot)
+        # Map common event types to wx event types
+        # Some events need to pass the event object to the handler
+        event_map = {
+            "clicked": (wx.EVT_BUTTON, False),
+            "checked": (wx.EVT_CHECKBOX, False),
+            "toggled": (wx.EVT_CHECKBOX, False),
+            "text_changed": (wx.EVT_TEXT, True),
+            "text": (wx.EVT_TEXT, True),
+            "scroll": (wx.EVT_SCROLL, True),
+            "scroll_changed": (wx.EVT_SCROLL_CHANGED, True),
+            "selected": (wx.EVT_COMBOBOX, True),
+            "choice": (wx.EVT_CHOICE, True),
+            "radiobutton": (wx.EVT_RADIOBUTTON, False),
+            # Add more mappings as needed
+        }
+
+        event_info = event_map.get(event_type)
+        if event_info:
+            wx_event, pass_event = event_info
+            if pass_event:
+                el.Bind(wx_event, lambda event: value(event))
+            else:
+                el.Bind(wx_event, lambda event: value())
         else:
-            if not hasattr(el, "_event_filter"):
-                el._event_filter = EventFilter()
-                el.installEventFilter(el._event_filter)
-            event_name = camel_case(event_type, "_", upper=True)
-            el._event_filter.add_event_handler(event_name, value)
+            logger.warning(f"Unknown event type: {event_type}")
 
     def remove_event_listener(self, el: Any, event_type: str, value: Callable):
         """Remove event listener for `event_type` to the element `el`."""
         event_type = event_type.replace("-", "_")
-        signal_name = camel_case(event_type, "_")
 
-        signal = getattr(el, signal_name, None)
-        if not signal or not hasattr(signal, "connect"):
-            event_name = camel_case(event_type, "_", upper=True)
-            el._event_filter.remove_event_handler(event_name, value)
-            return
+        if hasattr(el, "_event_handlers") and event_type in el._event_handlers:
+            try:
+                el._event_handlers[event_type].remove(value)
+            except ValueError:
+                logger.warning(f"Handler not found for event type: {event_type}")
 
-        for slot in el.slots[event_type]:
-            # Slot can be compared to its value
-            if slot == value:
-                signal.disconnect(slot)
-                el.slots[event_type].remove(slot)
-                break
+        # TODO: Implement proper unbinding in wxPython
+        # wxPython's Unbind is more complex than PySide's disconnect
+        logger.debug(f"Event listener removal for {event_type} needs proper implementation")
 
 
 def not_implemented(self, context, *args, **kwargs):
@@ -412,21 +402,31 @@ def not_implemented(self, context, *args, **kwargs):
     )
 
 
-hibbem = None
+_temp_parent = None
+
+
+def get_temp_parent():
+    """Get or create a temporary hidden parent for widgets that need one during creation."""
+    global _temp_parent
+    if _temp_parent is None:
+        _temp_parent = wx.Frame(None, title="Temp")
+        _temp_parent.Hide()
+    return _temp_parent
 
 
 def create_instance(wx_type: Callable):
-    global hibbem
-    if hibbem is None:
-        hibbem = wx.Frame(parent=None, title="Hibbem")
     """Creates an instance of the given type with the any default
     arguments (if any) passed into the constructor."""
     args, kwargs = DEFAULT_ARGS.get(wx_type, ((), {}))
 
-    if len(args) >= 1 and args[0] is None:
-        args = (hibbem, *args[1:])
-    print(f"create ({wx_type.__name__})", args, kwargs)
-    return wx_type(*args, **kwargs)
+    # For top-level windows (Frame, Dialog), use None as parent
+    # For other widgets, use a temporary parent that will be replaced during insert
+    parent = None
+    if wx_type not in (wx.Frame, wx.Dialog):
+        parent = get_temp_parent()
+
+    print(f"create ({wx_type.__name__}) with parent={parent}", args, kwargs)
+    return wx_type(parent, *args, **kwargs)
 
 
 def normalize_name(name):
@@ -507,7 +507,11 @@ def insert(self, el, anchor=None):
 
     print("Add el to sizer")
     sizer.Add(el)
-    # sizer.Layout()
+
+    # Trigger layout update so widgets are positioned correctly
+    sizer.Layout()
+    self.Layout()
+
     print("Added el to sizer")
 
 
@@ -526,9 +530,25 @@ def basic_set_attribute(self, attr, value):
 
 
 @WxRenderer.register_set_attr(wx.TextEntry)
-def set_attribute(self, attr, value):
-    if attr == "text":
-        self.SetValue(attr)
+def text_entry_set_attribute(self, attr, value):
+    if attr in ("text", "value"):
+        self.SetValue(value)
         return
 
-    basic_set_attribute(attr, value)
+    basic_set_attribute(self, attr, value)
+
+
+@WxRenderer.register_set_attr(wx.ComboBox)
+def combobox_set_attribute(self, attr, value):
+    if attr == "choices":
+        # Clear existing items and add new ones
+        self.Clear()
+        if value:
+            self.AppendItems(value)
+        return
+    elif attr == "value":
+        # Set the current selection by string value
+        self.SetValue(value)
+        return
+
+    basic_set_attribute(self, attr, value)

@@ -1,6 +1,6 @@
 <frame>
-  <label :text="f'Count: {count}'" />
-  <button text="bump" @clicked="bump" />
+  <label :label="f'Count: {count}'" />
+  <button label="bump" @clicked="bump" />
 </frame>
 
 <script>

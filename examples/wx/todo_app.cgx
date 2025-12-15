@@ -1,0 +1,70 @@
+<frame title="Todo App">
+  <label :label="f'Tasks: {len(todos)} total, {completed_count()} completed'" />
+
+  <lineedit
+    :value="new_todo_text"
+    @text_changed="on_text_change"
+  />
+
+  <button
+    label="Add Todo"
+    @clicked="add_todo"
+  />
+
+  <button
+    label="Clear Completed"
+    @clicked="clear_completed"
+  />
+
+  <label label="--- Todo List ---" />
+
+  <template v-for="todo in todos">
+    <window>
+      <checkbox
+        :label="todo['text']"
+        :value="todo['done']"
+        @checked="lambda: toggle_todo(todo['id'])"
+      />
+    </window>
+  </template>
+</frame>
+
+<script>
+import collagraph as cg
+
+
+class TodoApp(cg.Component):
+    def init(self):
+        self.state["todos"] = []
+        self.state["new_todo_text"] = ""
+        self.state["next_id"] = 1
+
+    def on_text_change(self, event):
+        self.state["new_todo_text"] = event.GetString()
+
+    def add_todo(self):
+        text = self.state["new_todo_text"].strip()
+        if text:
+            self.state["todos"].append({
+                "id": self.state["next_id"],
+                "text": text,
+                "done": False
+            })
+            self.state["next_id"] += 1
+            self.state["new_todo_text"] = ""
+
+    def toggle_todo(self, todo_id):
+        for todo in self.state["todos"]:
+            if todo["id"] == todo_id:
+                todo["done"] = not todo["done"]
+                break
+
+    def clear_completed(self):
+        self.state["todos"] = [
+            todo for todo in self.state["todos"]
+            if not todo["done"]
+        ]
+
+    def completed_count(self):
+        return sum(1 for todo in self.state["todos"] if todo["done"])
+</script>

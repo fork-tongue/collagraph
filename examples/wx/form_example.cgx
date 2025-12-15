@@ -1,0 +1,73 @@
+<frame title="User Profile Form">
+  <label label="User Profile" />
+
+  <label label="Name:" />
+  <textedit
+    :value="name"
+    @text_changed="on_name_change"
+  />
+
+  <label :label="f'Age: {age}'" />
+  <slider
+    :value="age"
+    :min="0"
+    :max="100"
+    @scroll="on_age_change"
+  />
+
+  <checkbox
+    :label="f'Subscribe to newsletter'"
+    :value="subscribed"
+    @checked="toggle_subscription"
+  />
+
+  <label label="Status:" />
+  <combobox
+    :choices="status_options"
+    :value="status"
+    @selected="on_status_change"
+  />
+
+  <button
+    label="Submit"
+    @clicked="submit_form"
+  />
+
+  <label :label="f'Summary: {get_summary()}'" />
+</frame>
+
+<script>
+import collagraph as cg
+
+
+class FormExample(cg.Component):
+    def init(self):
+        self.state["name"] = "John Doe"
+        self.state["age"] = 25
+        self.state["subscribed"] = False
+        self.state["status_options"] = ["Active", "Inactive", "Pending", "Suspended"]
+        self.state["status"] = "Active"
+
+    def on_name_change(self, event):
+        self.state["name"] = event.GetString()
+
+    def on_age_change(self, event):
+        self.state["age"] = event.GetPosition()
+
+    def toggle_subscription(self):
+        self.state["subscribed"] = not self.state["subscribed"]
+
+    def on_status_change(self, event):
+        self.state["status"] = event.GetString()
+
+    def submit_form(self):
+        print(f"Submitting form:")
+        print(f"  Name: {self.state['name']}")
+        print(f"  Age: {self.state['age']}")
+        print(f"  Subscribed: {self.state['subscribed']}")
+        print(f"  Status: {self.state['status']}")
+
+    def get_summary(self):
+        sub = "subscribed" if self.state["subscribed"] else "not subscribed"
+        return f"{self.state['name']}, age {self.state['age']}, {sub}, status: {self.state['status']}"
+</script>
