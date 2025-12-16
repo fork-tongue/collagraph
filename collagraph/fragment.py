@@ -196,17 +196,20 @@ class Fragment:
         def update(self, new: set[str], old: set[str] | None):
             if old is None:
                 old = set()
-            for attr in new - old:
-                self._watch_bind(
-                    attr,
-                    lambda attr=attr: expression()[attr],
-                )
+            if additional_attrs := new - old:
+                for attr in additional_attrs:
+                    self._watch_bind(
+                        attr,
+                        lambda attr=attr: expression()[attr],
+                    )
 
-            for attr in old - new:
-                if f"bind:{attr}" in self._watchers:
-                    del self._watchers[f"bind:{attr}"]
-                    # Perform cleanup
-                    self._rem_attr(attr)
+            if removed_attrs := old - new:
+                for attr in removed_attrs:
+                    if f"bind:{attr}" in self._watchers:
+                        unwatch = self._watchers.pop(f"bind:{attr}")
+                        unwatch()
+                        # Perform cleanup
+                        self._rem_attr(attr)
 
         self._watchers[f"bind_dict:{name}"] = watch(
             lambda: set(expression().keys()),
@@ -294,9 +297,8 @@ class Fragment:
             self._events = {}
             # Disable the fn and callback of the watcher to disable
             # any 'false' triggers
-            for watcher in self._watchers.values():
-                watcher.fn = lambda: ()
-                watcher.callback = None
+            for unwatch in self._watchers.values():
+                unwatch()
             self._watchers = {}
             self._condition = None
             self.tag = None
@@ -304,9 +306,8 @@ class Fragment:
             self.element = None
             # Disable the fn and callback of the watcher to disable
             # any 'false' triggers
-            for watcher in self._watchers.values():
-                watcher.fn = lambda: ()
-                watcher.callback = None
+            for unwatch in self._watchers.values():
+                unwatch()
             self._watchers = {}
 
         # TODO: maybe control flow fragments needs another custom 'parenting'
@@ -871,8 +872,7 @@ class DynamicFragment(Fragment):
             self._attributes = {}
             self._events = {}
             if self._type_watcher:
-                self._type_watcher.fn = lambda: ()
-                self._type_watcher.callback = None
+                self._type_watcher()
                 self._type_watcher = None
             self._condition = None
             self._expression = None

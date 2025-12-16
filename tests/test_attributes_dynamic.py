@@ -372,3 +372,44 @@ def test_dynamic_attribute_typo(parse_source):
     )
     with pytest.raises(NameError):
         gui.render(App, container, state=state)
+
+
+def test_dynamic_attribute_key_error(parse_source):
+    App, _ = parse_source(
+        """
+        <node
+          v-for="node in nodes"
+          v-bind="node"
+        />
+
+        <script>
+        import collagraph as cg
+
+        class App(cg.Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive(
+        {
+            "nodes": [
+                {"foo": "foo", "bar": "bar"},
+                {"foo": "foo"},
+            ]
+        }
+    )
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    assert len(container["children"]) == 2
+
+    # The second item does not have the 'bar' attribute
+    # which used to trigger a KeyError
+    state["nodes"].pop(0)
+
+    assert len(container["children"]) == 1
