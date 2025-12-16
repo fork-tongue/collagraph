@@ -425,7 +425,6 @@ def create_instance(wx_type: Callable):
     if wx_type not in (wx.Frame, wx.Dialog):
         parent = get_temp_parent()
 
-    print(f"create ({wx_type.__name__}) with parent={parent}", args, kwargs)
     return wx_type(parent, *args, **kwargs)
 
 
@@ -477,7 +476,6 @@ def name_to_type(name, modules=None, orig=None):
                 return name_to_type(
                     ".".join(parts[1:]), modules=[element_class], orig=name
                 )
-            print("ah", element_class)
             return element_class
 
     raise TypeError(f"Couldn't find type for name: '{name}' ({orig})")
@@ -485,9 +483,6 @@ def name_to_type(name, modules=None, orig=None):
 
 @WxRenderer.register_insert(wx.Window)
 def insert(self, el, anchor=None):
-    print("insert", el, "into", self)
-    # breakpoint()
-    # el.SetParent(self)
     el.Reparent(self)
 
     # Adding a widget (el) to a widget (self) involves getting the sizer
@@ -495,24 +490,19 @@ def insert(self, el, anchor=None):
     # The sizer might not exist yet, so let's create a default Box.
     sizer = self.GetSizer()
     if not sizer:
-        print(">>>> create a sizer")
         sizer = wx.BoxSizer(orient=wx.VERTICAL)
-        print(">>>> Set the sizer")
         self.SetSizer(sizer)
-        # sizer.SetSizeHints(self)
 
     # TODO: anchor
     # sizer.Add(el, anchor=anchor)
     el.Show()
 
-    print("Add el to sizer")
-    sizer.Add(el)
+    # Add with default spacing: 5px border on all sides, expand horizontally
+    sizer.Add(el, proportion=0, flag=wx.ALL | wx.EXPAND, border=5)
 
     # Trigger layout update so widgets are positioned correctly
     sizer.Layout()
     self.Layout()
-
-    print("Added el to sizer")
 
 
 @WxRenderer.register_set_attr(wx.Object)
@@ -521,11 +511,9 @@ def basic_set_attribute(self, attr, value):
     method = getattr(self, method_name, None)
     if not method:
         logger.debug(f"Setting custom attr: {attr}, {method_name}")
-        print(f"Setting custom attr: {attr}, {method_name}")
         setattr(self, attr, value)
         return
 
-    print(f"Call: {method_name}")
     call_method(method, value)
 
 
