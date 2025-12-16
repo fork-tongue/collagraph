@@ -10,7 +10,7 @@ requires-python = ">=3.10"
 readme = "README.md"
 license = "MIT"
 dependencies = [
-    "observ>=0.14.1",
+    "observ>=0.17.1",
 ]
 
 [project.scripts]
