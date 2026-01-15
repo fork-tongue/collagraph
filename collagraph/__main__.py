@@ -35,9 +35,9 @@ def init_collagraph(
 
     if renderer_type == "pygfx":
         import pygfx as gfx
-        from wgpu.gui.auto import WgpuCanvas, run
+        from rendercanvas.auto import RenderCanvas, loop
 
-        canvas = WgpuCanvas(size=(600, 400))
+        canvas = RenderCanvas(size=(600, 400))
         wgpu_renderer = gfx.renderers.WgpuRenderer(canvas)
 
         camera = gfx.PerspectiveCamera(70)
@@ -57,7 +57,7 @@ def init_collagraph(
         gui = cg.Collagraph(renderer=renderer)
         gui.render(component_class, container, state=props)
 
-        run()
+        loop.run()
     elif renderer_type == "pyside":
         from PySide6 import QtWidgets
 
