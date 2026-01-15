@@ -29,8 +29,14 @@ class FileWatcher:
         self._observer = None
 
     def start(self) -> None:
-        from watchdog.events import FileSystemEventHandler
-        from watchdog.observers import Observer
+        try:
+            from watchdog.events import FileSystemEventHandler
+            from watchdog.observers import Observer
+        except ImportError as e:
+            raise ImportError(
+                "Hot reload requires the 'watchdog' package. "
+                "Install it with: pip install watchdog"
+            ) from e
 
         # Resolve all paths to absolute for consistent matching
         watched_paths = {str(p.resolve()) for p in self._paths}
@@ -64,10 +70,6 @@ class FileWatcher:
                     except OSError:
                         pass
                 return False
-
-            def on_any_event(self, event) -> None:
-                if not event.is_directory:
-                    log.debug("Event: %s %s", event.event_type, event.src_path)
 
             def on_modified(self, event) -> None:
                 if not event.is_directory:
@@ -122,7 +124,6 @@ class HotReloader:
         self._watcher: FileWatcher | None = None
         self._debounce_timer: threading.Timer | None = None
         self._debounce_lock = threading.Lock()
-        self._reload_pending = False
         self._qt_signal_helper = None
 
         # Set up Qt signal helper for thread-safe reloading
@@ -165,6 +166,12 @@ class HotReloader:
         if self._debounce_timer:
             self._debounce_timer.cancel()
             self._debounce_timer = None
+        # Disconnect Qt signal to avoid dangling references
+        if self._qt_signal_helper is not None:
+            try:
+                self._qt_signal_helper.reload_signal.disconnect(self._reload)
+            except (RuntimeError, TypeError):
+                pass  # Already disconnected or no connections
 
     def _collect_cgx_modules(self) -> None:
         """Collect all .cgx modules that should be watched."""
