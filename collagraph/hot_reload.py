@@ -173,6 +173,55 @@ class HotReloader:
             except (RuntimeError, TypeError):
                 pass  # Already disconnected or no connections
 
+    def reload(self) -> bool:
+        """
+        Manually trigger a reload.
+
+        Returns True if reload succeeded, False otherwise.
+        This method is synchronous and should be called from the main thread.
+        """
+        gui = self._gui_ref()
+        if gui is None or gui.fragment is None:
+            logger.warning("Cannot reload: GUI or fragment is None")
+            return False
+
+        logger.info("Reloading...")
+
+        # Phase 1: Try to reimport modules (validate before unmounting)
+        try:
+            self._invalidate_modules()
+            module = importlib.import_module(self._root_module_name)
+            importlib.reload(module)
+            component_class = getattr(module, "__component_class")
+        except Exception:
+            logger.exception("Error during reload, keeping old UI")
+            return False
+
+        # Phase 2: Unmount and re-render (only if compile succeeded)
+        try:
+            target = self._target
+
+            from collagraph.component import Component
+
+            Component.__lookup_cache__.clear()
+
+            gui.fragment.unmount(destroy=True)
+            gui.fragment = None
+
+            gui.render(component_class, target, self._state)
+
+            self._collect_cgx_modules()
+
+            if self._watcher:
+                self._watcher.update_paths(set(self._watched_modules.keys()))
+
+            logger.info("Reload complete")
+            return True
+
+        except Exception:
+            logger.exception("Error during re-render")
+            return False
+
     def _collect_cgx_modules(self) -> None:
         """Collect all .cgx modules that should be watched."""
         from collagraph.sfc.importer import get_loaded_cgx_modules
@@ -223,52 +272,8 @@ class HotReloader:
                 self._reload()
 
     def _reload(self) -> None:
-        """Perform the actual reload."""
-        gui = self._gui_ref()
-        if gui is None or gui.fragment is None:
-            return
-
-        logger.info("Reloading...")
-
-        # Phase 1: Try to reimport modules (validate before unmounting)
-        try:
-            self._invalidate_modules()
-            module = importlib.import_module(self._root_module_name)
-            importlib.reload(module)
-            # Use getattr to avoid Python name mangling of __component_class
-            component_class = getattr(module, "__component_class")
-        except Exception:
-            logger.exception("Error during reload, keeping old UI")
-            return
-
-        # Phase 2: Unmount and re-render (only if compile succeeded)
-        try:
-            # Store target reference before unmounting
-            target = self._target
-
-            # Clear Component lookup cache to prevent stale lookups
-            from collagraph.component import Component
-
-            Component.__lookup_cache__.clear()
-
-            # Unmount current fragment tree
-            gui.fragment.unmount(destroy=True)
-            gui.fragment = None
-
-            # Re-render with fresh component class
-            gui.render(component_class, target, self._state)
-
-            # Re-collect modules (dependencies may have changed)
-            self._collect_cgx_modules()
-
-            # Update watcher with new file list
-            if self._watcher:
-                self._watcher.update_paths(set(self._watched_modules.keys()))
-
-            logger.info("Reload complete")
-
-        except Exception:
-            logger.exception("Error during re-render")
+        """Internal callback for file watcher triggered reloads."""
+        self.reload()
 
     def _invalidate_modules(self) -> None:
         """Remove tracked CGX modules from sys.modules."""
