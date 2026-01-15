@@ -36,9 +36,8 @@ def init_collagraph(
     if hot_reload:
         logging.basicConfig(
             level=logging.INFO,
-            format="[%(module)s] %(levelname)s - %(message)s",
+            format="[%(module)s] $(levelname)s %(message)s",
         )
-        logging.getLogger("collagraph.hot_reload").setLevel(logging.INFO)
 
     file_as_module = ".".join([*component_path.parts[:-1], component_path.stem])
     component_module = importlib.import_module(file_as_module)

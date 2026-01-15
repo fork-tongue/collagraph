@@ -198,6 +198,12 @@ class HotReloader:
             preserved_state = self._collect_component_state(gui.fragment)
             logger.debug("Collected state from %d components", len(preserved_state))
 
+        # Collect renderer-specific element state (e.g., window geometry)
+        element_state = None
+        root_element = self._find_root_element(gui.fragment)
+        if root_element is not None:
+            element_state = gui.renderer.save_element_state(root_element)
+
         # Phase 1: Try to reimport modules (validate before unmounting)
         try:
             self._invalidate_modules()
@@ -225,6 +231,11 @@ class HotReloader:
             if preserve_state and preserved_state:
                 restored = self._restore_component_state(gui.fragment, preserved_state)
                 logger.debug("Restored state to %d components", restored)
+
+            # Restore renderer-specific element state
+            new_root_element = self._find_root_element(gui.fragment)
+            if element_state and new_root_element is not None:
+                gui.renderer.restore_element_state(new_root_element, element_state)
 
             self._collect_cgx_modules()
 
@@ -302,6 +313,25 @@ class HotReloader:
             # Clear from CGX loader registry
             clear_cgx_module(module_name)
 
+    def _find_root_element(self, fragment: Fragment) -> Any:
+        """
+        Find the root element in a fragment tree.
+
+        The top-level fragment may be a transient fragment (tag=None) without
+        an element. This walks the tree to find the first actual element,
+        which for PySide would be the top-level window widget.
+        """
+        if fragment.element is not None:
+            return fragment.element
+
+        # Check children
+        for child in fragment.children:
+            element = self._find_root_element(child)
+            if element is not None:
+                return element
+
+        return None
+
     def _collect_component_state(self, fragment: Fragment) -> dict:
         """
         Walk fragment tree and collect component state for preservation.
@@ -343,9 +373,7 @@ class HotReloader:
                 state_copy = copy.deepcopy(dict(component.state))
             except Exception:
                 # If deepcopy fails (non-copyable values), try shallow copy
-                logger.debug(
-                    "Deepcopy failed for %s, using shallow copy", identity[0]
-                )
+                logger.debug("Deepcopy failed for %s, using shallow copy", identity[0])
                 state_copy = dict(component.state)
 
             state_tree[identity] = {
