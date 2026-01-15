@@ -12,11 +12,17 @@ from collagraph.renderers import Renderer
 
 class Collagraph:
     def __init__(
-        self, renderer: Renderer, *, event_loop_type: EventLoopType | None = None
+        self,
+        renderer: Renderer,
+        *,
+        event_loop_type: EventLoopType | None = None,
+        hot_reload: bool = False,
     ):
         if not isinstance(renderer, Renderer):
             raise TypeError(f"Expected a Renderer but got a {type(renderer)}")
         self.renderer = renderer
+        self._hot_reload = hot_reload
+        self._hot_reloader = None
         if not event_loop_type:
             event_loop_type = (
                 renderer.preferred_event_loop_type() or EventLoopType.DEFAULT
@@ -46,3 +52,11 @@ class Collagraph:
         self.fragment = component.render(renderer=self.renderer)
         self.fragment.component = component
         self.fragment.mount(target)
+
+        # Start hot reloading if enabled (only on first render)
+        if self._hot_reload and self._hot_reloader is None:
+            from collagraph.hot_reload import HotReloader
+
+            module_name = component_class.__module__
+            self._hot_reloader = HotReloader(self)
+            self._hot_reloader.start(module_name, target, state)
