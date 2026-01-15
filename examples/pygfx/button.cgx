@@ -10,7 +10,7 @@
 
 <script>
 import pygfx as gfx
-from wgpu.gui.auto import call_later
+from rendercanvas.auto import loop
 
 import collagraph as cg
 
@@ -39,7 +39,7 @@ class Button(cg.Component):
 
     def pad_pressed(self, event):
         self.state["pressed"] = True
-        call_later(2, self.release)
+        loop.call_later(2, self.release)
 
     def release(self):
         self.state["pressed"] = False
