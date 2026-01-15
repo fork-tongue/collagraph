@@ -7,15 +7,17 @@ Provides file watching and module reloading for .cgx single-file components.
 from __future__ import annotations
 
 import importlib
+import logging
 import sys
 import threading
-import traceback
 import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:
     from collagraph import Collagraph
+
+logger = logging.getLogger(__name__)
 
 
 class FileWatcher:
@@ -35,6 +37,7 @@ class FileWatcher:
         # Also track by filename for editors that do atomic saves
         watched_filenames = {Path(p).name for p in watched_paths}
         callback = self._callback
+        log = logger  # Capture logger for nested class
 
         class Handler(FileSystemEventHandler):
             def _check_path(self, event_path: str) -> bool:
@@ -45,7 +48,7 @@ class FileWatcher:
                     resolved = event_path
 
                 if resolved in watched_paths:
-                    print(f"[Hot Reload] Path matched: {resolved}")  # noqa: T201
+                    log.debug("Path matched: %s", resolved)
                     callback(Path(resolved))
                     return True
 
@@ -55,7 +58,7 @@ class FileWatcher:
                     try:
                         resolved = str(Path(event_path).resolve())
                         if resolved in watched_paths:
-                            print(f"[Hot Reload] Path matched (by name): {resolved}")  # noqa: T201
+                            log.debug("Path matched (by name): %s", resolved)
                             callback(Path(resolved))
                             return True
                     except OSError:
@@ -63,9 +66,8 @@ class FileWatcher:
                 return False
 
             def on_any_event(self, event) -> None:
-                # Debug: print all events
                 if not event.is_directory:
-                    print(f"[Hot Reload] Event: {event.event_type} {event.src_path}")  # noqa: T201
+                    log.debug("Event: %s %s", event.event_type, event.src_path)
 
             def on_modified(self, event) -> None:
                 if not event.is_directory:
@@ -153,7 +155,7 @@ class HotReloader:
             )
             self._watcher.start()
             for path in self._watched_modules.keys():
-                print(f"[Hot Reload] Watching: {path}")  # noqa: T201
+                logger.info("Watching: %s", path)
 
     def stop(self) -> None:
         """Stop watching for file changes."""
@@ -178,7 +180,7 @@ class HotReloader:
 
     def _on_file_changed(self, path: Path) -> None:
         """Handle a file change event (called from watchdog thread)."""
-        print(f"[Hot Reload] File changed callback: {path}")  # noqa: T201
+        logger.debug("File changed callback: %s", path)
         with self._debounce_lock:
             # Cancel any pending reload
             if self._debounce_timer:
@@ -187,20 +189,20 @@ class HotReloader:
             # Schedule reload with debounce delay
             self._debounce_timer = threading.Timer(0.1, self._trigger_reload)
             self._debounce_timer.start()
-            print("[Hot Reload] Debounce timer started")  # noqa: T201
+            logger.debug("Debounce timer started")
 
     def _trigger_reload(self) -> None:
         """Trigger reload on the main thread."""
-        print("[Hot Reload] Trigger reload called")  # noqa: T201
+        logger.debug("Trigger reload called")
         gui = self._gui_ref()
         if gui is None:
-            print("[Hot Reload] GUI reference is None!")  # noqa: T201
+            logger.warning("GUI reference is None, cannot reload")
             return
 
         # Schedule the reload on the main event loop
         if self._qt_signal_helper is not None:
             # Use signal/slot for thread-safe Qt communication
-            print("[Hot Reload] Emitting reload signal")  # noqa: T201
+            logger.debug("Emitting reload signal")
             self._qt_signal_helper.reload_signal.emit()
         else:
             # Fallback: try asyncio
@@ -219,7 +221,7 @@ class HotReloader:
         if gui is None or gui.fragment is None:
             return
 
-        print("[Hot Reload] Reloading...")  # noqa: T201
+        logger.info("Reloading...")
 
         # Phase 1: Try to reimport modules (validate before unmounting)
         try:
@@ -229,9 +231,7 @@ class HotReloader:
             # Use getattr to avoid Python name mangling of __component_class
             component_class = getattr(module, "__component_class")
         except Exception:
-            print("[Hot Reload] Error during reload:")  # noqa: T201
-            traceback.print_exc()
-            print("[Hot Reload] Keeping old UI")  # noqa: T201
+            logger.exception("Error during reload, keeping old UI")
             return
 
         # Phase 2: Unmount and re-render (only if compile succeeded)
@@ -258,11 +258,10 @@ class HotReloader:
             if self._watcher:
                 self._watcher.update_paths(set(self._watched_modules.keys()))
 
-            print("[Hot Reload] Done")  # noqa: T201
+            logger.info("Reload complete")
 
         except Exception:
-            print("[Hot Reload] Error during re-render:")  # noqa: T201
-            traceback.print_exc()
+            logger.exception("Error during re-render")
 
     def _invalidate_modules(self) -> None:
         """Remove tracked CGX modules from sys.modules."""
