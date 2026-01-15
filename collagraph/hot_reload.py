@@ -6,6 +6,7 @@ Provides file watching and module reloading for .cgx single-file components.
 
 from __future__ import annotations
 
+import copy
 import importlib
 import logging
 import sys
@@ -16,6 +17,7 @@ from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:
     from collagraph import Collagraph
+    from collagraph.fragment import Fragment
 
 logger = logging.getLogger(__name__)
 
@@ -173,9 +175,12 @@ class HotReloader:
             except (RuntimeError, TypeError):
                 pass  # Already disconnected or no connections
 
-    def reload(self) -> bool:
+    def reload(self, preserve_state: bool = True) -> bool:
         """
         Manually trigger a reload.
+
+        Args:
+            preserve_state: If True, component state is preserved across reload.
 
         Returns True if reload succeeded, False otherwise.
         This method is synchronous and should be called from the main thread.
@@ -185,7 +190,13 @@ class HotReloader:
             logger.warning("Cannot reload: GUI or fragment is None")
             return False
 
-        logger.info("Reloading...")
+        logger.info("Reloading%s...", " (preserving state)" if preserve_state else "")
+
+        # Collect component state before unmounting
+        preserved_state = None
+        if preserve_state:
+            preserved_state = self._collect_component_state(gui.fragment)
+            logger.debug("Collected state from %d components", len(preserved_state))
 
         # Phase 1: Try to reimport modules (validate before unmounting)
         try:
@@ -209,6 +220,11 @@ class HotReloader:
             gui.fragment = None
 
             gui.render(component_class, target, self._state)
+
+            # Restore component state after remount
+            if preserve_state and preserved_state:
+                restored = self._restore_component_state(gui.fragment, preserved_state)
+                logger.debug("Restored state to %d components", restored)
 
             self._collect_cgx_modules()
 
@@ -285,3 +301,125 @@ class HotReloader:
                 del sys.modules[module_name]
             # Clear from CGX loader registry
             clear_cgx_module(module_name)
+
+    def _collect_component_state(self, fragment: Fragment) -> dict:
+        """
+        Walk fragment tree and collect component state for preservation.
+
+        Returns a nested dict structure:
+        {
+            (class_name, key): {
+                "state": {...},
+                "children": {
+                    (child_class_name, child_key): {...},
+                    ...
+                }
+            },
+            ...
+        }
+        """
+        from collagraph.fragment import ComponentFragment
+
+        state_tree: dict = {}
+        self._collect_state_recursive(fragment, state_tree, 0, ComponentFragment)
+        return state_tree
+
+    def _collect_state_recursive(
+        self,
+        fragment: Fragment,
+        state_tree: dict,
+        index: int,
+        component_fragment_cls: type,
+    ) -> None:
+        """Recursively collect state from fragment tree."""
+        if isinstance(fragment, component_fragment_cls) and fragment.component:
+            component = fragment.component
+            # Use 'key' prop if available, otherwise use position index
+            key = component.props.get("key", index) if component.props else index
+            identity = (type(component).__name__, key)
+
+            # Deep copy state to avoid references to old objects
+            try:
+                state_copy = copy.deepcopy(dict(component.state))
+            except Exception:
+                # If deepcopy fails (non-copyable values), try shallow copy
+                logger.debug(
+                    "Deepcopy failed for %s, using shallow copy", identity[0]
+                )
+                state_copy = dict(component.state)
+
+            state_tree[identity] = {
+                "state": state_copy,
+                "children": {},
+            }
+
+            # Collect children's state
+            child_state = state_tree[identity]["children"]
+            for i, child in enumerate(fragment.children):
+                self._collect_state_recursive(
+                    child, child_state, i, component_fragment_cls
+                )
+        else:
+            # Non-component fragment, just recurse into children
+            for i, child in enumerate(fragment.children):
+                self._collect_state_recursive(
+                    child, state_tree, i, component_fragment_cls
+                )
+
+    def _restore_component_state(self, fragment: Fragment, state_tree: dict) -> int:
+        """
+        Walk new fragment tree and restore preserved state.
+
+        Returns the number of components that had state restored.
+        """
+        from collagraph.fragment import ComponentFragment
+
+        return self._restore_state_recursive(fragment, state_tree, 0, ComponentFragment)
+
+    def _restore_state_recursive(
+        self,
+        fragment: Fragment,
+        state_tree: dict,
+        index: int,
+        component_fragment_cls: type,
+    ) -> int:
+        """Recursively restore state to fragment tree."""
+        restored_count = 0
+
+        if isinstance(fragment, component_fragment_cls) and fragment.component:
+            component = fragment.component
+            # Use 'key' prop if available, otherwise use position index
+            key = component.props.get("key", index) if component.props else index
+            identity = (type(component).__name__, key)
+
+            if identity in state_tree:
+                preserved = state_tree[identity]
+                # Merge preserved state into component's current state
+                for state_key, value in preserved["state"].items():
+                    if state_key in component.state:
+                        try:
+                            component.state[state_key] = value
+                            restored_count += 1
+                        except Exception:
+                            logger.debug(
+                                "Failed to restore state key '%s' for %s",
+                                state_key,
+                                identity[0],
+                            )
+
+                logger.debug("Restored state for %s", identity[0])
+
+                # Restore children's state
+                child_state = preserved.get("children", {})
+                for i, child in enumerate(fragment.children):
+                    restored_count += self._restore_state_recursive(
+                        child, child_state, i, component_fragment_cls
+                    )
+        else:
+            # Non-component fragment, just recurse into children
+            for i, child in enumerate(fragment.children):
+                restored_count += self._restore_state_recursive(
+                    child, state_tree, i, component_fragment_cls
+                )
+
+        return restored_count

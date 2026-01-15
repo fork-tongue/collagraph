@@ -61,13 +61,16 @@ class Collagraph:
             self._hot_reloader = HotReloader(self)
             self._hot_reloader.start(module_name, target, state)
 
-    def reload(self) -> bool:
+    def reload(self, preserve_state: bool = True) -> bool:
         """
         Manually trigger a hot reload.
+
+        Args:
+            preserve_state: If True, component state is preserved across reload.
 
         Returns True if reload succeeded, False if hot_reload is not enabled
         or if the reload failed.
         """
         if self._hot_reloader is None:
             return False
-        return self._hot_reloader.reload()
+        return self._hot_reloader.reload(preserve_state=preserve_state)
