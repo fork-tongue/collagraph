@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     renderer = cg.PySideRenderer()
     renderer.register_element("RenderCanvas", RenderCanvas)
-    gui = cg.Collagraph(renderer=renderer, hot_reload=True)
+    gui = cg.Collagraph(renderer=renderer)
 
     state = reactive({"count": 1000})
 
