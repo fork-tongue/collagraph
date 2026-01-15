@@ -4,7 +4,7 @@ Example of how to render lists, tables and trees.
 
 from observ import reactive
 from PySide6 import QtWidgets
-from wgpu.gui.qt import WgpuCanvas
+from rendercanvas.qt import RenderCanvas
 
 import collagraph as cg
 from examples.pygfx.app_point_cloud import Example
@@ -13,8 +13,8 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication()
 
     renderer = cg.PySideRenderer()
-    renderer.register_element("WgpuCanvas", WgpuCanvas)
-    gui = cg.Collagraph(renderer=renderer)
+    renderer.register_element("RenderCanvas", RenderCanvas)
+    gui = cg.Collagraph(renderer=renderer, hot_reload=True)
 
     state = reactive({"count": 1000})
 

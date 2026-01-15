@@ -1,4 +1,4 @@
-<wgpu-canvas
+<render-canvas
   :minimum_height="400"
   :minimum_width="600"
 />
