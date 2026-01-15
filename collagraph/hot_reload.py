@@ -22,15 +22,79 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class FileWatcher:
-    """File watcher using watchdog library."""
+class SharedFileWatcher:
+    """
+    Singleton file watcher shared by multiple HotReloader instances.
 
-    def __init__(self, paths: set[Path], callback: Callable[[Path], None]):
-        self._callback = callback
-        self._paths = paths
+    Avoids watchdog errors when multiple watchers try to observe the same directory.
+    """
+
+    _instance: SharedFileWatcher | None = None
+    _lock = threading.Lock()
+
+    def __new__(cls) -> SharedFileWatcher:
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self):
+        if self._initialized:
+            return
+        self._initialized = True
         self._observer = None
+        self._handlers: dict[int, Callable[[Path], None]] = {}  # id -> callback
+        self._watched_paths: dict[int, set[Path]] = {}  # id -> paths
+        self._watched_dirs: set[Path] = set()
+        self._handler_lock = threading.Lock()
 
-    def start(self) -> None:
+    def register(
+        self, handler_id: int, paths: set[Path], callback: Callable[[Path], None]
+    ) -> None:
+        """Register a callback for a set of paths."""
+        with self._handler_lock:
+            self._handlers[handler_id] = callback
+            self._watched_paths[handler_id] = {p.resolve() for p in paths}
+            self._update_observer()
+
+    def unregister(self, handler_id: int) -> None:
+        """Unregister a callback."""
+        with self._handler_lock:
+            self._handlers.pop(handler_id, None)
+            self._watched_paths.pop(handler_id, None)
+            if not self._handlers:
+                self._stop_observer()
+            else:
+                self._update_observer()
+
+    def update_paths(self, handler_id: int, paths: set[Path]) -> None:
+        """Update the paths for a registered handler."""
+        with self._handler_lock:
+            if handler_id in self._handlers:
+                self._watched_paths[handler_id] = {p.resolve() for p in paths}
+                self._update_observer()
+
+    def _update_observer(self) -> None:
+        """Update the observer to watch all needed directories."""
+        # Collect all paths from all handlers
+        all_paths: set[Path] = set()
+        for paths in self._watched_paths.values():
+            all_paths.update(paths)
+
+        # Get directories to watch
+        new_dirs = {p.parent for p in all_paths}
+
+        # Check if we need to restart
+        if new_dirs != self._watched_dirs:
+            self._stop_observer()
+            self._watched_dirs = new_dirs
+            if new_dirs:
+                self._start_observer()
+
+    def _start_observer(self) -> None:
+        """Start the watchdog observer."""
         try:
             from watchdog.events import FileSystemEventHandler
             from watchdog.observers import Observer
@@ -40,74 +104,48 @@ class FileWatcher:
                 "Install it with: pip install watchdog"
             ) from e
 
-        # Resolve all paths to absolute for consistent matching
-        watched_paths = {str(p.resolve()) for p in self._paths}
-        # Also track by filename for editors that do atomic saves
-        watched_filenames = {Path(p).name for p in watched_paths}
-        callback = self._callback
-        log = logger  # Capture logger for nested class
+        watcher = self  # Capture for nested class
 
         class Handler(FileSystemEventHandler):
-            def _check_path(self, event_path: str) -> bool:
-                """Check if an event path matches our watched files."""
+            def _check_path(self, event_path: str) -> None:
+                """Check if an event path matches any watched files."""
                 try:
-                    resolved = str(Path(event_path).resolve())
+                    resolved = Path(event_path).resolve()
                 except OSError:
-                    resolved = event_path
+                    return
 
-                if resolved in watched_paths:
-                    log.debug("Path matched: %s", resolved)
-                    callback(Path(resolved))
-                    return True
-
-                # Also check by filename (for atomic saves that create new files)
-                if Path(event_path).name in watched_filenames:
-                    # Verify it's actually our file by checking full path
-                    try:
-                        resolved = str(Path(event_path).resolve())
-                        if resolved in watched_paths:
-                            log.debug("Path matched (by name): %s", resolved)
-                            callback(Path(resolved))
-                            return True
-                    except OSError:
-                        pass
-                return False
+                with watcher._handler_lock:
+                    for handler_id, paths in watcher._watched_paths.items():
+                        if resolved in paths:
+                            callback = watcher._handlers.get(handler_id)
+                            if callback:
+                                logger.debug("Path matched: %s", resolved)
+                                callback(resolved)
 
             def on_modified(self, event) -> None:
                 if not event.is_directory:
                     self._check_path(event.src_path)
 
             def on_created(self, event) -> None:
-                # Some editors create a new file instead of modifying
                 if not event.is_directory:
                     self._check_path(event.src_path)
 
             def on_moved(self, event) -> None:
-                # Some editors write to temp file then rename (atomic save)
                 if not event.is_directory:
                     self._check_path(event.dest_path)
 
-        # Watch directories containing our files (resolved)
-        dirs = {p.resolve().parent for p in self._paths}
-
         self._observer = Observer()
         handler = Handler()
-        for dir_path in dirs:
+        for dir_path in self._watched_dirs:
             self._observer.schedule(handler, str(dir_path), recursive=False)
         self._observer.start()
 
-    def stop(self) -> None:
+    def _stop_observer(self) -> None:
+        """Stop the watchdog observer."""
         if self._observer:
             self._observer.stop()
             self._observer.join()
             self._observer = None
-
-    def update_paths(self, paths: set[Path]) -> None:
-        """Update the set of watched paths."""
-        # For simplicity, restart the observer with new paths
-        self.stop()
-        self._paths = paths
-        self.start()
 
 
 class HotReloader:
@@ -123,10 +161,16 @@ class HotReloader:
         self._root_module_name: str | None = None
         self._target: Any = None
         self._state: dict | None = None
-        self._watcher: FileWatcher | None = None
+        self._watcher_id: int = id(self)  # Unique ID for SharedFileWatcher
         self._debounce_timer: threading.Timer | None = None
         self._debounce_lock = threading.Lock()
+        self._pending_changed_paths: set[Path] = set()
         self._qt_signal_helper = None
+
+        logging.basicConfig(
+            level=logging.INFO,
+            format="[%(module)s] %(levelname)s %(message)s",
+        )
 
         # Set up Qt signal helper for thread-safe reloading
         try:
@@ -151,20 +195,19 @@ class HotReloader:
         # Collect all imported .cgx modules
         self._collect_cgx_modules()
 
-        # Start file watcher
+        # Register with shared file watcher
         if self._watched_modules:
-            self._watcher = FileWatcher(
-                set(self._watched_modules.keys()), self._on_file_changed
+            SharedFileWatcher().register(
+                self._watcher_id,
+                set(self._watched_modules.keys()),
+                self._on_file_changed,
             )
-            self._watcher.start()
             for path in self._watched_modules.keys():
                 logger.info("Watching: %s", path)
 
     def stop(self) -> None:
         """Stop watching for file changes."""
-        if self._watcher:
-            self._watcher.stop()
-            self._watcher = None
+        SharedFileWatcher().unregister(self._watcher_id)
         if self._debounce_timer:
             self._debounce_timer.cancel()
             self._debounce_timer = None
@@ -239,8 +282,9 @@ class HotReloader:
 
             self._collect_cgx_modules()
 
-            if self._watcher:
-                self._watcher.update_paths(set(self._watched_modules.keys()))
+            SharedFileWatcher().update_paths(
+                self._watcher_id, set(self._watched_modules.keys())
+            )
 
             logger.info("Reload complete")
             return True
@@ -250,21 +294,31 @@ class HotReloader:
             return False
 
     def _collect_cgx_modules(self) -> None:
-        """Collect all .cgx modules that should be watched."""
+        """Collect CGX modules that are actually used in this Collagraph's tree."""
         from collagraph.sfc.importer import get_loaded_cgx_modules
 
-        # Get all loaded CGX modules
+        gui = self._gui_ref()
+        if gui is None or gui.fragment is None:
+            return
+
+        # Get all loaded CGX modules (name -> path)
         all_cgx = get_loaded_cgx_modules()
 
-        # For now, watch all loaded CGX modules
-        # A more sophisticated approach would walk the import tree
-        # starting from root_module_name
-        self._watched_modules = {path: name for name, path in all_cgx.items()}
+        # Find which modules are actually used in our fragment tree
+        used_modules = self._collect_used_modules(gui.fragment)
+
+        # Only watch modules that are used in our tree
+        self._watched_modules = {
+            path: name for name, path in all_cgx.items() if name in used_modules
+        }
 
     def _on_file_changed(self, path: Path) -> None:
         """Handle a file change event (called from watchdog thread)."""
         logger.debug("File changed callback: %s", path)
         with self._debounce_lock:
+            # Track which files changed
+            self._pending_changed_paths.add(path)
+
             # Cancel any pending reload
             if self._debounce_timer:
                 self._debounce_timer.cancel()
@@ -300,6 +354,17 @@ class HotReloader:
 
     def _reload(self) -> None:
         """Internal callback for file watcher triggered reloads."""
+        # Get and clear pending changed paths
+        with self._debounce_lock:
+            changed_paths = self._pending_changed_paths.copy()
+            self._pending_changed_paths.clear()
+
+        # Try fine-grained reload first
+        if changed_paths:
+            if self._reload_changed_files(changed_paths):
+                return
+
+        # Fall back to full reload
         self.reload()
 
     def _invalidate_modules(self) -> None:
@@ -312,6 +377,200 @@ class HotReloader:
                 del sys.modules[module_name]
             # Clear from CGX loader registry
             clear_cgx_module(module_name)
+
+    def _reload_changed_files(
+        self, changed_paths: set[Path], preserve_state: bool = True
+    ) -> bool:
+        """
+        Attempt fine-grained reload of only the changed files.
+
+        Returns True if fine-grained reload succeeded, False if full reload needed.
+        """
+        from collagraph.sfc.importer import clear_cgx_module
+
+        gui = self._gui_ref()
+        if gui is None or gui.fragment is None:
+            return False
+
+        # Map changed paths to module names
+        changed_modules = set()
+        for path in changed_paths:
+            if path in self._watched_modules:
+                changed_modules.add(self._watched_modules[path])
+
+        if not changed_modules:
+            return False
+
+        # Check if root module changed - need full reload
+        if self._root_module_name in changed_modules:
+            logger.info("Root component changed, doing full reload")
+            return False
+
+        # Find all ComponentFragments that use components from changed modules
+        affected = self._find_affected_fragments(gui.fragment, changed_modules)
+
+        if not affected:
+            logger.info("No affected components found, skipping reload")
+            return True
+
+        logger.info(
+            "Fine-grained reload: %d component(s) from %s",
+            len(affected),
+            ", ".join(changed_modules),
+        )
+
+        # Phase 1: Try to reload the changed modules (validate before unmounting)
+        try:
+            for module_name in changed_modules:
+                # Clear from sys.modules and CGX registry
+                if module_name in sys.modules:
+                    del sys.modules[module_name]
+                clear_cgx_module(module_name)
+
+                # Reimport to validate
+                importlib.import_module(module_name)
+        except Exception:
+            logger.exception("Error reloading module, keeping old UI")
+            return False
+
+        # Clear lookup cache entries that reference changed modules
+        self._clear_lookup_cache_for_modules(changed_modules)
+
+        # Phase 2: Remount affected fragments
+        try:
+            for fragment in affected:
+                self._remount_fragment(fragment, preserve_state)
+
+            logger.info("Fine-grained reload complete")
+            return True
+
+        except Exception:
+            logger.exception("Error during fine-grained reload, trying full reload")
+            return False
+
+    def _find_affected_fragments(
+        self, fragment: Fragment, changed_modules: set[str]
+    ) -> list[Fragment]:
+        """
+        Find all ComponentFragments using components from the changed modules.
+
+        Returns fragments in order from deepest to shallowest (children before parents)
+        so that remounting doesn't affect parent iteration.
+        """
+        affected: list[Fragment] = []
+        self._find_affected_recursive(fragment, changed_modules, affected)
+        return affected
+
+    def _find_affected_recursive(
+        self,
+        fragment: Fragment,
+        changed_modules: set[str],
+        affected: list[Fragment],
+    ) -> bool:
+        """
+        Recursively find affected fragments.
+
+        Returns True if this fragment or any descendant is affected.
+        """
+        from collagraph.fragment import ComponentFragment
+
+        # First, recurse into children
+        for child in fragment.children:
+            self._find_affected_recursive(child, changed_modules, affected)
+
+        # Check if this fragment is affected
+        if isinstance(fragment, ComponentFragment) and fragment.component:
+            component_module = type(fragment.component).__module__
+            if component_module in changed_modules:
+                affected.append(fragment)
+                return True
+
+        return False
+
+    def _remount_fragment(self, fragment: Fragment, preserve_state: bool) -> None:
+        """Remount a single ComponentFragment with updated component class."""
+        from collagraph.fragment import ComponentFragment
+
+        if not isinstance(fragment, ComponentFragment) or not fragment.component:
+            return
+
+        component = fragment.component
+        component_name = type(component).__name__
+        module_name = type(component).__module__
+
+        # Collect state before unmounting
+        preserved_state = None
+        if preserve_state:
+            preserved_state = self._collect_component_state(fragment)
+
+        # Get the parent and target for remounting
+        parent = fragment.parent
+        target = fragment.target
+
+        # Find anchor element (first element in next sibling) for correct positioning
+        anchor = None
+        if parent:
+            children = parent.children
+            idx = children.index(fragment)
+            if idx + 1 < len(children):
+                # Get the first element from the next sibling's subtree
+                anchor = self._find_root_element(children[idx + 1])
+
+        # Unmount the old fragment
+        fragment.unmount(destroy=True)
+
+        # Get the new component class from the reloaded module
+        module = sys.modules.get(module_name)
+        if module is None:
+            module = importlib.import_module(module_name)
+
+        new_class = getattr(module, component_name, None)
+        if new_class is None:
+            raise RuntimeError(f"Component {component_name} not found in {module_name}")
+
+        # Update the fragment's tag to the new class
+        fragment.tag = new_class
+
+        # Remount
+        fragment.mount(target, anchor)
+
+        # Restore state
+        if preserve_state and preserved_state:
+            self._restore_component_state(fragment, preserved_state)
+
+    def _clear_lookup_cache_for_modules(self, module_names: set[str]) -> None:
+        """Clear Component lookup cache entries that reference changed modules."""
+        from collagraph.component import Component
+
+        for parent_cls, cache in list(Component.__lookup_cache__.items()):
+            # Check if the parent class itself is from a changed module
+            if parent_cls.__module__ in module_names:
+                del Component.__lookup_cache__[parent_cls]
+                continue
+
+            # Remove cache entries that reference classes from changed modules
+            for name, child_cls in list(cache.items()):
+                if child_cls.__module__ in module_names:
+                    del cache[name]
+
+    def _collect_used_modules(self, fragment: Fragment) -> set[str]:
+        """Walk fragment tree and collect module names of all components."""
+        from collagraph.fragment import ComponentFragment
+
+        modules: set[str] = set()
+        self._collect_used_modules_recursive(fragment, modules, ComponentFragment)
+        return modules
+
+    def _collect_used_modules_recursive(
+        self, fragment: Fragment, modules: set[str], component_fragment_cls: type
+    ) -> None:
+        """Recursively collect module names from fragment tree."""
+        if isinstance(fragment, component_fragment_cls) and fragment.component:
+            module_name = type(fragment.component).__module__
+            modules.add(module_name)
+
+        for child in fragment.children:
+            self._collect_used_modules_recursive(child, modules, component_fragment_cls)
 
     def _find_root_element(self, fragment: Fragment) -> Any:
         """
