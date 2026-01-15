@@ -20,7 +20,7 @@ import collagraph as cg
 
 sphere = gfx.sphere_geometry(radius=3)
 red = gfx.MeshPhongMaterial(color=(1, 0.2, 0.2), pick_write=True)
-blue = gfx.MeshPhongMaterial(color=(0.2, 1.0, 0.4), pick_write=True)
+blue = gfx.MeshPhongMaterial(color=(0.2, 0.4, 1.0), pick_write=True)
 
 
 class Ball(cg.Component):
