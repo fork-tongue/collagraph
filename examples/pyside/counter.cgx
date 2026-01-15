@@ -4,7 +4,7 @@
  -->
 <widget>
   <label
-    :text="f'Toet: {count}'"
+    :text="f'Count: {count}'"
   />
   <button
     text="bump"
@@ -21,5 +21,5 @@ class Counter(cg.Component):
         self.state["count"] = 0
 
     def bump(self):
-        self.state["count"] += 2
+        self.state["count"] += 1
 </script>
