@@ -78,6 +78,7 @@ def test_reload_updates_ui(temp_cgx_file):
         renderer=cg.DictRenderer(),
         event_loop_type=cg.EventLoopType.SYNC,
         hot_reload=True,
+        hot_reload_watchdog=False,  # Disable watchdog to avoid inotify issues on CI
     )
     container = {"type": "root"}
     gui.render(temp_component.TempComponent, container)
@@ -118,6 +119,7 @@ def test_reload_handles_syntax_error(temp_cgx_file):
         renderer=cg.DictRenderer(),
         event_loop_type=cg.EventLoopType.SYNC,
         hot_reload=True,
+        hot_reload_watchdog=False,  # Disable watchdog to avoid inotify issues on CI
     )
     container = {"type": "root"}
     gui.render(temp_component.TempComponent, container)
@@ -157,6 +159,7 @@ def test_reload_handles_runtime_error(temp_cgx_file):
         renderer=cg.DictRenderer(),
         event_loop_type=cg.EventLoopType.SYNC,
         hot_reload=True,
+        hot_reload_watchdog=False,  # Disable watchdog to avoid inotify issues on CI
     )
     container = {"type": "root"}
     gui.render(temp_component.TempComponent, container)
@@ -192,6 +195,7 @@ def test_reload_with_changed_template(temp_cgx_file):
         renderer=cg.DictRenderer(),
         event_loop_type=cg.EventLoopType.SYNC,
         hot_reload=True,
+        hot_reload_watchdog=False,  # Disable watchdog to avoid inotify issues on CI
     )
     container = {"type": "root"}
     gui.render(temp_component.TempComponent, container)
@@ -236,6 +240,7 @@ def test_multiple_reloads(temp_cgx_file):
         renderer=cg.DictRenderer(),
         event_loop_type=cg.EventLoopType.SYNC,
         hot_reload=True,
+        hot_reload_watchdog=False,  # Disable watchdog to avoid inotify issues on CI
     )
     container = {"type": "root"}
     gui.render(temp_component.TempComponent, container)
@@ -303,6 +308,7 @@ def test_state_preserved_across_reload(temp_cgx_file):
         renderer=cg.DictRenderer(),
         event_loop_type=cg.EventLoopType.SYNC,
         hot_reload=True,
+        hot_reload_watchdog=False,  # Disable watchdog to avoid inotify issues on CI
     )
     container = {"type": "root"}
     gui.render(temp_component.TempComponent, container)
@@ -331,6 +337,7 @@ def test_state_not_preserved_when_disabled(temp_cgx_file):
         renderer=cg.DictRenderer(),
         event_loop_type=cg.EventLoopType.SYNC,
         hot_reload=True,
+        hot_reload_watchdog=False,  # Disable watchdog to avoid inotify issues on CI
     )
     container = {"type": "root"}
     gui.render(temp_component.TempComponent, container)
@@ -355,6 +362,7 @@ def test_state_preserved_with_new_state_keys(temp_cgx_file):
         renderer=cg.DictRenderer(),
         event_loop_type=cg.EventLoopType.SYNC,
         hot_reload=True,
+        hot_reload_watchdog=False,  # Disable watchdog to avoid inotify issues on CI
     )
     container = {"type": "root"}
     gui.render(temp_component.TempComponent, container)
@@ -422,6 +430,7 @@ class MultiState(cg.Component):
         renderer=cg.DictRenderer(),
         event_loop_type=cg.EventLoopType.SYNC,
         hot_reload=True,
+        hot_reload_watchdog=False,  # Disable watchdog to avoid inotify issues on CI
     )
     container = {"type": "root"}
     gui.render(temp_component.MultiState, container)

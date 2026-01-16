@@ -155,7 +155,7 @@ class HotReloader:
     Tracks imported .cgx modules and reloads them when files change.
     """
 
-    def __init__(self, gui: Collagraph):
+    def __init__(self, gui: Collagraph, use_watchdog: bool = True):
         self._gui_ref = weakref.ref(gui)
         self._watched_modules: dict[Path, str] = {}  # path -> module_name
         self._root_module_name: str | None = None
@@ -166,6 +166,7 @@ class HotReloader:
         self._debounce_lock = threading.Lock()
         self._pending_changed_paths: set[Path] = set()
         self._qt_signal_helper = None
+        self._use_watchdog = use_watchdog
 
         logging.basicConfig(
             level=logging.INFO,
@@ -195,8 +196,8 @@ class HotReloader:
         # Collect all imported .cgx modules
         self._collect_cgx_modules()
 
-        # Register with shared file watcher
-        if self._watched_modules:
+        # Register with shared file watcher (unless disabled for testing)
+        if self._watched_modules and self._use_watchdog:
             SharedFileWatcher().register(
                 self._watcher_id,
                 set(self._watched_modules.keys()),
@@ -207,7 +208,8 @@ class HotReloader:
 
     def stop(self) -> None:
         """Stop watching for file changes."""
-        SharedFileWatcher().unregister(self._watcher_id)
+        if self._use_watchdog:
+            SharedFileWatcher().unregister(self._watcher_id)
         if self._debounce_timer:
             self._debounce_timer.cancel()
             self._debounce_timer = None
@@ -282,9 +284,10 @@ class HotReloader:
 
             self._collect_cgx_modules()
 
-            SharedFileWatcher().update_paths(
-                self._watcher_id, set(self._watched_modules.keys())
-            )
+            if self._use_watchdog:
+                SharedFileWatcher().update_paths(
+                    self._watcher_id, set(self._watched_modules.keys())
+                )
 
             logger.info("Reload complete")
             return True
