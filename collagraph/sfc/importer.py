@@ -9,6 +9,20 @@ from typing import Sequence
 
 from . import compiler, load
 
+# Registry of loaded CGX modules: module_name -> file_path
+# Used by hot-reload to track which files to watch
+_loaded_cgx_modules: dict[str, Path] = {}
+
+
+def get_loaded_cgx_modules() -> dict[str, Path]:
+    """Return a copy of the loaded CGX modules registry."""
+    return dict(_loaded_cgx_modules)
+
+
+def clear_cgx_module(module_name: str) -> None:
+    """Remove a module from the CGX registry."""
+    _loaded_cgx_modules.pop(module_name, None)
+
 
 class CGXLoader(Loader):
     """Loader for .cgx files"""
@@ -25,6 +39,8 @@ class CGXLoader(Loader):
         """Exec the compiled code, using the given module's __dict__ as namespace
         in order to instantiate the module"""
         load(self.sfc_path, namespace=module.__dict__)
+        # Track the loaded module for hot-reload (use absolute path for matching)
+        _loaded_cgx_modules[module.__name__] = self.sfc_path.resolve()
 
 
 class CGXPathFinder(MetaPathFinder):
