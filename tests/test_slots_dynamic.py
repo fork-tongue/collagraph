@@ -140,7 +140,6 @@ def test_slots_lowercase_component_alias_with_vif(parse_source):
     with a lowercase alias. This would fail if component detection only
     checked for uppercase first letter.
     """
-    from tests.data.slots.node import Node
 
     # Use lowercase alias 'node' for the Node component with v-if in slot
     # The 'node' alias is imported in the script, so it's in the 'names' set
@@ -187,7 +186,6 @@ def test_slots_lowercase_component_alias_with_vfor(parse_source):
     with a lowercase alias. This would fail if component detection only
     checked for uppercase first letter.
     """
-    from tests.data.slots.node import Node
 
     # Use lowercase alias 'node' for the Node component with v-for in slot
     # The 'node' alias is imported in the script, so it's in the 'names' set
@@ -249,7 +247,7 @@ def test_slots_dotted_component_with_vif(parse_source):
     )
 
     # Create a simple class to act as a module namespace
-    class components:
+    class components:  # noqa: N801
         pass
 
     components.wrap = wrapper
