@@ -124,12 +124,26 @@ class Fragment:
         """
         parent = self.parent
         assert parent is not None
-        idx = parent.children.index(self)
-        length = len(parent.children) - 1
-        while 0 <= idx < length:
-            idx += 1
-            if element := parent.children[idx].first():
-                return element
+
+        # Check if this fragment is in parent's children
+        if self in parent.children:
+            idx = parent.children.index(self)
+            length = len(parent.children) - 1
+            while 0 <= idx < length:
+                idx += 1
+                if element := parent.children[idx].first():
+                    return element
+        # Fragment might be slot content - check parent's slot_contents if it's
+        # a ComponentFragment
+        elif isinstance(parent, ComponentFragment) and self in parent.slot_contents:
+            idx = parent.slot_contents.index(self)
+            length = len(parent.slot_contents) - 1
+            while 0 <= idx < length:
+                idx += 1
+                if element := parent.slot_contents[idx].first():
+                    return element
+
+        return None
 
     def set_attribute(self, attr: str, value: Any):
         """

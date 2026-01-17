@@ -1,5 +1,5 @@
 <Node>
-  <content v-if="show_content" />
+  <component :is="component_type" :value="value" />
 </Node>
 
 <script lang="python">
