@@ -702,6 +702,12 @@ def create_collagraph_render_function(
                             )
                         )
                     )
+
+                    # Set slot_name on the ListFragment if parent is a component
+                    if parent_node := (child.parent and child.parent()):
+                        if parent_node.tag and parent_node.tag[0].isupper():
+                            result.append(ast_set_slot_name(name, "default"))
+
                     break
 
             if node_with_list_expression:
@@ -765,7 +771,11 @@ def create_collagraph_render_function(
                     # TODO: come up with a more solid solution for figuring out
                     # whether the parent is a component
                     if parent_node.tag and parent_node.tag[0].isupper():
-                        attributes.append(ast_set_slot_name(el, "default"))
+                        # If there's a control flow wrapper (v-if/v-else-if/v-else),
+                        # set slot_name on the control flow fragment since that's
+                        # what gets registered in slot_contents
+                        slot_target = control_flow_parent if control_flow_parent else el
+                        attributes.append(ast_set_slot_name(slot_target, "default"))
 
             # Create the appropriate fragment type
             if is_dynamic_component:

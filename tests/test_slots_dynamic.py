@@ -103,3 +103,32 @@ def test_slots_dynamic_for():
     state["content"] = []
 
     assert "children" not in root, format_dict(root)
+
+
+def test_slots_dynamic_component():
+    from tests.data.slots.dynamic_component import Tree
+
+    state = reactive({"component_type": "foo", "value": "initial"})
+
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    container = {"type": "container"}
+    gui.render(Tree, container, state)
+
+    root = container["children"][0]
+    assert root["type"] == "node"
+    assert "children" in root, format_dict(root)
+    assert len(root["children"]) == 1
+    assert root["children"][0]["type"] == "foo", format_dict(root)
+    assert root["children"][0]["attrs"]["value"] == "initial", format_dict(root)
+
+    # Change the dynamic component type
+    state["component_type"] = "bar"
+
+    assert len(root["children"]) == 1, format_dict(root)
+    assert root["children"][0]["type"] == "bar", format_dict(root)
+    assert root["children"][0]["attrs"]["value"] == "initial", format_dict(root)
+
+    # Change the bound attribute
+    state["value"] = "updated"
+
+    assert root["children"][0]["attrs"]["value"] == "updated", format_dict(root)
