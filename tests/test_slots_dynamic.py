@@ -1,4 +1,3 @@
-import pytest
 from observ import reactive
 
 from collagraph import Collagraph, EventLoopType
@@ -56,9 +55,7 @@ def test_slots_dynamic_for_template():
     assert "children" not in root, format_dict(root)
 
 
-@pytest.mark.xfail
 def test_slots_dynamic_if():
-    # For a workaround: see test_slots_dynamic_if_template
     from tests.data.slots.dynamic_if import Tree
 
     state = reactive({"show_content": False})
@@ -81,9 +78,7 @@ def test_slots_dynamic_if():
     assert "children" not in root, format_dict
 
 
-@pytest.mark.xfail
 def test_slots_dynamic_for():
-    # For a workaround: see test_slots_dynamic_for_template
     from tests.data.slots.dynamic_for import Tree
 
     state = reactive({"content": ["a", "b"]})
