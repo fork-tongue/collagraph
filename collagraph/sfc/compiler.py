@@ -368,6 +368,63 @@ def ast_create_list_fragment(name: str, parent: str | None) -> ast.Assign:
     )
 
 
+def parse_text_interpolations(text: str) -> list[tuple[bool, str]]:
+    """
+    Parse text with {{expression}} interpolations.
+
+    Returns a list of tuples where:
+    - (False, str) represents static text
+    - (True, str) represents an expression to be evaluated
+
+    Examples:
+        "Hello {{name}}" -> [(False, "Hello "), (True, "name")]
+        "Static text" -> [(False, "Static text")]
+        "{{a}} and {{b}}" -> [(True, "a"), (False, " and "), (True, "b")]
+    """
+    result = []
+    i = 0
+    n = len(text)
+
+    while i < n:
+        # Look for start of interpolation
+        start = text.find("{{", i)
+        if start == -1:
+            # No more interpolations, add remaining text
+            if i < n:
+                result.append((False, text[i:]))
+            break
+
+        # Check for escape sequence \{{
+        if start > 0 and text[start - 1] == "\\":
+            # Escaped - include text up to and including the {{ as static
+            # but remove the backslash
+            if i < start - 1:
+                result.append((False, text[i : start - 1]))
+            result.append((False, "{{"))
+            i = start + 2
+            continue
+
+        # Add static text before the interpolation
+        if start > i:
+            result.append((False, text[i:start]))
+
+        # Find the end of the interpolation
+        end = text.find("}}", start + 2)
+        if end == -1:
+            # Unclosed interpolation - treat rest as static
+            result.append((False, text[start:]))
+            break
+
+        # Extract the expression
+        expr = text[start + 2 : end].strip()
+        if expr:
+            result.append((True, expr))
+
+        i = end + 2
+
+    return result
+
+
 def safe_tag(tag):
     return tag.replace("-", "_").replace(".", "_")
 
@@ -550,9 +607,72 @@ def create_collagraph_render_function(
                 # Ignore comments
                 continue
             if isinstance(child, TextElement):
-                # children_args.extend(args_for_text_element(child, names=names))
-                # continue
-                raise NotImplementedError()
+                # Create a text element fragment
+                text_el = f"text{counter['text']}"
+                counter["text"] += 1
+
+                # Create the TEXT_ELEMENT fragment
+                result.append(
+                    ast.Assign(
+                        targets=[ast.Name(id=text_el, ctx=ast.Store())],
+                        value=ast.Call(
+                            func=ast.Name(id="Fragment", ctx=ast.Load()),
+                            args=[ast.Name(id="renderer", ctx=ast.Load())],
+                            keywords=[
+                                ast.keyword(
+                                    arg="tag", value=ast.Constant(value="TEXT_ELEMENT")
+                                ),
+                                ast.keyword(
+                                    arg="parent",
+                                    value=ast.Name(id=target, ctx=ast.Load())
+                                    if target
+                                    else ast.Constant(value=None),
+                                ),
+                            ],
+                        ),
+                    )
+                )
+
+                # Parse the text content for interpolations
+                text_content = child.content
+                has_interpolation = "{{" in text_content and "}}" in text_content
+
+                if has_interpolation:
+                    # Create a dynamic bind for text with interpolations
+                    # Build an f-string expression from the text
+                    parts = parse_text_interpolations(text_content)
+                    expr_parts = []
+                    for is_expr, part in parts:
+                        if is_expr:
+                            expr_parts.append("{" + part + "}")
+                        else:
+                            # Escape braces and backslashes in static parts for f-string
+                            # First escape backslashes that precede braces to avoid
+                            # invalid escape sequences like \{ in the f-string
+                            escaped = part.replace("\\{", "\\\\{").replace(
+                                "\\}", "\\\\}"
+                            )
+                            # Then escape standalone braces for f-string syntax
+                            escaped = escaped.replace("{", "{{").replace("}", "}}")
+                            expr_parts.append(escaped)
+                    fstring_content = "".join(expr_parts)
+                    # Create the bind with an f-string
+                    source = ast.parse(
+                        f'{text_el}.set_bind("content", lambda: f"{fstring_content}")',
+                        mode="eval",
+                    )
+                    result.append(
+                        ast_named_lambda(
+                            source,
+                            {"renderer", "new", text_el, "watch"} | names,
+                            list_names,
+                        )
+                    )
+                else:
+                    # Static text - set attribute directly
+                    result.append(ast_set_attribute(text_el, "content", text_content))
+
+                continue
 
             # Create element name
             tag = safe_tag(child.tag)
