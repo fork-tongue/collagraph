@@ -65,8 +65,10 @@ def remove_form(self, el):
     # associated widgets of the return layout item
     layout_item = self.takeRow(el)
     if layout_item:
-        layout_item.labelItem.widget().setParent(None)
-        layout_item.fieldItem.widget().setParent(None)
+        if layout_item.labelItem:
+            layout_item.labelItem.widget().setParent(None)
+        if layout_item.fieldItem:
+            layout_item.fieldItem.widget().setParent(None)
     el.setParent(None)
 
 
