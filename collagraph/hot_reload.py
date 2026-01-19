@@ -6,7 +6,6 @@ Provides file watching and module reloading for .cgx single-file components.
 
 from __future__ import annotations
 
-import copy
 import importlib
 import logging
 import sys
@@ -14,6 +13,8 @@ import threading
 import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
+
+from observ import to_raw
 
 if TYPE_CHECKING:
     from collagraph import Collagraph
@@ -630,13 +631,9 @@ class HotReloader:
             key = component.props.get("key", index) if component.props else index
             identity = (type(component).__name__, key)
 
-            # Deep copy state to avoid references to old objects
-            try:
-                state_copy = copy.deepcopy(dict(component.state))
-            except Exception:
-                # If deepcopy fails (non-copyable values), try shallow copy
-                logger.debug("Deepcopy failed for %s, using shallow copy", identity[0])
-                state_copy = dict(component.state)
+            # Convert state to raw (non-reactive) objects to avoid
+            # issues with proxies during hot-reload
+            state_copy = to_raw(component.state)
 
             state_tree[identity] = {
                 "state": state_copy,
