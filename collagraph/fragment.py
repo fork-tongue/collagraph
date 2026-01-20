@@ -443,6 +443,8 @@ class ControlFlowFragment(Fragment):
 
         @weak(self)
         def update_fragment(self, new: Fragment | None, old: Fragment | None):
+            if new is old:
+                return  # No need to remount, since it is the same fragment
             if old:
                 old.unmount(destroy=False)
             if new:
