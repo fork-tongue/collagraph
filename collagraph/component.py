@@ -186,3 +186,29 @@ class Component:
         else:
             raise NameError(f"name '{name}' is not defined")
         return self._lookup(name, context)
+
+    def _check_naming_collisions(self, *names):
+        from warnings import warn
+
+        for name in names:
+            if name in self.state:
+                warn(
+                    f"Found imported name '{name}' "
+                    f"as key in self.state: {self}.\\n"
+                    "If the value from self.state is intended, please resolve by "
+                    f"replacing '{name}' with 'state['{name}']'"
+                )
+            if name in self.props:
+                warn(
+                    f"Found imported name '{name}' "
+                    f"as key in self.props: {self}.\\n"
+                    "If the value from self.props is intended, please resolve by "
+                    f"replacing '{name}' with 'props['{name}']'"
+                )
+            if hasattr(self, name):
+                warn(
+                    f"Found imported name '{name}' "
+                    f"as attribute on self: {self}.\\n"
+                    "If the attribute from self is intended, please resolve by "
+                    f"replacing '{name}' with 'self.{name}'"
+                )

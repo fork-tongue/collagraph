@@ -90,6 +90,14 @@ def construct_ast(path, template=None):
     ast.increment_lineno(render_tree, n=line)
     component_def.body.append(render_tree)
 
+    # Make sure the component class is available in a special variable
+    script_tree.body.append(
+        ast.Assign(
+            targets=[ast.Name(id="__component_class__", ctx=ast.Store())],
+            value=ast.Name(id=component_def.name, ctx=ast.Load()),
+        )
+    )
+
     # Because we modified the AST significantly we need to call an AST
     # method to fix any `lineno` and `col_offset` attributes of the nodes
     ast.fix_missing_locations(script_tree)
@@ -405,39 +413,23 @@ def create_collagraph_render_function(
             level=0,
         )
     )
-
-    if CGX_RUNTIME_WARNINGS:
-        names_str = ", ".join([f"'{name}'" for name in names])
-        code = textwrap.dedent(
-            f"""
-            from warnings import warn as _warn
-
-            for name in {{{names_str}}}:
-                if name in self.state:
-                    _warn(
-                        f"Found imported name '{{name}}' "
-                        f"as key in self.state: {{self}}.\\n"
-                        "If the value from self.state is intended, please resolve by "
-                        f"replacing '{{name}}' with 'state['{{name}}']'"
-                    )
-                if name in self.props:
-                    _warn(
-                        f"Found imported name '{{name}}' "
-                        f"as key in self.props: {{self}}.\\n"
-                        "If the value from self.props is intended, please resolve by "
-                        f"replacing '{{name}}' with 'props['{{name}}']'"
-                    )
-                if hasattr(self, name):
-                    _warn(
-                        f"Found imported name '{{name}}' "
-                        f"as attribute on self: {{self}}.\\n"
-                        "If the attribute from self is intended, please resolve by "
-                        f"replacing '{{name}}' with 'self.{{name}}'"
-                    )
-            """
+    body.append(
+        ast.ImportFrom(
+            module="collagraph.sfc",
+            names=[ast.alias(name="compiler")],
+            level=0,
         )
-        check_names = ast.parse(code)
-        body.extend(check_names.body)
+    )
+
+    names_str = ", ".join([f"'{name}'" for name in names])
+    code = textwrap.dedent(
+        f"""
+        if compiler.CGX_RUNTIME_WARNINGS:
+            self._check_naming_collisions({names_str})
+        """
+    )
+    check_names = ast.parse(code)
+    body.extend(check_names.body)
 
     body.append(
         ast.Assign(
