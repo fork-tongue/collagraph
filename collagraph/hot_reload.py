@@ -298,7 +298,17 @@ class HotReloader:
             return False
 
     def _collect_cgx_modules(self) -> None:
-        """Collect CGX modules that are actually used in this Collagraph's tree."""
+        """Collect CGX modules that are actually used in this Collagraph's tree.
+
+        This includes:
+        1. Modules whose components are currently rendered in the fragment tree
+        2. CGX modules imported by those modules (for dynamic :is="..." components)
+
+        The second case handles scenarios like:
+        - parent.cgx imports child_a.cgx and child_b.cgx
+        - parent.cgx uses :is="type_map(obj_type)" to dynamically select which to render
+        - Even if child_a is not currently rendered, it should still be watched
+        """
         from collagraph.sfc.importer import get_loaded_cgx_modules
 
         gui = self._gui_ref()
@@ -311,10 +321,70 @@ class HotReloader:
         # Find which modules are actually used in our fragment tree
         used_modules = self._collect_used_modules(gui.fragment)
 
-        # Only watch modules that are used in our tree
+        # Expand to include CGX modules imported by used modules
+        # This catches dynamically loaded components (via :is directive)
+        expanded_modules = self._expand_cgx_imports(used_modules, all_cgx)
+
+        # Watch all expanded modules
         self._watched_modules = {
-            path: name for name, path in all_cgx.items() if name in used_modules
+            path: name for name, path in all_cgx.items() if name in expanded_modules
         }
+
+    def _expand_cgx_imports(
+        self, used_modules: set[str], all_cgx: dict[str, Path]
+    ) -> set[str]:
+        """Expand the set of used modules to include any CGX modules they import.
+
+        This recursively finds all CGX modules that are imported (directly or
+        indirectly) by the currently used modules. This ensures that dynamically
+        loaded components (via :is directive) are also watched for hot reload.
+
+        Args:
+            used_modules: Module names currently used in the fragment tree
+            all_cgx: Dictionary mapping module names to file paths for all
+                loaded CGX modules
+
+        Returns:
+            Expanded set of module names including imported CGX dependencies
+        """
+        from collagraph.component import Component
+
+        expanded = set(used_modules)
+        to_check = list(used_modules)
+        checked: set[str] = set()
+
+        while to_check:
+            module_name = to_check.pop()
+            if module_name in checked:
+                continue
+            checked.add(module_name)
+
+            # Get the module from sys.modules
+            module = sys.modules.get(module_name)
+            if module is None:
+                continue
+
+            # Look through the module's namespace for Component subclasses
+            # that come from CGX modules
+            for attr_name in dir(module):
+                try:
+                    attr = getattr(module, attr_name)
+                except Exception:
+                    continue
+
+                # Check if it's a Component subclass (but not Component itself)
+                if (
+                    isinstance(attr, type)
+                    and issubclass(attr, Component)
+                    and attr is not Component
+                ):
+                    # Check if this component comes from a CGX module
+                    component_module = attr.__module__
+                    if component_module in all_cgx and component_module not in expanded:
+                        expanded.add(component_module)
+                        to_check.append(component_module)
+
+        return expanded
 
     def _on_file_changed(self, path: Path) -> None:
         """Handle a file change event (called from watchdog thread)."""
@@ -474,15 +544,39 @@ class HotReloader:
         """
         Recursively find affected fragments.
 
+        Traverses the full fragment tree including:
+        - Regular children (fragment.children)
+        - DynamicFragment's active fragment (_active_fragment)
+        - ComponentFragment's rendered content (fragment.fragment)
+        - ComponentFragment's slot contents (slot_contents)
+
         Returns True if this fragment or any descendant is affected.
         """
-        from collagraph.fragment import ComponentFragment
+        from collagraph.fragment import ComponentFragment, DynamicFragment
 
-        # First, recurse into children
+        # Recurse into regular children
         for child in fragment.children:
             self._find_affected_recursive(child, changed_modules, affected)
 
-        # Check if this fragment is affected
+        # Handle DynamicFragment - it stores the actual rendered component
+        # in _active_fragment, not in children
+        if isinstance(fragment, DynamicFragment) and fragment._active_fragment:
+            self._find_affected_recursive(
+                fragment._active_fragment, changed_modules, affected
+            )
+
+        # Handle ComponentFragment - traverse its rendered content and slot contents
+        if isinstance(fragment, ComponentFragment):
+            # The component's rendered template
+            if fragment.fragment:
+                self._find_affected_recursive(
+                    fragment.fragment, changed_modules, affected
+                )
+            # Slot contents (children passed to the component)
+            for slot_child in fragment.slot_contents:
+                self._find_affected_recursive(slot_child, changed_modules, affected)
+
+        # Check if this fragment itself is affected
         if isinstance(fragment, ComponentFragment) and fragment.component:
             component_module = type(fragment.component).__module__
             if component_module in changed_modules:
@@ -492,7 +586,13 @@ class HotReloader:
         return False
 
     def _remount_fragment(self, fragment: Fragment, preserve_state: bool) -> None:
-        """Remount a single ComponentFragment with updated component class."""
+        """Remount a single ComponentFragment with updated component class.
+
+        Handles fragments in various locations:
+        - Regular children (parent.children)
+        - DynamicFragment's active fragment (parent._active_fragment)
+        - ComponentFragment's rendered content (parent.fragment)
+        """
         from collagraph.fragment import ComponentFragment
 
         if not isinstance(fragment, ComponentFragment) or not fragment.component:
@@ -512,13 +612,31 @@ class HotReloader:
         target = fragment.target
 
         # Find anchor element (first element in next sibling) for correct positioning
+        # Need to handle different parent types:
+        # - DynamicFragment: fragment is in _active_fragment, not children
+        # - ComponentFragment: fragment might be in .fragment attribute or slot_contents
+        # - Regular Fragment: fragment is in children
         anchor = None
         if parent:
-            children = parent.children
-            idx = children.index(fragment)
-            if idx + 1 < len(children):
-                # Get the first element from the next sibling's subtree
-                anchor = self._find_root_element(children[idx + 1])
+            # Check if fragment is in parent.children
+            if fragment in parent.children:
+                idx = parent.children.index(fragment)
+                if idx + 1 < len(parent.children):
+                    # Get the first element from the next sibling's subtree
+                    anchor = self._find_root_element(parent.children[idx + 1])
+            # Check if fragment is in parent.slot_contents (for ComponentFragment)
+            elif (
+                isinstance(parent, ComponentFragment)
+                and hasattr(parent, "slot_contents")
+                and fragment in parent.slot_contents
+            ):
+                idx = parent.slot_contents.index(fragment)
+                if idx + 1 < len(parent.slot_contents):
+                    # Get the first element from the next slot sibling's subtree
+                    anchor = self._find_root_element(parent.slot_contents[idx + 1])
+            # For DynamicFragment._active_fragment or ComponentFragment.fragment,
+            # we use the fragment's own anchor() method after unmounting
+            # (anchor will remain None, which is fine - it means append at end)
 
         # Unmount the old fragment
         fragment.unmount(destroy=True)
@@ -568,13 +686,43 @@ class HotReloader:
     def _collect_used_modules_recursive(
         self, fragment: Fragment, modules: set[str], component_fragment_cls: type
     ) -> None:
-        """Recursively collect module names from fragment tree."""
+        """Recursively collect module names from fragment tree.
+
+        Traverses the full fragment tree including:
+        - Regular children (fragment.children)
+        - DynamicFragment's active fragment (_active_fragment)
+        - ComponentFragment's rendered content (fragment.fragment)
+        - ComponentFragment's slot contents (slot_contents)
+        """
+        from collagraph.fragment import DynamicFragment
+
         if isinstance(fragment, component_fragment_cls) and fragment.component:
             module_name = type(fragment.component).__module__
             modules.add(module_name)
 
+        # Recurse into regular children
         for child in fragment.children:
             self._collect_used_modules_recursive(child, modules, component_fragment_cls)
+
+        # Handle DynamicFragment - it stores the actual rendered component
+        # in _active_fragment, not in children
+        if isinstance(fragment, DynamicFragment) and fragment._active_fragment:
+            self._collect_used_modules_recursive(
+                fragment._active_fragment, modules, component_fragment_cls
+            )
+
+        # Handle ComponentFragment - traverse its rendered content and slot contents
+        if isinstance(fragment, component_fragment_cls):
+            # The component's rendered template
+            if fragment.fragment:
+                self._collect_used_modules_recursive(
+                    fragment.fragment, modules, component_fragment_cls
+                )
+            # Slot contents (children passed to the component)
+            for slot_child in fragment.slot_contents:
+                self._collect_used_modules_recursive(
+                    slot_child, modules, component_fragment_cls
+                )
 
     def _find_root_element(self, fragment: Fragment) -> Any:
         """
