@@ -18,12 +18,12 @@ def set_attribute(self, attr, value):
         setattr(self, attr, value)
         return
 
-    block_signals = False
-    if hasattr(self, "blockSignals"):
-        self.blockSignals(True)
-        block_signals = True
-
-    call_method(method, value)
-
+    block_signals = hasattr(self, "blockSignals")
     if block_signals:
-        self.blockSignals(False)
+        self.blockSignals(True)
+
+    try:
+        call_method(method, value)
+    finally:
+        if block_signals:
+            self.blockSignals(False)

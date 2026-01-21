@@ -47,21 +47,22 @@ def set_attribute(self, attr, value):
     if model:
         model.blockSignals(True)
 
-    if attr == "model_index" and model:
-        index = model.indexFromItem(self)
-        row, column = value
-        if index.row() != row or index.column() != column:
-            if parent := self.parent():
-                # `it` is `self`
-                it = parent.takeChild(index.row(), index.column())
-                parent.setChild(row, column, self)
-            else:
-                # `it` is `self`
-                it = model.takeItem(index.row(), index.column())
-                model.setItem(row, column, it)
+    try:
+        if attr == "model_index" and model:
+            index = model.indexFromItem(self)
+            row, column = value
+            if index.row() != row or index.column() != column:
+                if parent := self.parent():
+                    # `it` is `self`
+                    it = parent.takeChild(index.row(), index.column())
+                    parent.setChild(row, column, self)
+                else:
+                    # `it` is `self`
+                    it = model.takeItem(index.row(), index.column())
+                    model.setItem(row, column, it)
 
-    qobject_set_attribute(self, attr, value)
-
-    # And don't forget to enable signals when done
-    if model:
-        model.blockSignals(False)
+        qobject_set_attribute(self, attr, value)
+    finally:
+        # And don't forget to enable signals when done
+        if model:
+            model.blockSignals(False)
