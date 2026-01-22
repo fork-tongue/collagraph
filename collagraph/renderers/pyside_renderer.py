@@ -261,7 +261,11 @@ class PySideRenderer(Renderer):
         if not hasattr(self, "_app"):
             self._app = QtCore.QCoreApplication.instance() or QtWidgets.QApplication()
 
-        return self.create_object(type_name)
+        try:
+            return self.create_object(type_name)
+        except Exception:
+            logger.exception(f"Error creating element '{type_name}'")
+            raise
 
     @classmethod
     def create_object(cls, type_name: str) -> Any:
@@ -310,140 +314,162 @@ class PySideRenderer(Renderer):
         Use the `autoshow` attribute on the renderer to configure whether to
         show these wdigets automatically.
         """
-        if isinstance(parent, QtWidgets.QApplication):
-            # If the parent is a QApplication, then there is
-            # no real parent to add it to, so let's just show the
-            # widget (or window) element and be done with it.
-            if self.autoshow:  # pragma: no cover
+        try:
+            if isinstance(parent, QtWidgets.QApplication):
+                # If the parent is a QApplication, then there is
+                # no real parent to add it to, so let's just show the
+                # widget (or window) element and be done with it.
+                if self.autoshow:  # pragma: no cover
+                    el.show()
+                return
+
+            if isinstance(el, QtWidgets.QDialog):
+                el.setParent(parent, el.windowFlags())
                 el.show()
-            return
+                return
 
-        if isinstance(el, QtWidgets.QDialog):
-            el.setParent(parent, el.windowFlags())
-            el.show()
-            return
-
-        parent.insert(el, anchor=anchor)
+            parent.insert(el, anchor=anchor)
+        except Exception:
+            logger.exception(f"Error inserting {el} into {parent}")
 
     def remove(self, el: Any, parent: Any):
         """Remove the element `el` from the children of the element `parent`."""
-        if isinstance(parent, QtWidgets.QApplication):
-            el.close()
-            return
+        try:
+            if isinstance(parent, QtWidgets.QApplication):
+                el.close()
+                return
 
-        if isinstance(el, QtWidgets.QDialog):
-            # Hide the dialog to make sure it's not visible anymore
-            el.hide()
-            # Then mark the element for deletion, so that it won't trigger
-            # any of 'finished', 'done', 'rejected', 'accepted' signals.
-            el.deleteLater()
-            return
+            if isinstance(el, QtWidgets.QDialog):
+                # Hide the dialog to make sure it's not visible anymore
+                el.hide()
+                # Then mark the element for deletion, so that it won't trigger
+                # any of 'finished', 'done', 'rejected', 'accepted' signals.
+                el.deleteLater()
+                return
 
-        parent.remove(el)
+            parent.remove(el)
+        except Exception:
+            logger.exception(f"Error removing {el} from {parent}")
 
     def set_element_text(self, el: Any, value: str):
         raise NotImplementedError
 
     def set_attribute(self, el: Any, attr: str, value: Any):
         """Set the attribute `attr` of the element `el` to the value `value`."""
-        key = f"{type(el).__name__}.{attr}"
-        if key not in DEFAULT_VALUES:
-            if not hasattr(el, "metaObject"):
-                logger.debug(f"{el} does not have metaObject")
-            else:
-                method_name = attr_name_to_method_name(attr, setter=False)
-
-                meta_object = el.metaObject()
-                property_idx = meta_object.indexOfProperty(method_name)
-                if property_idx >= 0:
-                    meta_property = meta_object.property(property_idx)
-                    result = meta_property.read(el)
-                    DEFAULT_VALUES[key] = (meta_property, result)
+        try:
+            key = f"{type(el).__name__}.{attr}"
+            if key not in DEFAULT_VALUES:
+                if not hasattr(el, "metaObject"):
+                    logger.debug(f"{el} does not have metaObject")
                 else:
-                    logger.debug(f"'{attr}' is not a Qt property on {type(el)}")
+                    method_name = attr_name_to_method_name(attr, setter=False)
 
-        # Check for registered methods for custom attributes
-        if set_attr := CUSTOM_ATTRIBUTES.get(attr):
-            set_attr(el, attr, value)
-            return
+                    meta_object = el.metaObject()
+                    property_idx = meta_object.indexOfProperty(method_name)
+                    if property_idx >= 0:
+                        meta_property = meta_object.property(property_idx)
+                        result = meta_property.read(el)
+                        DEFAULT_VALUES[key] = (meta_property, result)
+                    else:
+                        logger.debug(f"'{attr}' is not a Qt property on {type(el)}")
 
-        el.set_attribute(attr, value)
+            # Check for registered methods for custom attributes
+            if set_attr := CUSTOM_ATTRIBUTES.get(attr):
+                set_attr(el, attr, value)
+                return
+
+            el.set_attribute(attr, value)
+        except Exception:
+            logger.exception(f"Error setting attribute '{attr}' to {value!r} on {el}")
 
     def remove_attribute(self, el: Any, attr: str, value: Any):
         """Remove the attribute `attr` from the element `el`."""
-        # Make it possible to delete custom attributes
-        if hasattr(el, attr):
-            if getattr(el, attr) == value:
-                delattr(el, attr)
+        try:
+            # Make it possible to delete custom attributes
+            if hasattr(el, attr):
+                if getattr(el, attr) == value:
+                    delattr(el, attr)
+                    return
+
+            key = f"{type(el).__name__}.{attr}"
+            if key in DEFAULT_VALUES:
+                meta_property, default_value = DEFAULT_VALUES[key]
+                meta_property.write(el, default_value)
                 return
 
-        key = f"{type(el).__name__}.{attr}"
-        if key in DEFAULT_VALUES:
-            meta_property, default_value = DEFAULT_VALUES[key]
-            meta_property.write(el, default_value)
-            return
-
-        raise NotImplementedError(f"Can't remove {attr}: {value}")
+            raise NotImplementedError(f"Can't remove {attr}: {value}")
+        except Exception:
+            logger.exception(f"Error removing attribute '{attr}' from {el}")
 
     def add_event_listener(self, el: Any, event_type: str, value: Callable):
         """Add event listener for `event_type` to the element `el`."""
-        event_type = event_type.replace("-", "_")
-        signal_name = camel_case(event_type, "_")
+        try:
+            event_type = event_type.replace("-", "_")
+            signal_name = camel_case(event_type, "_")
 
-        # Try and get the signal from the object
-        signal = getattr(el, signal_name, None)
-        if signal and hasattr(signal, "connect"):
-            # Add a slots attribute to hold all the generated slots, keyed on event_type
-            if not hasattr(el, "slots"):
-                el.slots = defaultdict(set)
+            # Try and get the signal from the object
+            signal = getattr(el, signal_name, None)
+            if signal and hasattr(signal, "connect"):
+                # Add a slots attribute to hold all generated slots,
+                # keyed on event_type
+                if not hasattr(el, "slots"):
+                    el.slots = defaultdict(set)
 
-            # Create a slot with the given value
-            # Note that the slot apparently does not need arguments to specify the type
-            # or amount of arguments the enclosed callback needs. If the callback has
-            # arguments, then those will be set to the parameter(s) of the signal when
-            # it is emitted.
-            try:
-                # Creating a slot of a bound method on an instance (that is not
-                # a QObject?) results in a SystemError. Lambdas though _can_ function
-                # as a slot, so when creating a slot of the value fails, retry with
-                # a simple lambda.
-                if isinstance(value, partial):
-                    # In the case that value is a partial object, Pyside 6.9.2 spits
-                    # out a warning 'PytestUnraisableExceptionWarning'. Wrapping the
-                    # partial in a lambda seems to do the trick
-                    raise SystemError
-                slot = QtCore.Slot()(value)
-            except SystemError:
-                # TODO: with some inspection we might be able to figure out the
-                # signature of the 'value' function and adjust the lambda accordingly
-                slot = QtCore.Slot()(lambda *args: value(*args))
-            el.slots[event_type].add(slot)
+                # Create a slot with the given value. Note that the slot
+                # apparently does not need arguments to specify the type
+                # or amount of arguments the enclosed callback needs.
+                # If the callback has arguments, then those will be set
+                # to the parameter(s) of the signal when it is emitted.
+                try:
+                    # Creating a slot of a bound method on an instance
+                    # (that is not a QObject?) results in a SystemError.
+                    # Lambdas though _can_ function as a slot, so when
+                    # creating a slot of the value fails, retry with
+                    # a simple lambda.
+                    if isinstance(value, partial):
+                        # In the case that value is a partial object,
+                        # Pyside 6.9.2 spits out a warning
+                        # 'PytestUnraisableExceptionWarning'. Wrapping
+                        # the partial in a lambda seems to do the trick
+                        raise SystemError
+                    slot = QtCore.Slot()(value)
+                except SystemError:
+                    # TODO: with some inspection we might be able to
+                    # figure out the signature of the 'value' function
+                    # and adjust the lambda accordingly
+                    slot = QtCore.Slot()(lambda *args: value(*args))
+                el.slots[event_type].add(slot)
 
-            signal.connect(slot)
-        else:
-            if not hasattr(el, "_event_filter"):
-                el._event_filter = EventFilter()
-                el.installEventFilter(el._event_filter)
-            event_name = camel_case(event_type, "_", upper=True)
-            el._event_filter.add_event_handler(event_name, value)
+                signal.connect(slot)
+            else:
+                if not hasattr(el, "_event_filter"):
+                    el._event_filter = EventFilter()
+                    el.installEventFilter(el._event_filter)
+                event_name = camel_case(event_type, "_", upper=True)
+                el._event_filter.add_event_handler(event_name, value)
+        except Exception:
+            logger.exception(f"Error adding event listener '{event_type}' on {el}")
 
     def remove_event_listener(self, el: Any, event_type: str, value: Callable):
         """Remove event listener for `event_type` to the element `el`."""
-        event_type = event_type.replace("-", "_")
-        signal_name = camel_case(event_type, "_")
+        try:
+            event_type = event_type.replace("-", "_")
+            signal_name = camel_case(event_type, "_")
 
-        signal = getattr(el, signal_name, None)
-        if not signal or not hasattr(signal, "connect"):
-            event_name = camel_case(event_type, "_", upper=True)
-            el._event_filter.remove_event_handler(event_name, value)
-            return
+            signal = getattr(el, signal_name, None)
+            if not signal or not hasattr(signal, "connect"):
+                event_name = camel_case(event_type, "_", upper=True)
+                el._event_filter.remove_event_handler(event_name, value)
+                return
 
-        for slot in el.slots[event_type]:
-            # Slot can be compared to its value
-            if slot == value:
-                signal.disconnect(slot)
-                el.slots[event_type].remove(slot)
-                break
+            for slot in el.slots[event_type]:
+                # Slot can be compared to its value
+                if slot == value:
+                    signal.disconnect(slot)
+                    el.slots[event_type].remove(slot)
+                    break
+        except Exception:
+            logger.exception(f"Error removing event listener '{event_type}' from {el}")
 
 
 def not_implemented(self, *args, **kwargs):

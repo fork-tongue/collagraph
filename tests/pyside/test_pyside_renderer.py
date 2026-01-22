@@ -162,7 +162,7 @@ def test_not_implemented():
         item.insert(None)
 
 
-def test_removing_attribute_not_supported():
+def test_removing_attribute_not_supported(caplog):
     renderer = cg.PySideRenderer(autoshow=False)
 
     rect = QtCore.QRect(0, 0, 20, 20)
@@ -181,8 +181,10 @@ def test_removing_attribute_not_supported():
     assert widget.geometry() == rect
 
     # Try and remove a non-existing property
-    with pytest.raises(NotImplementedError):
-        renderer.remove_attribute(widget, "bar", "bar")
+    # Error is now logged instead of raised (for resilience)
+    renderer.remove_attribute(widget, "bar", "bar")
+    assert "Error removing attribute 'bar'" in caplog.text
+    assert "Can't remove bar" in caplog.text
 
     renderer.remove_attribute(widget, "foo", False)
     assert not hasattr(widget, "foo")
