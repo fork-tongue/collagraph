@@ -354,7 +354,12 @@ class Fragment:
         if self.element:
             self.renderer.insert(self.element, parent=target, anchor=anchor)
         for child in self.children:
-            child.mount(self.element or target)
+            # For virtual elements, mount in target and use the
+            # anchor for the correct placement
+            if not self.element:
+                child.mount(target, anchor)
+            else:
+                child.mount(self.element)
 
         # Register static ref after element is mounted
         # (dynamic refs are handled by the watcher created in create())
