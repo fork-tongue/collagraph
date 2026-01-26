@@ -607,6 +607,15 @@ class HotReloader:
         if preserve_state:
             preserved_state = self._collect_component_state(fragment)
 
+        # Preserve fragment configuration that would be lost during
+        # unmount(destroy=True). These are set during template compilation
+        # and need to be restored for remount.
+        preserved_attributes: dict[str, str] = fragment._attributes.copy()
+        preserved_binds: list[tuple] = fragment._binds.copy()
+        preserved_events: dict[str, Callable] = fragment._events.copy()
+        preserved_ref_name = fragment._ref_name
+        preserved_ref_is_dynamic = fragment._ref_is_dynamic
+
         # Get the parent and target for remounting
         parent = fragment.parent
         target = fragment.target
@@ -649,6 +658,14 @@ class HotReloader:
         new_class = getattr(module, component_name, None)
         if new_class is None:
             raise RuntimeError(f"Component {component_name} not found in {module_name}")
+
+        # Restore preserved fragment configuration before remount
+        # This ensures static props, events, and refs work after hot reload
+        fragment._attributes = preserved_attributes
+        fragment._binds = preserved_binds
+        fragment._events = preserved_events
+        fragment._ref_name = preserved_ref_name
+        fragment._ref_is_dynamic = preserved_ref_is_dynamic
 
         # Update the fragment's tag to the new class
         fragment.tag = new_class
