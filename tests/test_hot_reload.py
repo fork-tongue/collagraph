@@ -3,6 +3,7 @@
 import sys
 import tempfile
 from pathlib import Path
+from textwrap import dedent
 
 import pytest
 
@@ -17,17 +18,19 @@ def temp_cgx_file():
         cgx_path = Path(tmpdir) / "temp_component.cgx"
 
         # Initial component content
-        initial_content = """
-<label :text="label_text" />
+        initial_content = dedent(
+            """
+            <label :text="label_text" />
 
-<script>
-import collagraph as cg
+            <script>
+            import collagraph as cg
 
-class TempComponent(cg.Component):
-    def init(self):
-        self.state["label_text"] = "Initial"
-</script>
-"""
+            class TempComponent(cg.Component):
+                def init(self):
+                    self.state["label_text"] = "Initial"
+            </script>
+            """
+        ).lstrip()
         cgx_path.write_text(initial_content)
 
         # Add tmpdir to sys.path so the module can be imported
@@ -90,17 +93,19 @@ def test_reload_updates_ui(temp_cgx_file):
     assert label["attrs"]["text"] == "Initial"
 
     # Modify the component file
-    new_content = """
-<label :text="label_text" />
+    new_content = dedent(
+        """
+        <label :text="label_text" />
 
-<script>
-import collagraph as cg
+        <script>
+        import collagraph as cg
 
-class TempComponent(cg.Component):
-    def init(self):
-        self.state["label_text"] = "Updated"
-</script>
-"""
+        class TempComponent(cg.Component):
+            def init(self):
+                self.state["label_text"] = "Updated"
+        </script>
+        """
+    ).lstrip()
     temp_cgx_file.write_text(new_content)
 
     # Trigger reload WITHOUT state preservation to test that code changes work
@@ -130,17 +135,19 @@ def test_reload_handles_syntax_error(temp_cgx_file):
     assert label["attrs"]["text"] == "Initial"
 
     # Write invalid Python syntax
-    invalid_content = """
-<label :text="label_text" />
+    invalid_content = dedent(
+        """
+        <label :text="label_text" />
 
-<script>
-import collagraph as cg
+        <script>
+        import collagraph as cg
 
-class TempComponent(cg.Component):
-    def init(self)  # Missing colon - syntax error
-        self.state["label_text"] = "Updated"
-</script>
-"""
+        class TempComponent(cg.Component):
+            def init(self)  # Missing colon - syntax error
+                self.state["label_text"] = "Updated"
+        </script>
+        """
+    ).lstrip()
     temp_cgx_file.write_text(invalid_content)
 
     # Reload should fail but keep old UI
@@ -170,17 +177,19 @@ def test_reload_handles_runtime_error(temp_cgx_file):
     assert label["attrs"]["text"] == "Initial"
 
     # Write content that will raise an error during init
-    error_content = """
-<label :text="label_text" />
+    error_content = dedent(
+        """
+        <label :text="label_text" />
 
-<script>
-import collagraph as cg
+        <script>
+        import collagraph as cg
 
-class TempComponent(cg.Component):
-    def init(self):
-        raise RuntimeError("Intentional error")
-</script>
-"""
+        class TempComponent(cg.Component):
+            def init(self):
+                raise RuntimeError("Intentional error")
+        </script>
+        """
+    ).lstrip()
     temp_cgx_file.write_text(error_content)
 
     # Reload should fail during re-render
@@ -206,19 +215,21 @@ def test_reload_with_changed_template(temp_cgx_file):
     assert container["children"][0]["type"] == "label"
 
     # Change template to have different structure
-    new_content = """
-<widget>
-    <label text="First" />
-    <label text="Second" />
-</widget>
+    new_content = dedent(
+        """
+        <widget>
+            <label text="First" />
+            <label text="Second" />
+        </widget>
 
-<script>
-import collagraph as cg
+        <script>
+        import collagraph as cg
 
-class TempComponent(cg.Component):
-    pass
-</script>
-"""
+        class TempComponent(cg.Component):
+            pass
+        </script>
+        """
+    ).lstrip()
     temp_cgx_file.write_text(new_content)
 
     # Trigger reload
@@ -249,47 +260,59 @@ def test_multiple_reloads(temp_cgx_file):
     assert container["children"][0]["attrs"]["text"] == "Initial"
 
     # First reload - without state preservation to test code changes
-    temp_cgx_file.write_text("""
-<label :text="label_text" />
+    temp_cgx_file.write_text(
+        dedent(
+            """
+            <label :text="label_text" />
 
-<script>
-import collagraph as cg
+            <script>
+            import collagraph as cg
 
-class TempComponent(cg.Component):
-    def init(self):
-        self.state["label_text"] = "First Update"
-</script>
-""")
+            class TempComponent(cg.Component):
+                def init(self):
+                    self.state["label_text"] = "First Update"
+            </script>
+            """
+        ).lstrip()
+    )
     assert gui.reload(preserve_state=False) is True
     assert container["children"][0]["attrs"]["text"] == "First Update"
 
     # Second reload - without state preservation to test code changes
-    temp_cgx_file.write_text("""
-<label :text="label_text" />
+    temp_cgx_file.write_text(
+        dedent(
+            """
+            <label :text="label_text" />
 
-<script>
-import collagraph as cg
+            <script>
+            import collagraph as cg
 
-class TempComponent(cg.Component):
-    def init(self):
-        self.state["label_text"] = "Second Update"
-</script>
-""")
+            class TempComponent(cg.Component):
+                def init(self):
+                    self.state["label_text"] = "Second Update"
+            </script>
+            """
+        ).lstrip()
+    )
     assert gui.reload(preserve_state=False) is True
     assert container["children"][0]["attrs"]["text"] == "Second Update"
 
     # Third reload with error - should keep second update
-    temp_cgx_file.write_text("""
-<label :text="label_text" />
+    temp_cgx_file.write_text(
+        dedent(
+            """
+            <label :text="label_text" />
 
-<script>
-import collagraph as cg
+            <script>
+            import collagraph as cg
 
-class TempComponent(cg.Component):
-    def init(self):
-        raise ValueError("oops")
-</script>
-""")
+            class TempComponent(cg.Component):
+                def init(self):
+                    raise ValueError("oops")
+            </script>
+            """
+        ).lstrip()
+    )
     assert gui.reload() is False
     # Content should still be from second update (before the error)
     # Note: The label won't exist anymore because we unmount before the error
@@ -372,21 +395,23 @@ def test_state_preserved_with_new_state_keys(temp_cgx_file):
     gui.fragment.component.state["label_text"] = "Preserved"
 
     # Update component to add a new state key
-    new_content = """
-<widget>
-    <label :text="label_text" />
-    <label :text="new_text" />
-</widget>
+    new_content = dedent(
+        """
+        <widget>
+            <label :text="label_text" />
+            <label :text="new_text" />
+        </widget>
 
-<script>
-import collagraph as cg
+        <script>
+        import collagraph as cg
 
-class TempComponent(cg.Component):
-    def init(self):
-        self.state["label_text"] = "Default"
-        self.state["new_text"] = "New Key"
-</script>
-"""
+        class TempComponent(cg.Component):
+            def init(self):
+                self.state["label_text"] = "Default"
+                self.state["new_text"] = "New Key"
+        </script>
+        """
+    ).lstrip()
     temp_cgx_file.write_text(new_content)
 
     result = gui.reload(preserve_state=True)
@@ -402,22 +427,24 @@ class TempComponent(cg.Component):
 def test_state_preserved_with_multiple_state_keys(temp_cgx_file):
     """Test that state preservation works with multiple state keys."""
     # Create a component with multiple state keys
-    initial_content = """
-<widget>
-    <label :text="name" />
-    <label :text="count" />
-</widget>
+    initial_content = dedent(
+        """
+        <widget>
+            <label :text="name" />
+            <label :text="count" />
+        </widget>
 
-<script>
-import collagraph as cg
+        <script>
+        import collagraph as cg
 
-class MultiState(cg.Component):
-    def init(self):
-        self.state["name"] = "initial_name"
-        self.state["count"] = 0
-        self.state["flag"] = False
-</script>
-"""
+        class MultiState(cg.Component):
+            def init(self):
+                self.state["name"] = "initial_name"
+                self.state["count"] = 0
+                self.state["flag"] = False
+        </script>
+        """
+    ).lstrip()
     temp_cgx_file.write_text(initial_content)
 
     # Clear module cache from previous tests
@@ -476,56 +503,68 @@ def test_watches_dynamically_imported_components():
 
         # Create child component A (like volume.cgx)
         child_a_path = tmpdir / "child_a.cgx"
-        child_a_path.write_text("""
-<label text="Child A" />
+        child_a_path.write_text(
+            dedent(
+                """
+                <label text="Child A" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-class ChildA(cg.Component):
-    pass
-</script>
-""")
+                class ChildA(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         # Create child component B (like mesh.cgx)
         child_b_path = tmpdir / "child_b.cgx"
-        child_b_path.write_text("""
-<label text="Child B" />
+        child_b_path.write_text(
+            dedent(
+                """
+                <label text="Child B" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-class ChildB(cg.Component):
-    pass
-</script>
-""")
+                class ChildB(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         # Create parent component that imports both but only renders one dynamically
         parent_path = tmpdir / "parent_component.cgx"
-        parent_path.write_text("""
-<component
-    v-if="show_child"
-    :is="type_map(child_type)"
-/>
+        parent_path.write_text(
+            dedent(
+                """
+                <component
+                    v-if="show_child"
+                    :is="type_map(child_type)"
+                />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-from child_a import ChildA
-from child_b import ChildB
-
-
-def type_map(child_type):
-    return {
-        "a": ChildA,
-        "b": ChildB,
-    }[child_type]
+                from child_a import ChildA
+                from child_b import ChildB
 
 
-class ParentComponent(cg.Component):
-    pass
-</script>
-""")
+                def type_map(child_type):
+                    return {
+                        "a": ChildA,
+                        "b": ChildB,
+                    }[child_type]
+
+
+                class ParentComponent(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         # Add tmpdir to sys.path
         sys.path.insert(0, str(tmpdir))
@@ -589,52 +628,64 @@ def test_watches_nested_dynamic_imports():
 
         # Create leaf component
         leaf_path = tmpdir / "leaf_comp.cgx"
-        leaf_path.write_text("""
-<label text="Leaf" />
+        leaf_path.write_text(
+            dedent(
+                """
+                <label text="Leaf" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-class LeafComp(cg.Component):
-    pass
-</script>
-""")
+                class LeafComp(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         # Create middle component that imports leaf
         middle_path = tmpdir / "middle_comp.cgx"
-        middle_path.write_text("""
-<component v-if="show" :is="get_leaf()" />
+        middle_path.write_text(
+            dedent(
+                """
+                <component v-if="show" :is="get_leaf()" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-from leaf_comp import LeafComp
-
-
-def get_leaf():
-    return LeafComp
+                from leaf_comp import LeafComp
 
 
-class MiddleComp(cg.Component):
-    pass
-</script>
-""")
+                def get_leaf():
+                    return LeafComp
+
+
+                class MiddleComp(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         # Create root component
         root_path = tmpdir / "root_comp.cgx"
-        root_path.write_text("""
-<MiddleComp :show="False" />
+        root_path.write_text(
+            dedent(
+                """
+                <MiddleComp :show="False" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-from middle_comp import MiddleComp
+                from middle_comp import MiddleComp
 
 
-class RootComp(cg.Component):
-    pass
-</script>
-""")
+                class RootComp(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         sys.path.insert(0, str(tmpdir))
 
@@ -688,36 +739,44 @@ def test_finds_affected_fragments_in_dynamic_components():
 
         # Create child component (like volume.cgx)
         child_path = tmpdir / "dynamic_child.cgx"
-        child_path.write_text("""
-<label text="Dynamic Child" />
+        child_path.write_text(
+            dedent(
+                """
+                <label text="Dynamic Child" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-class DynamicChild(cg.Component):
-    pass
-</script>
-""")
+                class DynamicChild(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         # Create parent that uses dynamic component
         parent_path = tmpdir / "dynamic_parent.cgx"
-        parent_path.write_text("""
-<component :is="get_child()" />
+        parent_path.write_text(
+            dedent(
+                """
+                <component :is="get_child()" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-from dynamic_child import DynamicChild
-
-
-def get_child():
-    return DynamicChild
+                from dynamic_child import DynamicChild
 
 
-class DynamicParent(cg.Component):
-    pass
-</script>
-""")
+                def get_child():
+                    return DynamicChild
+
+
+                class DynamicParent(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         sys.path.insert(0, str(tmpdir))
 
@@ -778,48 +837,60 @@ def test_finds_affected_fragments_in_component_fragment():
 
         # Create grandchild component
         grandchild_path = tmpdir / "grandchild_comp.cgx"
-        grandchild_path.write_text("""
-<label text="Grandchild" />
+        grandchild_path.write_text(
+            dedent(
+                """
+                <label text="Grandchild" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-class GrandchildComp(cg.Component):
-    pass
-</script>
-""")
+                class GrandchildComp(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         # Create child that renders grandchild
         child_path = tmpdir / "child_comp.cgx"
-        child_path.write_text("""
-<GrandchildComp />
+        child_path.write_text(
+            dedent(
+                """
+                <GrandchildComp />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-from grandchild_comp import GrandchildComp
+                from grandchild_comp import GrandchildComp
 
 
-class ChildComp(cg.Component):
-    pass
-</script>
-""")
+                class ChildComp(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         # Create parent
         parent_path = tmpdir / "parent_comp.cgx"
-        parent_path.write_text("""
-<ChildComp />
+        parent_path.write_text(
+            dedent(
+                """
+                <ChildComp />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-from child_comp import ChildComp
+                from child_comp import ChildComp
 
 
-class ParentComp(cg.Component):
-    pass
-</script>
-""")
+                class ParentComp(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         sys.path.insert(0, str(tmpdir))
 
@@ -874,42 +945,50 @@ def test_finds_affected_fragments_in_vfor_with_dynamic():
 
         # Create item component (like volume.cgx)
         item_path = tmpdir / "item_comp.cgx"
-        item_path.write_text("""
-<label :text="props.get('name', 'item')" />
+        item_path.write_text(
+            dedent(
+                """
+                <label :text="props.get('name', 'item')" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-class ItemComp(cg.Component):
-    pass
-</script>
-""")
+                class ItemComp(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         # Create list component with v-for and dynamic component
         list_path = tmpdir / "list_comp.cgx"
-        list_path.write_text("""
-<widget>
-    <component
-        v-for="item in items"
-        :is="get_comp()"
-        :name="item"
-    />
-</widget>
+        list_path.write_text(
+            dedent(
+                """
+                <widget>
+                    <component
+                        v-for="item in items"
+                        :is="get_comp()"
+                        :name="item"
+                    />
+                </widget>
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-from item_comp import ItemComp
-
-
-def get_comp():
-    return ItemComp
+                from item_comp import ItemComp
 
 
-class ListComp(cg.Component):
-    pass
-</script>
-""")
+                def get_comp():
+                    return ItemComp
+
+
+                class ListComp(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         sys.path.insert(0, str(tmpdir))
 
@@ -970,37 +1049,45 @@ def test_remount_fragment_inside_dynamic_component():
 
         # Create child component (like volume.cgx)
         child_path = tmpdir / "remount_child.cgx"
-        child_path.write_text("""
-<label :text="label_text" />
+        child_path.write_text(
+            dedent(
+                """
+                <label :text="label_text" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-class RemountChild(cg.Component):
-    def init(self):
-        self.state["label_text"] = "Initial"
-</script>
-""")
+                class RemountChild(cg.Component):
+                    def init(self):
+                        self.state["label_text"] = "Initial"
+                </script>
+                """
+            ).lstrip()
+        )
 
         # Create parent that uses dynamic component
         parent_path = tmpdir / "remount_parent.cgx"
-        parent_path.write_text("""
-<component :is="get_child()" />
+        parent_path.write_text(
+            dedent(
+                """
+                <component :is="get_child()" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-from remount_child import RemountChild
-
-
-def get_child():
-    return RemountChild
+                from remount_child import RemountChild
 
 
-class RemountParent(cg.Component):
-    pass
-</script>
-""")
+                def get_child():
+                    return RemountChild
+
+
+                class RemountParent(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         sys.path.insert(0, str(tmpdir))
 
@@ -1023,17 +1110,21 @@ class RemountParent(cg.Component):
             assert container["children"][0]["attrs"]["text"] == "Initial"
 
             # Modify the child component
-            child_path.write_text("""
-<label :text="label_text" />
+            child_path.write_text(
+                dedent(
+                    """
+                    <label :text="label_text" />
 
-<script>
-import collagraph as cg
+                    <script>
+                    import collagraph as cg
 
-class RemountChild(cg.Component):
-    def init(self):
-        self.state["label_text"] = "Updated"
-</script>
-""")
+                    class RemountChild(cg.Component):
+                        def init(self):
+                            self.state["label_text"] = "Updated"
+                    </script>
+                    """
+                ).lstrip()
+            )
 
             # Trigger fine-grained reload - this should NOT raise ValueError
             # We call _reload_changed_files directly to test the fine-grained path
@@ -1066,42 +1157,50 @@ def test_remount_fragment_in_vfor_with_dynamic():
 
         # Create item component
         item_path = tmpdir / "vfor_item.cgx"
-        item_path.write_text("""
-<label :text="props.get('name', 'default') + ' - v1'" />
+        item_path.write_text(
+            dedent(
+                """
+                <label :text="props.get('name', 'default') + ' - v1'" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-class VforItem(cg.Component):
-    pass
-</script>
-""")
+                class VforItem(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         # Create list component with v-for and dynamic component
         list_path = tmpdir / "vfor_list.cgx"
-        list_path.write_text("""
-<widget>
-    <component
-        v-for="item in items"
-        :is="get_comp()"
-        :name="item"
-    />
-</widget>
+        list_path.write_text(
+            dedent(
+                """
+                <widget>
+                    <component
+                        v-for="item in items"
+                        :is="get_comp()"
+                        :name="item"
+                    />
+                </widget>
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-from vfor_item import VforItem
-
-
-def get_comp():
-    return VforItem
+                from vfor_item import VforItem
 
 
-class VforList(cg.Component):
-    pass
-</script>
-""")
+                def get_comp():
+                    return VforItem
+
+
+                class VforList(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         sys.path.insert(0, str(tmpdir))
 
@@ -1128,16 +1227,20 @@ class VforList(cg.Component):
             assert widget["children"][2]["attrs"]["text"] == "three - v1"
 
             # Modify the item component
-            item_path.write_text("""
-<label :text="props.get('name', 'default') + ' - v2'" />
+            item_path.write_text(
+                dedent(
+                    """
+                    <label :text="props.get('name', 'default') + ' - v2'" />
 
-<script>
-import collagraph as cg
+                    <script>
+                    import collagraph as cg
 
-class VforItem(cg.Component):
-    pass
-</script>
-""")
+                    class VforItem(cg.Component):
+                        pass
+                    </script>
+                    """
+                ).lstrip()
+            )
 
             # Trigger fine-grained reload - this should NOT raise ValueError
             # We call _reload_changed_files directly to test the fine-grained path
@@ -1175,78 +1278,98 @@ def test_remount_multiple_fragments_inside_slot_content():
 
         # Create components that will be passed as slot content
         slot_child_a_path = tmpdir / "slot_child_a.cgx"
-        slot_child_a_path.write_text("""
-<label text="Child A v1" />
+        slot_child_a_path.write_text(
+            dedent(
+                """
+                <label text="Child A v1" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-class SlotChildA(cg.Component):
-    pass
-</script>
-""")
+                class SlotChildA(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         slot_child_b_path = tmpdir / "slot_child_b.cgx"
-        slot_child_b_path.write_text("""
-<label text="Child B v1" />
+        slot_child_b_path.write_text(
+            dedent(
+                """
+                <label text="Child B v1" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-class SlotChildB(cg.Component):
-    pass
-</script>
-""")
+                class SlotChildB(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         slot_child_c_path = tmpdir / "slot_child_c.cgx"
-        slot_child_c_path.write_text("""
-<label text="Child C v1" />
+        slot_child_c_path.write_text(
+            dedent(
+                """
+                <label text="Child C v1" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-class SlotChildC(cg.Component):
-    pass
-</script>
-""")
+                class SlotChildC(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         # Create a wrapper component with a slot
         wrapper_path = tmpdir / "multi_slot_wrapper.cgx"
-        wrapper_path.write_text("""
-<widget>
-    <slot />
-</widget>
+        wrapper_path.write_text(
+            dedent(
+                """
+                <widget>
+                    <slot />
+                </widget>
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-class MultiSlotWrapper(cg.Component):
-    pass
-</script>
-""")
+                class MultiSlotWrapper(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         # Create parent that uses the wrapper with multiple slot children
         parent_path = tmpdir / "multi_slot_parent.cgx"
-        parent_path.write_text("""
-<MultiSlotWrapper>
-    <SlotChildA />
-    <SlotChildB />
-    <SlotChildC />
-</MultiSlotWrapper>
+        parent_path.write_text(
+            dedent(
+                """
+                <MultiSlotWrapper>
+                    <SlotChildA />
+                    <SlotChildB />
+                    <SlotChildC />
+                </MultiSlotWrapper>
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-from multi_slot_wrapper import MultiSlotWrapper
-from slot_child_a import SlotChildA
-from slot_child_b import SlotChildB
-from slot_child_c import SlotChildC
+                from multi_slot_wrapper import MultiSlotWrapper
+                from slot_child_a import SlotChildA
+                from slot_child_b import SlotChildB
+                from slot_child_c import SlotChildC
 
 
-class MultiSlotParent(cg.Component):
-    pass
-</script>
-""")
+                class MultiSlotParent(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         sys.path.insert(0, str(tmpdir))
 
@@ -1273,16 +1396,20 @@ class MultiSlotParent(cg.Component):
             assert widget["children"][2]["attrs"]["text"] == "Child C v1"
 
             # Modify the middle child (B)
-            slot_child_b_path.write_text("""
-<label text="Child B v2" />
+            slot_child_b_path.write_text(
+                dedent(
+                    """
+                    <label text="Child B v2" />
 
-<script>
-import collagraph as cg
+                    <script>
+                    import collagraph as cg
 
-class SlotChildB(cg.Component):
-    pass
-</script>
-""")
+                    class SlotChildB(cg.Component):
+                        pass
+                    </script>
+                    """
+                ).lstrip()
+            )
 
             # Trigger fine-grained reload
             changed_paths = {slot_child_b_path.resolve()}
@@ -1330,50 +1457,62 @@ def test_remount_fragment_inside_slot_content():
 
         # Create a component that will be passed as slot content
         slot_child_path = tmpdir / "slot_child.cgx"
-        slot_child_path.write_text("""
-<label text="Slot Child v1" />
+        slot_child_path.write_text(
+            dedent(
+                """
+                <label text="Slot Child v1" />
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-class SlotChild(cg.Component):
-    pass
-</script>
-""")
+                class SlotChild(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         # Create a wrapper component with a slot
         wrapper_path = tmpdir / "slot_wrapper.cgx"
-        wrapper_path.write_text("""
-<widget>
-    <slot />
-</widget>
+        wrapper_path.write_text(
+            dedent(
+                """
+                <widget>
+                    <slot />
+                </widget>
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-class SlotWrapper(cg.Component):
-    pass
-</script>
-""")
+                class SlotWrapper(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         # Create parent that uses the wrapper with slot content
         parent_path = tmpdir / "slot_parent.cgx"
-        parent_path.write_text("""
-<SlotWrapper>
-    <SlotChild />
-</SlotWrapper>
+        parent_path.write_text(
+            dedent(
+                """
+                <SlotWrapper>
+                    <SlotChild />
+                </SlotWrapper>
 
-<script>
-import collagraph as cg
+                <script>
+                import collagraph as cg
 
-from slot_wrapper import SlotWrapper
-from slot_child import SlotChild
+                from slot_wrapper import SlotWrapper
+                from slot_child import SlotChild
 
 
-class SlotParent(cg.Component):
-    pass
-</script>
-""")
+                class SlotParent(cg.Component):
+                    pass
+                </script>
+                """
+            ).lstrip()
+        )
 
         sys.path.insert(0, str(tmpdir))
 
@@ -1398,16 +1537,20 @@ class SlotParent(cg.Component):
             assert widget["children"][0]["attrs"]["text"] == "Slot Child v1"
 
             # Modify the slot child component
-            slot_child_path.write_text("""
-<label text="Slot Child v2" />
+            slot_child_path.write_text(
+                dedent(
+                    """
+                    <label text="Slot Child v2" />
 
-<script>
-import collagraph as cg
+                    <script>
+                    import collagraph as cg
 
-class SlotChild(cg.Component):
-    pass
-</script>
-""")
+                    class SlotChild(cg.Component):
+                        pass
+                    </script>
+                    """
+                ).lstrip()
+            )
 
             # Trigger fine-grained reload - this should NOT raise ValueError
             changed_paths = {slot_child_path.resolve()}
