@@ -324,6 +324,120 @@ def test_anchor_ordering_v_if_without_component_wrapper(parse_source):
     assert get_child_names() == ["first", "second", "third"]
 
 
+def test_anchor_ordering_template_with_v_if(parse_source):
+    """
+    Test that children of virtual fragments (template) are positioned correctly.
+
+    When a <template> element (which has no DOM element itself) contains children
+    and is toggled with v-if, the children must be inserted at the correct position
+    using the anchor. This tests that Fragment.mount() passes the anchor to children
+    when the fragment has no element.
+    """
+    App, _ = parse_source(
+        """
+        <parent>
+          <item name="first" />
+          <template v-if="show_middle">
+            <item name="second" />
+            <item name="third" />
+          </template>
+          <item name="fourth" />
+        </parent>
+        <script>
+        import collagraph as cg
+        class App(cg.Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"show_middle": True})
+
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    container = {"type": "root"}
+    gui.render(App, container, state=state)
+
+    def get_child_names():
+        parent = container["children"][0]
+        return [child["attrs"]["name"] for child in parent.get("children", [])]
+
+    # Initial state: all visible
+    assert get_child_names() == ["first", "second", "third", "fourth"]
+
+    # Hide the template children
+    state["show_middle"] = False
+    assert get_child_names() == ["first", "fourth"]
+
+    # Show template children again - they should appear between first and fourth
+    state["show_middle"] = True
+    assert get_child_names() == ["first", "second", "third", "fourth"]
+
+
+def test_anchor_ordering_nested_templates_with_v_if(parse_source):
+    """
+    Test anchor ordering with nested virtual fragments (templates).
+
+    This tests a more complex scenario where templates are nested and each
+    level needs to correctly propagate the anchor to its children.
+    """
+    App, _ = parse_source(
+        """
+        <parent>
+          <item name="a" />
+          <template v-if="show_outer">
+            <item name="b" />
+            <template v-if="show_inner">
+              <item name="c" />
+              <item name="d" />
+            </template>
+            <item name="e" />
+          </template>
+          <item name="f" />
+        </parent>
+        <script>
+        import collagraph as cg
+        class App(cg.Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"show_outer": True, "show_inner": True})
+
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    container = {"type": "root"}
+    gui.render(App, container, state=state)
+
+    def get_child_names():
+        parent = container["children"][0]
+        return [child["attrs"]["name"] for child in parent.get("children", [])]
+
+    # Initial state: all visible
+    assert get_child_names() == ["a", "b", "c", "d", "e", "f"]
+
+    # Hide inner template
+    state["show_inner"] = False
+    assert get_child_names() == ["a", "b", "e", "f"]
+
+    # Show inner template again
+    state["show_inner"] = True
+    assert get_child_names() == ["a", "b", "c", "d", "e", "f"]
+
+    # Hide outer template (which includes inner)
+    state["show_outer"] = False
+    assert get_child_names() == ["a", "f"]
+
+    # Show outer template again
+    state["show_outer"] = True
+    assert get_child_names() == ["a", "b", "c", "d", "e", "f"]
+
+
 def test_anchor_ordering_deeply_nested_components(parse_source):
     """Test anchor ordering with deeply nested component structure."""
     _Inner, namespace = parse_source(
