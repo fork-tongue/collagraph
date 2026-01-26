@@ -110,15 +110,15 @@ class Fragment:
 
     def first(self) -> Any | None:
         """
-        Returns the first DOM element (if any), from either itself, or its direct
-        decendants, in case of virtual fragments. Should not be deeper since an
-        anchor lives in the same depth in the tree.
+        Returns the first DOM element (if any), from either itself, or its
+        descendants. This recursively searches through children to find the
+        first actual DOM element.
         """
         if self.element:
             return self.element
         for child in self.children:
-            if child.element:
-                return child.element
+            if element := child.first():
+                return element
 
     def anchor(self) -> Any | None:
         """
@@ -145,6 +145,12 @@ class Fragment:
                 idx += 1
                 if element := parent.slot_contents[idx].first():
                     return element
+
+        # No sibling anchor found at this level. If the parent doesn't have
+        # its own element (e.g., ComponentFragment, ControlFlowFragment), climb
+        # up the tree to find an anchor from the parent's siblings.
+        if not parent.element and parent.parent:
+            return parent.anchor()
 
         return None
 
