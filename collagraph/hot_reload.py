@@ -21,6 +21,10 @@ if TYPE_CHECKING:
     from collagraph import Collagraph
     from collagraph.fragment import Fragment
 
+from collagraph.fragment import ComponentFragment, DynamicFragment
+
+DEBOUNCE_DELAY = 0.1
+
 
 def setup_logger():
     root = logging.getLogger()
@@ -423,7 +427,7 @@ class HotReloader:
                 self._debounce_timer.cancel()
 
             # Schedule reload with debounce delay
-            self._debounce_timer = threading.Timer(0.1, self._trigger_reload)
+            self._debounce_timer = threading.Timer(DEBOUNCE_DELAY, self._trigger_reload)
             self._debounce_timer.start()
             logger.debug("Debounce timer started")
 
@@ -577,7 +581,6 @@ class HotReloader:
 
         Returns True if this fragment or any descendant is affected.
         """
-        from collagraph.fragment import ComponentFragment, DynamicFragment
 
         # Recurse into regular children
         for child in fragment.children:
@@ -618,8 +621,6 @@ class HotReloader:
         - DynamicFragment's active fragment (parent._active_fragment)
         - ComponentFragment's rendered content (parent.fragment)
         """
-        from collagraph.fragment import ComponentFragment
-
         if not isinstance(fragment, ComponentFragment) or not fragment.component:
             return
 
@@ -719,14 +720,12 @@ class HotReloader:
 
     def _collect_used_modules(self, fragment: Fragment) -> set[str]:
         """Walk fragment tree and collect module names of all components."""
-        from collagraph.fragment import ComponentFragment
-
         modules: set[str] = set()
-        self._collect_used_modules_recursive(fragment, modules, ComponentFragment)
+        self._collect_used_modules_recursive(fragment, modules)
         return modules
 
     def _collect_used_modules_recursive(
-        self, fragment: Fragment, modules: set[str], component_fragment_cls: type
+        self, fragment: Fragment, modules: set[str]
     ) -> None:
         """Recursively collect module names from fragment tree.
 
@@ -736,35 +735,27 @@ class HotReloader:
         - ComponentFragment's rendered content (fragment.fragment)
         - ComponentFragment's slot contents (slot_contents)
         """
-        from collagraph.fragment import DynamicFragment
-
-        if isinstance(fragment, component_fragment_cls) and fragment.component:
+        if isinstance(fragment, ComponentFragment) and fragment.component:
             module_name = type(fragment.component).__module__
             modules.add(module_name)
 
         # Recurse into regular children
         for child in fragment.children:
-            self._collect_used_modules_recursive(child, modules, component_fragment_cls)
+            self._collect_used_modules_recursive(child, modules)
 
         # Handle DynamicFragment - it stores the actual rendered component
         # in _active_fragment, not in children
         if isinstance(fragment, DynamicFragment) and fragment._active_fragment:
-            self._collect_used_modules_recursive(
-                fragment._active_fragment, modules, component_fragment_cls
-            )
+            self._collect_used_modules_recursive(fragment._active_fragment, modules)
 
         # Handle ComponentFragment - traverse its rendered content and slot contents
-        if isinstance(fragment, component_fragment_cls):
+        if isinstance(fragment, ComponentFragment):
             # The component's rendered template
             if fragment.fragment:
-                self._collect_used_modules_recursive(
-                    fragment.fragment, modules, component_fragment_cls
-                )
+                self._collect_used_modules_recursive(fragment.fragment, modules)
             # Slot contents (children passed to the component)
             for slot_child in fragment.slot_contents:
-                self._collect_used_modules_recursive(
-                    slot_child, modules, component_fragment_cls
-                )
+                self._collect_used_modules_recursive(slot_child, modules)
 
     def _find_root_element(self, fragment: Fragment) -> Any:
         """
@@ -801,10 +792,8 @@ class HotReloader:
             ...
         }
         """
-        from collagraph.fragment import ComponentFragment
-
         state_tree: dict = {}
-        self._collect_state_recursive(fragment, state_tree, 0, ComponentFragment)
+        self._collect_state_recursive(fragment, state_tree, 0)
         return state_tree
 
     def _collect_state_recursive(
@@ -812,10 +801,9 @@ class HotReloader:
         fragment: Fragment,
         state_tree: dict,
         index: int,
-        component_fragment_cls: type,
     ) -> None:
         """Recursively collect state from fragment tree."""
-        if isinstance(fragment, component_fragment_cls) and fragment.component:
+        if isinstance(fragment, ComponentFragment) and fragment.component:
             component = fragment.component
             # Use 'key' prop if available, otherwise use position index
             key = component.props.get("key", index) if component.props else index
@@ -833,15 +821,11 @@ class HotReloader:
             # Collect children's state
             child_state = state_tree[identity]["children"]
             for i, child in enumerate(fragment.children):
-                self._collect_state_recursive(
-                    child, child_state, i, component_fragment_cls
-                )
+                self._collect_state_recursive(child, child_state, i)
         else:
             # Non-component fragment, just recurse into children
             for i, child in enumerate(fragment.children):
-                self._collect_state_recursive(
-                    child, state_tree, i, component_fragment_cls
-                )
+                self._collect_state_recursive(child, state_tree, i)
 
     def _restore_component_state(self, fragment: Fragment, state_tree: dict) -> int:
         """
@@ -849,21 +833,18 @@ class HotReloader:
 
         Returns the number of components that had state restored.
         """
-        from collagraph.fragment import ComponentFragment
-
-        return self._restore_state_recursive(fragment, state_tree, 0, ComponentFragment)
+        return self._restore_state_recursive(fragment, state_tree, 0)
 
     def _restore_state_recursive(
         self,
         fragment: Fragment,
         state_tree: dict,
         index: int,
-        component_fragment_cls: type,
     ) -> int:
         """Recursively restore state to fragment tree."""
         restored_count = 0
 
-        if isinstance(fragment, component_fragment_cls) and fragment.component:
+        if isinstance(fragment, ComponentFragment) and fragment.component:
             component = fragment.component
             # Use 'key' prop if available, otherwise use position index
             key = component.props.get("key", index) if component.props else index
@@ -878,7 +859,7 @@ class HotReloader:
                             component.state[state_key] = value
                             restored_count += 1
                         except Exception:
-                            logger.debug(
+                            logger.exception(
                                 "Failed to restore state key '%s' for %s",
                                 state_key,
                                 identity[0],
@@ -890,13 +871,11 @@ class HotReloader:
                 child_state = preserved.get("children", {})
                 for i, child in enumerate(fragment.children):
                     restored_count += self._restore_state_recursive(
-                        child, child_state, i, component_fragment_cls
+                        child, child_state, i
                     )
         else:
             # Non-component fragment, just recurse into children
             for i, child in enumerate(fragment.children):
-                restored_count += self._restore_state_recursive(
-                    child, state_tree, i, component_fragment_cls
-                )
+                restored_count += self._restore_state_recursive(child, state_tree, i)
 
         return restored_count
