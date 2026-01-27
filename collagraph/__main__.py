@@ -32,13 +32,6 @@ def init_collagraph(
     state: dict | None = None,
     hot_reload: bool = False,
 ):
-    # Configure logging for hot reload
-    if hot_reload:
-        logging.basicConfig(
-            level=logging.INFO,
-            format="[%(module)s] $(levelname)s %(message)s",
-        )
-
     file_as_module = ".".join([*component_path.parts[:-1], component_path.stem])
     component_module = importlib.import_module(file_as_module)
     component_class = component_module.__component_class
