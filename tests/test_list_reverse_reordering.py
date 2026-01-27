@@ -2,6 +2,7 @@
 
 from weakref import ref
 
+import pytest
 from observ import reactive
 
 from collagraph import Collagraph, EventLoopType
@@ -274,10 +275,166 @@ def test_partial_reordering(parse_source):
     assert items_container.children[2] is element_b
 
 
-def test_reverse_list_operations_tracking(parse_source):
+@pytest.mark.parametrize(
+    "before,after,expected_creates,expected_removes,expected_inserts,description",
+    [
+        # Simple reorderings
+        (
+            ["A", "B", "C"],
+            ["C", "B", "A"],
+            0,
+            2,
+            2,
+            "full reversal",
+        ),
+        (
+            ["A", "B", "C"],
+            ["C", "A", "B"],
+            0,
+            3,
+            3,
+            "rotate right",
+        ),
+        (
+            ["A", "B", "C"],
+            ["B", "C", "A"],
+            0,
+            3,
+            3,
+            "rotate left",
+        ),
+        (
+            ["A", "B", "C"],
+            ["B", "A", "C"],
+            0,
+            2,
+            2,
+            "swap first two",
+        ),
+        (
+            ["A", "B", "C"],
+            ["A", "C", "B"],
+            0,
+            2,
+            2,
+            "swap last two",
+        ),
+        (
+            ["A", "B", "C"],
+            ["A", "B", "C"],
+            0,
+            0,
+            0,
+            "no change",
+        ),
+        # Simple additions
+        (
+            ["A", "B", "C"],
+            ["A", "B", "C", "D"],
+            1,
+            0,
+            1,
+            "add at end",
+        ),
+        (
+            ["A", "B", "C"],
+            ["D", "A", "B", "C"],
+            1,
+            0,
+            1,
+            "add at start",
+        ),
+        (
+            ["A", "B", "C"],
+            ["A", "D", "B", "C"],
+            1,
+            0,
+            1,
+            "add in middle",
+        ),
+        # Simple removals
+        (
+            ["A", "B", "C"],
+            ["B", "C"],
+            0,
+            1,
+            0,
+            "remove first",
+        ),
+        (
+            ["A", "B", "C"],
+            ["A", "C"],
+            0,
+            1,
+            0,
+            "remove middle",
+        ),
+        (
+            ["A", "B", "C"],
+            ["A", "B"],
+            0,
+            1,
+            0,
+            "remove last",
+        ),
+        # Mixed operations
+        (
+            ["A", "B", "C"],
+            ["C", "B", "A", "D"],
+            1,
+            2,
+            3,
+            "reverse and add at end",
+        ),
+        (
+            ["A", "B", "C", "D"],
+            ["D", "B"],
+            0,
+            4,
+            2,
+            "remove two and reorder",
+        ),
+        (
+            ["A", "B", "C"],
+            ["D", "C", "B"],
+            1,
+            3,
+            3,
+            "add D and reverse (remove A)",
+        ),
+        (
+            ["A", "B", "C"],
+            ["C", "D", "A"],
+            1,
+            3,
+            3,
+            "remove B, add D, reorder",
+        ),
+        (
+            ["A", "B", "C", "D"],
+            ["E", "D", "F", "B"],
+            2,
+            4,
+            4,
+            "complex: remove A,C add E,F, reorder",
+        ),
+    ],
+)
+def test_list_operations_efficiency(
+    parse_source,
+    before,
+    after,
+    expected_creates,
+    expected_removes,
+    expected_inserts,
+    description,
+):
     """
-    Test that reversal operations are efficient and don't perform
-    unnecessary DOM operations.
+    Test that list reconciliation performs the expected number of
+    DOM operations for various reordering scenarios.
+
+    Tracks creates, removes, and inserts separately.
+    Inserts include both new elements and moved existing elements.
     """
     Items, _ = parse_source(
         """
@@ -296,7 +453,7 @@ def test_reverse_list_operations_tracking(parse_source):
 
     renderer = TrackingRenderer()
     container = CustomElement(type="root")
-    state = reactive({"items": ["A", "B", "C"]})
+    state = reactive({"items": before})
 
     gui = Collagraph(
         renderer=renderer,
@@ -309,18 +466,30 @@ def test_reverse_list_operations_tracking(parse_source):
     # Reset counters after initial render
     renderer.reset_counters()
 
-    # Reverse the list [A, B, C] -> [C, B, A]
-    state["items"] = ["C", "B", "A"]
+    # Apply the transformation
+    state["items"] = after
 
-    # Verify final DOM order is correct
-    assert items_container.children[0].content == "C"
-    assert items_container.children[1].content == "B"
-    assert items_container.children[2].content == "A"
+    # Verify final DOM order matches expected order
+    assert len(items_container.children) == len(after), description
+    for i, expected_item in enumerate(after):
+        assert items_container.children[i].content == expected_item, (
+            f"{description}: position {i} should have {expected_item}"
+        )
 
-    # Should not create new elements
-    assert renderer.create_count == 0, "Should reuse existing elements"
+    # Verify expected number of creates
+    assert renderer.create_count == expected_creates, (
+        f"{description}: expected {expected_creates} creates, "
+        f"got {renderer.create_count}"
+    )
 
-    # For a full reversal with 3 elements, we should need to move at most 2 elements
-    # (the middle element stays in place, conceptually)
-    assert renderer.insert_count == 2, "Should not insert more than N times"
-    assert renderer.remove_count == 2, "Should not remove more than N times"
+    # Verify expected number of inserts
+    assert renderer.insert_count == expected_inserts, (
+        f"{description}: expected {expected_inserts} inserts, "
+        f"got {renderer.insert_count}"
+    )
+
+    # Verify expected number of removes
+    assert renderer.remove_count == expected_removes, (
+        f"{description}: expected {expected_removes} removes, "
+        f"got {renderer.remove_count}"
+    )
