@@ -23,7 +23,8 @@ def insert(self, el: QTreeWidgetItem, anchor=None):
         else:
             self.addChild(el)
 
-        # After insertion, restore state that was saved during removal (for moves/reorders)
+        # After insertion, restore state that was
+        # saved during removal (for moves/reorders)
         if hasattr(el, "_saved_selected") or hasattr(el, "_saved_expanded"):
             if hasattr(el, "_saved_selected"):
                 el.setSelected(el._saved_selected)
