@@ -14,13 +14,43 @@ import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
+import colorlog
 from observ import to_raw
 
 if TYPE_CHECKING:
     from collagraph import Collagraph
     from collagraph.fragment import Fragment
 
-logger = logging.getLogger(__name__)
+
+def setup_logger():
+    root = logging.getLogger()
+    root_level = root.getEffectiveLevel()
+    """Return a logger with a default ColoredFormatter."""
+    formatter = colorlog.ColoredFormatter(
+        "%(log_color)s%(levelname)-8s%(reset)s [%(module)s] %(blue)s%(message)s",
+        datefmt=None,
+        reset=True,
+        log_colors={
+            "DEBUG": "cyan",
+            "INFO": "green",
+            "WARNING": "yellow",
+            "ERROR": "red",
+            "CRITICAL": "red,bg_white",
+        },
+        secondary_log_colors={},
+        style="%",
+    )
+
+    logger = logging.getLogger(__name__)
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(root_level)
+
+    return logger
+
+
+logger = setup_logger()
 
 
 class SharedFileWatcher:
@@ -169,11 +199,6 @@ class HotReloader:
         self._qt_signal_helper = None
         self._use_watchdog = use_watchdog
 
-        logging.basicConfig(
-            level=logging.INFO,
-            format="[%(module)s] %(levelname)s %(message)s",
-        )
-
         # Set up Qt signal helper for thread-safe reloading
         try:
             from PySide6.QtCore import QObject, Signal
@@ -205,7 +230,7 @@ class HotReloader:
                 self._on_file_changed,
             )
             for path in self._watched_modules.keys():
-                logger.info("Watching: %s", path)
+                logger.debug("Watching: %s", path)
 
     def stop(self) -> None:
         """Stop watching for file changes."""
