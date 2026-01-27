@@ -851,6 +851,17 @@ class ComponentFragment(Fragment):
         if not destroy:
             self._ref_name = temp_ref_name
             self._ref_is_dynamic = temp_ref_is_dynamic
+        else:
+            # Clear ComponentFragment-specific state for full destruction
+            # This ensures proper cleanup of any dangling items. Especially
+            # needed for hot-reload where the component is first destroyed
+            # and then remounted and needs to be fully recreated from scratch.
+            self.fragment = None
+            self.children.clear()
+            self.slot_contents.clear()
+            self.slots.clear()
+            self.component = None
+            self.props = None
 
 
 class SlotFragment(Fragment):

@@ -25,12 +25,14 @@ pyside = ["PySide6>=6.6.2,!=6.8.3,!=6.9.0 ; python_version < '3.15'"]
 
 [dependency-groups]
 dev = [
-    "rich",
-    "ruff",
+    "colorlog",
     "pre-commit",
     "pytest",
     "pytest-cov",
+    "rich",
+    "ruff",
     "twine",
+    "watchdog>=3.0.0",
 ]
 # When PySide6 is not installed, then pytest-qt will break the test suite.
 # But pytest-qt can't be marked as an optional dev dependency. So instead

@@ -471,6 +471,30 @@ class PySideRenderer(Renderer):
         except Exception:
             logger.exception(f"Error removing event listener '{event_type}' from {el}")
 
+    def save_element_state(self, el: Any) -> dict | None:
+        """Save window geometry for QWidget elements."""
+        if not isinstance(el, QtWidgets.QWidget):
+            return None
+
+        # Only save geometry for top-level windows
+        if not el.isWindow():
+            return None
+
+        return {
+            "geometry": bytes(el.saveGeometry()),
+            "window_state": el.windowState(),
+        }
+
+    def restore_element_state(self, el: Any, state: dict) -> None:
+        """Restore window geometry for QWidget elements."""
+        if not isinstance(el, QtWidgets.QWidget):
+            return
+
+        if "geometry" in state:
+            el.restoreGeometry(QtCore.QByteArray(state["geometry"]))
+        if "window_state" in state:
+            el.setWindowState(state["window_state"])
+
 
 def not_implemented(self, *args, **kwargs):
     """Default 'not implemented' error for wrapped types"""
