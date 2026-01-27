@@ -26,7 +26,10 @@ def available_renderers():
 
 
 def init_collagraph(
-    renderer_type: str, component_path: Path, state: dict | None = None
+    renderer_type: str,
+    component_path: Path,
+    state: dict | None = None,
+    hot_reload: bool = False,
 ):
     file_as_module = ".".join([*component_path.parts[:-1], component_path.stem])
     component_module = importlib.import_module(file_as_module)
@@ -35,9 +38,9 @@ def init_collagraph(
 
     if renderer_type == "pygfx":
         import pygfx as gfx
-        from wgpu.gui.auto import WgpuCanvas, run
+        from rendercanvas.auto import RenderCanvas, loop
 
-        canvas = WgpuCanvas(size=(600, 400))
+        canvas = RenderCanvas(size=(600, 400))
         wgpu_renderer = gfx.renderers.WgpuRenderer(canvas)
 
         camera = gfx.PerspectiveCamera(70)
@@ -54,15 +57,15 @@ def init_collagraph(
 
         renderer = cg.PygfxRenderer()
         renderer.add_on_change_handler(lambda: canvas.request_draw(animate))
-        gui = cg.Collagraph(renderer=renderer)
+        gui = cg.Collagraph(renderer=renderer, hot_reload=hot_reload)
         gui.render(component_class, container, state=props)
 
-        run()
+        loop.run()
     elif renderer_type == "pyside":
         from PySide6 import QtWidgets
 
         app = QtWidgets.QApplication()
-        gui = cg.Collagraph(renderer=cg.PySideRenderer())
+        gui = cg.Collagraph(renderer=cg.PySideRenderer(), hot_reload=hot_reload)
         gui.render(component_class, app, state=props)
         app.exec()
     elif renderer_type == "dict":
@@ -70,6 +73,7 @@ def init_collagraph(
         gui = cg.Collagraph(
             renderer=cg.DictRenderer(),
             event_loop_type=cg.EventLoopType.SYNC,
+            hot_reload=hot_reload,
         )
         gui.render(component_class, container, state=props)
         # Start debugger to allow for inspection of container
@@ -124,9 +128,15 @@ def run():
         type=existing_component_file,
         help="Path to component to render",
     )
+    parser.add_argument(
+        "--hot-reload",
+        "-H",
+        action="store_true",
+        help="Enable hot reloading (reload on file changes)",
+    )
     args = parser.parse_args()
 
-    init_collagraph(args.renderer, args.component, args.state)
+    init_collagraph(args.renderer, args.component, args.state, args.hot_reload)
 
 
 if __name__ == "__main__":

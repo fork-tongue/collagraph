@@ -1,4 +1,5 @@
 import textwrap
+from functools import partial
 
 import pytest
 from observ import reactive
@@ -40,7 +41,7 @@ def test_widget_as_window(qapp, qtbot):
     Widget, _ = load_from_string(
         textwrap.dedent(
             """
-        <widget />
+        <widget object-name="widget_as_window" />
 
         <script>
         import collagraph as cg
@@ -57,6 +58,7 @@ def test_widget_as_window(qapp, qtbot):
     def check_widget_as_window():
         windows = qapp.topLevelWidgets()
         assert len(windows) == 1
+        assert windows[0].objectName() == "widget_as_window"
 
     qtbot.waitUntil(check_widget_as_window, timeout=500)
 
@@ -112,3 +114,51 @@ def test_widget_switch_layouts(qapp, qtbot):
     qtbot.waitUntil(
         lambda: isinstance(widget.layout(), QtWidgets.QBoxLayout), timeout=500
     )
+
+
+def test_remove_from_form(qapp, qtbot):
+    Widget, _ = load_from_string(
+        textwrap.dedent(
+            """
+            <widget :layout="{'type': 'form'}">
+              <label
+                v-if="show"
+                :form_index="0"
+                :form_label="''"
+                text="Hello"
+                object-name="label"
+              />
+            </widget>
+
+            <script>
+            import collagraph as cg
+            class Widget(cg.Component):
+                pass
+            </script>
+        """
+        )
+    )
+
+    state = reactive({"show": True})
+    renderer = cg.PySideRenderer(autoshow=False)
+    gui = cg.Collagraph(renderer=renderer)
+    gui.render(Widget, qapp, state=state)
+
+    window = None
+
+    def check_widget():
+        nonlocal window
+        windows = qapp.topLevelWidgets()
+        assert len(windows) == 1
+        window = windows[0]
+
+    qtbot.waitUntil(check_widget, timeout=500)
+
+    def label_visible(visible: bool):
+        assert bool(window.findChild(QtWidgets.QLabel, "label")) is visible
+
+    qtbot.waitUntil(partial(label_visible, visible=True), timeout=500)
+
+    state["show"] = False
+
+    qtbot.waitUntil(partial(label_visible, visible=False), timeout=500)

@@ -1,11 +1,11 @@
 import pygfx as gfx
-from wgpu.gui.auto import WgpuCanvas, run
+from rendercanvas.auto import RenderCanvas, loop
 
 import collagraph as cg
 from examples.pygfx.numberpad import NumberPad
 
 if __name__ == "__main__":
-    canvas = WgpuCanvas(size=(600, 400))
+    canvas = RenderCanvas(size=(600, 400))
     renderer = gfx.renderers.WgpuRenderer(canvas)
 
     camera = gfx.PerspectiveCamera(60, 16 / 9)
@@ -29,4 +29,4 @@ if __name__ == "__main__":
     gui = cg.Collagraph(renderer=cg.PygfxRenderer())
     gui.renderer.add_on_change_handler(lambda: canvas.request_draw(animate))
     gui.render(NumberPad, container)
-    run()
+    loop.run()

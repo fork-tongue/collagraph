@@ -57,6 +57,9 @@ class Fragment:
         self._watchers: dict[str, Watcher] = {}
         # Conditional expression for whether the DOM element should be rendered
         self._condition: Callable | None = None
+        # Reference name or callable for template refs
+        self._ref_name: str | None = None
+        self._ref_is_dynamic: bool = False
 
         self._mounted = False
 
@@ -107,15 +110,15 @@ class Fragment:
 
     def first(self) -> Any | None:
         """
-        Returns the first DOM element (if any), from either itself, or its direct
-        decendants, in case of virtual fragments. Should not be deeper since an
-        anchor lives in the same depth in the tree.
+        Returns the first DOM element (if any), from either itself, or its
+        descendants. This recursively searches through children to find the
+        first actual DOM element.
         """
         if self.element:
             return self.element
         for child in self.children:
-            if child.element:
-                return child.element
+            if element := child.first():
+                return element
 
     def anchor(self) -> Any | None:
         """
@@ -124,18 +127,44 @@ class Fragment:
         """
         parent = self.parent
         assert parent is not None
-        idx = parent.children.index(self)
-        length = len(parent.children) - 1
-        while 0 <= idx < length:
-            idx += 1
-            if element := parent.children[idx].first():
-                return element
+
+        # Check if this fragment is in parent's children
+        if self in parent.children:
+            idx = parent.children.index(self)
+            length = len(parent.children) - 1
+            while 0 <= idx < length:
+                idx += 1
+                if element := parent.children[idx].first():
+                    return element
+        # Fragment might be slot content - check parent's slot_contents if it's
+        # a ComponentFragment
+        elif isinstance(parent, ComponentFragment) and self in parent.slot_contents:
+            idx = parent.slot_contents.index(self)
+            length = len(parent.slot_contents) - 1
+            while 0 <= idx < length:
+                idx += 1
+                if element := parent.slot_contents[idx].first():
+                    return element
+
+        # No sibling anchor found at this level. If the parent doesn't have
+        # its own element (e.g., ComponentFragment, ControlFlowFragment), climb
+        # up the tree to find an anchor from the parent's siblings.
+        if not parent.element and parent.parent:
+            return parent.anchor()
+
+        return None
 
     def set_attribute(self, attr: str, value: Any):
         """
         Set a static attribute. Note that it is not directly applied to
         the element, that will happen in the `create` call.
         """
+        # Handle ref attribute specially
+        if attr == "ref":
+            self._ref_name = value
+            self._ref_is_dynamic = False
+            return
+
         self._attributes[attr] = value
 
     def set_bind(self, attr: str, expression: Callable):
@@ -143,6 +172,12 @@ class Fragment:
         Set a bind (dynamic attribute) to the value of the expression.
         This will wait to be applied when `create` is called.
         """
+        # Handle dynamic ref binding specially
+        if attr == "ref":
+            self._ref_name = expression
+            self._ref_is_dynamic = True
+            return
+
         self._binds.append((attr, expression, True))
 
     def set_bind_dict(self, name: str, expression: Callable[[], dict[str, Any]]):
@@ -175,6 +210,52 @@ class Fragment:
         """
         self._events[event] = handler
 
+    def _register_ref(self, ref_value: Any):
+        """
+        Register a ref with the parent component.
+        Handles both string refs and callable (function) refs.
+        """
+        if not ref_value:
+            return
+
+        component = self._component_parent()
+        if not component:
+            return
+
+        # For ComponentFragment, register the component instance
+        if isinstance(self, ComponentFragment) and self.component:
+            target = self.component
+        else:
+            target = self.element
+
+        if not target:
+            return
+
+        # Function ref: call it with the element/component
+        if callable(ref_value):
+            ref_value(target)
+        # String ref: store in component.refs dict
+        elif isinstance(ref_value, str):
+            component._refs[ref_value] = target
+
+    def _unregister_ref(self, ref_value: Any):
+        """
+        Unregister a ref from the parent component.
+        """
+        if not ref_value:
+            return
+
+        component = self._component_parent()
+        if not component:
+            return
+
+        # Function ref: call it with None
+        if callable(ref_value):
+            ref_value(None)
+        # String ref: remove from component.refs dict
+        elif isinstance(ref_value, str) and ref_value in component._refs:
+            del component._refs[ref_value]
+
     def _watch_bind(self, attr, expression):
         """
         Install a watcher for a bound attribute with the given expression
@@ -196,17 +277,20 @@ class Fragment:
         def update(self, new: set[str], old: set[str] | None):
             if old is None:
                 old = set()
-            for attr in new - old:
-                self._watch_bind(
-                    attr,
-                    lambda attr=attr: expression()[attr],
-                )
+            if additional_attrs := new - old:
+                for attr in additional_attrs:
+                    self._watch_bind(
+                        attr,
+                        lambda attr=attr: expression()[attr],
+                    )
 
-            for attr in old - new:
-                if f"bind:{attr}" in self._watchers:
-                    del self._watchers[f"bind:{attr}"]
-                    # Perform cleanup
-                    self._rem_attr(attr)
+            if removed_attrs := old - new:
+                for attr in removed_attrs:
+                    if f"bind:{attr}" in self._watchers:
+                        unwatch = self._watchers.pop(f"bind:{attr}")
+                        unwatch()
+                        # Perform cleanup
+                        self._rem_attr(attr)
 
         self._watchers[f"bind_dict:{name}"] = watch(
             lambda: set(expression().keys()),
@@ -241,6 +325,26 @@ class Fragment:
             else:
                 self._watch_bind_dict(name, expression)
 
+        # Set up dynamic ref watcher if needed
+        if self._ref_is_dynamic and self._ref_name:
+
+            @weak(self)
+            def ref_update(self, new_ref_value, old_ref_value):
+                # Unregister old ref
+                if old_ref_value:
+                    self._unregister_ref(old_ref_value)
+                # Register new ref
+                if new_ref_value:
+                    self._register_ref(new_ref_value)
+
+            # Watch the ref expression
+            self._watchers["ref"] = watch(
+                self._ref_name,
+                ref_update,
+                immediate=True,
+                deep=False,
+            )
+
         # IDEA/TODO: for v-for, don't create instances direct, but
         # instead, create child fragments first, then call
         # create on those instead. Might involve some reparenting
@@ -256,7 +360,17 @@ class Fragment:
         if self.element:
             self.renderer.insert(self.element, parent=target, anchor=anchor)
         for child in self.children:
-            child.mount(self.element or target)
+            # For virtual elements, mount in target and use the
+            # anchor for the correct placement
+            if not self.element:
+                child.mount(target, anchor)
+            else:
+                child.mount(self.element)
+
+        # Register static ref after element is mounted
+        # (dynamic refs are handled by the watcher created in create())
+        if not self._ref_is_dynamic and self._ref_name:
+            self._register_ref(self._ref_name)
 
         self._mounted = True
 
@@ -282,6 +396,21 @@ class Fragment:
     def unmount(self, destroy=True):
         self._mounted = False
 
+        # Clean up ref before unmounting
+        # For dynamic refs with destroy=True, we need to unregister the current value
+        # For static refs, always unregister
+        if self._ref_name:
+            if self._ref_is_dynamic:
+                # For dynamic refs, get the current value and unregister it
+                # This handles function refs being called with None
+                if "ref" in self._watchers:
+                    current_value = self._watchers["ref"].value
+                    if current_value:
+                        self._unregister_ref(current_value)
+            else:
+                # Static refs - just unregister the name
+                self._unregister_ref(self._ref_name)
+
         for child in self.children:
             child.unmount(destroy=destroy)
 
@@ -294,19 +423,19 @@ class Fragment:
             self._events = {}
             # Disable the fn and callback of the watcher to disable
             # any 'false' triggers
-            for watcher in self._watchers.values():
-                watcher.fn = lambda: ()
-                watcher.callback = None
+            for unwatch in self._watchers.values():
+                unwatch()
             self._watchers = {}
             self._condition = None
             self.tag = None
+            self._ref_name = None
+            self._ref_is_dynamic = False
         else:
             self.element = None
             # Disable the fn and callback of the watcher to disable
             # any 'false' triggers
-            for watcher in self._watchers.values():
-                watcher.fn = lambda: ()
-                watcher.callback = None
+            for unwatch in self._watchers.values():
+                unwatch()
             self._watchers = {}
 
         # TODO: maybe control flow fragments needs another custom 'parenting'
@@ -325,6 +454,8 @@ class ControlFlowFragment(Fragment):
 
         @weak(self)
         def update_fragment(self, new: Fragment | None, old: Fragment | None):
+            if new is old:
+                return  # No need to remount, since it is the same fragment
             if old:
                 old.unmount(destroy=False)
             if new:
@@ -614,6 +745,26 @@ class ComponentFragment(Fragment):
         for event, handler in self._events.items():
             self.component.add_event_handler(event, handler)
 
+        # Set up dynamic ref watcher if needed (for component refs)
+        if self._ref_is_dynamic and self._ref_name:
+
+            @weak(self)
+            def ref_update(self, new_ref_value, old_ref_value):
+                # Unregister old ref
+                if old_ref_value:
+                    self._unregister_ref(old_ref_value)
+                # Register new ref
+                if new_ref_value:
+                    self._register_ref(new_ref_value)
+
+            # Watch the ref expression
+            self._watchers["ref"] = watch(
+                self._ref_name,
+                ref_update,
+                immediate=True,
+                deep=False,
+            )
+
     def mount(self, target: Any, anchor: Any | None = None):
         if self._mounted:
             return
@@ -643,6 +794,12 @@ class ComponentFragment(Fragment):
             except IndexError:
                 pass
 
+            # Register static component ref after component is mounted
+            # (dynamic refs are handled by the watcher created in create())
+            # Override base class behavior to register component instance
+            if not self._ref_is_dynamic and self._ref_name:
+                self._register_ref(self._ref_name)
+
             self.component.mounted()
 
         self._mounted = True
@@ -660,6 +817,19 @@ class ComponentFragment(Fragment):
         self.props = None
 
     def unmount(self, destroy=True):
+        # Clean up component ref before unmounting
+        # Handle both static and dynamic refs
+        if self._ref_name and self.component:
+            if self._ref_is_dynamic:
+                # For dynamic refs, get the current value and unregister it
+                if "ref" in self._watchers:
+                    current_value = self._watchers["ref"].value
+                    if current_value:
+                        self._unregister_ref(current_value)
+            else:
+                # Static refs - just unregister the name
+                self._unregister_ref(self._ref_name)
+
         if self.component:
             self.component.before_unmount()
 
@@ -667,7 +837,26 @@ class ComponentFragment(Fragment):
         for slot_content in self.slot_contents:
             slot_content.unmount(destroy=destroy)
 
+        # Set _ref_name to None before calling super to prevent double cleanup
+        temp_ref_name = self._ref_name
+        temp_ref_is_dynamic = self._ref_is_dynamic
+        self._ref_name = None
+        self._ref_is_dynamic = False
         super().unmount(destroy=destroy)
+        if not destroy:
+            self._ref_name = temp_ref_name
+            self._ref_is_dynamic = temp_ref_is_dynamic
+        else:
+            # Clear ComponentFragment-specific state for full destruction
+            # This ensures proper cleanup of any dangling items. Especially
+            # needed for hot-reload where the component is first destroyed
+            # and then remounted and needs to be fully recreated from scratch.
+            self.fragment = None
+            self.children.clear()
+            self.slot_contents.clear()
+            self.slots.clear()
+            self.component = None
+            self.props = None
 
 
 class SlotFragment(Fragment):
@@ -866,8 +1055,7 @@ class DynamicFragment(Fragment):
             self._attributes = {}
             self._events = {}
             if self._type_watcher:
-                self._type_watcher.fn = lambda: ()
-                self._type_watcher.callback = None
+                self._type_watcher()
                 self._type_watcher = None
             self._condition = None
             self._expression = None

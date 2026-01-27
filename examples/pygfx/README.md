@@ -31,5 +31,5 @@ uv run python examples/pygfx/combined-example.py
 ```
 Shows how to integrate a canvas drawn with Pygfx renderer into a PySide app.
 
-The `PySideRenderer` in `combined-example.py` registers the `WgpuCanvas` class so that the renderer knows which class to create for a `<wgpucanvas />` element.
+The `PySideRenderer` in `combined-example.py` registers the `RenderCanvas` class so that the renderer knows which class to create for a `<render-canvas />` element.
 The `render_widget.cgx` component instantiates a `PygfxRenderer` that renders the point cloud example into a `Scene` object. Note that the amount of points can now be adjusted with the buttons in PySide.

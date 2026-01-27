@@ -162,61 +162,76 @@ def set_attribute(self, attr, value):
     model = self.model()
     if model:
         model.blockSignals(True)
-
-    match attr:
-        case "model_index":
-            if model:
-                index = model.indexFromItem(self)
-                row, column = value
-                if index.row() != row or index.column() != column:
-                    if parent := self.parent():
-                        # `it` is `self`
-                        it = parent.takeChild(index.row(), index.column())
-                        parent.setChild(row, column, self)
-                    else:
-                        # `it` is `self`
-                        it = model.takeItem(index.row(), index.column())
-                        model.setItem(row, column, it)
-            else:
-                # Store as attribute for later use during insert
-                qobject_set_attribute(self, attr, value)
-        case "selected":
-            view = _get_view_from_item(self)
-            if not view:
-                # Item not in model yet, save for later
-                self._selected = value
-            else:
-                from PySide6.QtCore import QItemSelectionModel
-
-                selection_model = view.selectionModel()
-                index = model.indexFromItem(self)
-
-                if value:
-                    selection_model.select(
-                        index,
-                        QItemSelectionModel.SelectionFlag.Select
-                        | QItemSelectionModel.SelectionFlag.Rows,
-                    )
-                else:
-                    selection_model.select(
-                        index,
-                        QItemSelectionModel.SelectionFlag.Deselect
-                        | QItemSelectionModel.SelectionFlag.Rows,
-                    )
-        case "expanded":
-            view = _get_view_from_item(self)
-            if not view:
-                # Item not in model yet, save for later
-                self._expanded = value
-            else:
-                from PySide6.QtWidgets import QTreeView
-
-                if isinstance(view, QTreeView):
+    try:
+        match attr:
+            case "model_index":
+                if model:
                     index = model.indexFromItem(self)
-                    view.setExpanded(index, value)
-        case _:
-            qobject_set_attribute(self, attr, value)
+                    row, column = value
+                    if index.row() != row or index.column() != column:
+                        if parent := self.parent():
+                            # `it` is `self`
+                            it = parent.takeChild(index.row(), index.column())
+                            parent.setChild(row, column, self)
+                        else:
+                            # `it` is `self`
+                            it = model.takeItem(index.row(), index.column())
+                            model.setItem(row, column, it)
+                else:
+                    # Store as attribute for later use during insert
+                    qobject_set_attribute(self, attr, value)
+            case "selected":
+                view = _get_view_from_item(self)
+                if not view:
+                    # Item not in model yet, save for later
+                    self._selected = value
+                else:
+                    from PySide6.QtCore import QItemSelectionModel
 
-    # And don't forget to enable signals when done
-    if model:
-        model.blockSignals(False)
+                    selection_model = view.selectionModel()
+                    index = model.indexFromItem(self)
+
+                    if value:
+                        selection_model.select(
+                            index,
+                            QItemSelectionModel.SelectionFlag.Select
+                            | QItemSelectionModel.SelectionFlag.Rows,
+                        )
+                    else:
+                        selection_model.select(
+                            index,
+                            QItemSelectionModel.SelectionFlag.Deselect
+                            | QItemSelectionModel.SelectionFlag.Rows,
+                        )
+            case "expanded":
+                view = _get_view_from_item(self)
+                if not view:
+                    # Item not in model yet, save for later
+                    self._expanded = value
+                else:
+                    from PySide6.QtWidgets import QTreeView
+
+                    if isinstance(view, QTreeView):
+                        index = model.indexFromItem(self)
+                        view.setExpanded(index, value)
+            case _:
+                qobject_set_attribute(self, attr, value)
+
+        if attr == "model_index" and model:
+            index = model.indexFromItem(self)
+            row, column = value
+            if index.row() != row or index.column() != column:
+                if parent := self.parent():
+                    # `it` is `self`
+                    it = parent.takeChild(index.row(), index.column())
+                    parent.setChild(row, column, self)
+                else:
+                    # `it` is `self`
+                    it = model.takeItem(index.row(), index.column())
+                    model.setItem(row, column, it)
+
+        qobject_set_attribute(self, attr, value)
+    finally:
+        # And don't forget to enable signals when done
+        if model:
+            model.blockSignals(False)

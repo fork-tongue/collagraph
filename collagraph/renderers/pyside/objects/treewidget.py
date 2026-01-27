@@ -10,11 +10,21 @@ def insert(self, el: QTreeWidgetItem, anchor=None):
     if not isinstance(el, QTreeWidgetItem):
         raise NotImplementedError(f"No insert defined for: {type(el).__name__}")
 
-    root = self.invisibleRootItem()
-    item_insert(root, el, anchor)
+    self.blockSignals(True)
+
+    try:
+        root = self.invisibleRootItem()
+        item_insert(root, el, anchor)
+    finally:
+        self.blockSignals(False)
 
 
 @PySideRenderer.register_remove(QTreeWidget)
 def remove(self, el: QTreeWidgetItem):
-    root = self.invisibleRootItem()
-    item_remove(root, el)
+    self.blockSignals(True)
+
+    try:
+        root = self.invisibleRootItem()
+        item_remove(root, el)
+    finally:
+        self.blockSignals(False)

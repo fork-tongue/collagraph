@@ -5,7 +5,7 @@ from observ import reactive
 
 pytest.importorskip("PySide6")
 
-from PySide6 import QtWidgets
+from PySide6 import QtGui, QtWidgets
 
 import collagraph as cg
 
@@ -203,3 +203,72 @@ def test_qstandarditem_change_item_no_trigger(qtbot, parse_source):
     item_index = model.index(0, 0)
     model.setItemData(item_index, {0: "e"})
     assert Tree.changed == 1
+
+
+ACTION = """
+<window>
+  <menubar>
+    <menu title="Menu">
+      <action
+        :text="text"
+        object_name="test_action"
+        @changed="on_changed"
+      />
+    </menu>
+  </menubar>
+  <widget />
+</window>
+
+<script>
+import collagraph as cg
+
+class Action(cg.Component):
+    changed = 0
+
+    def on_changed(self):
+        Action.changed += 1
+</script>
+"""
+
+
+def test_qaction_change_no_trigger(qapp, qtbot, parse_source):
+    """
+    When a QAction's attribute is updated by the renderer,
+    it should not trigger the `changed` signal.
+    """
+    Action, _ = parse_source(ACTION)
+    state = reactive({"text": "initial"})
+
+    renderer = cg.PySideRenderer(autoshow=False)
+    gui = cg.Collagraph(renderer=renderer)
+    gui.render(Action, qapp, state=state)
+    assert Action.changed == 0
+
+    def action_found(text):
+        windows = [
+            widget
+            for widget in qapp.topLevelWidgets()
+            if isinstance(widget, QtWidgets.QMainWindow)
+        ]
+        assert len(windows) == 1
+        action = windows[0].findChild(QtGui.QAction, "test_action")
+        assert action and action.text() == text
+
+    qtbot.waitUntil(partial(action_found, "initial"), timeout=500)
+    assert Action.changed == 0
+
+    # Change the text via reactive state - this should NOT trigger the signal
+    state["text"] = "updated"
+
+    qtbot.waitUntil(partial(action_found, "updated"), timeout=500)
+    assert Action.changed == 0
+
+    # Directly change the action's text - this SHOULD trigger the signal
+    windows = [
+        widget
+        for widget in qapp.topLevelWidgets()
+        if isinstance(widget, QtWidgets.QMainWindow)
+    ]
+    action = windows[0].findChild(QtGui.QAction, "test_action")
+    action.setText("manual")
+    assert Action.changed == 1
