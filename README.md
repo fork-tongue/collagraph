@@ -103,14 +103,12 @@ uv run pre-commit install
 ```
 
 
-### Syntax Highlighting
+### Editor Integration
 
-Syntax highlighting for single-file components (`.cgx`) is supported for VSCode and Sublime Text:
+Syntax highlighting, linting and formatting for single-file components (`.cgx`) is supported for Zed, VSCode and Sublime Text:
 
-* [CGX syntax highlight for Sublime Text](https://github.com/fork-tongue/cgx-syntax-highlight-sublime)
-* [CGX syntax highlight for VSCode](https://github.com/fork-tongue/cgx-syntax-highlight-vscode)
+* [Collagraph-lsp plugin for Zed](https://github.com/fork-tongue/collagraph-lsp-zed)
+* [Collagraph-lsp plugin for Sublime Text](https://github.com/fork-tongue/collagraph-lsp-sublime)
+* [Collagraph-lsp plugin for VSCode](https://github.com/fork-tongue/collagraph-lsp-vscode)
 
-
-### Formatting and linting
-
-Linting and formatting cgx files is possible with: [ruff-cgx](https://github.com/fork-tongue/ruff-cgx).
+These plugins use [collagraph-lsp](https://github.com/fork-tongue/collagraph-lsp) for editor integration and [ruff-cgx](https://github.com/fork-tongue/ruff-cgx) for formatting and linting capabilities.
