@@ -572,11 +572,15 @@ class ListFragment(Fragment):
 
                 # Keys that are no longer present - unmount them
                 removed_keys = old_key_set - new_key_set
+                removed_fragments = set()
                 for key in removed_keys:
                     fragment = self.key_to_fragment.pop(key)
-                    # Remove from children list
-                    self.children.remove(fragment)
                     fragment.unmount()
+                    removed_fragments.add(fragment)
+
+                # Remove unmounted fragments from self.children
+                # so position checks work correctly
+                self.children = [f for f in self.children if f not in removed_fragments]
 
                 # Build new children array in the correct order
                 new_children = []
@@ -598,7 +602,8 @@ class ListFragment(Fragment):
 
                 # Now we need to reorder/mount the DOM elements to match new_children
                 # We process from the end to the beginning to avoid interference
-                # from previous moves
+                # from previous moves.
+
                 for i in range(len(new_children) - 1, -1, -1):
                     fragment = new_children[i]
 
@@ -616,40 +621,30 @@ class ListFragment(Fragment):
                     if not fragment._mounted:
                         # Mount new fragment at the correct position
                         fragment.mount(target, anchor=anchor)
-                    else:
-                        # Fragment is already mounted, move it in the DOM if needed
-                        if fragment.element:
-                            # Check if it's already in the correct position
-                            # Get the actual next sibling in the current DOM
-                            current_next = self._get_next_sibling(
-                                fragment.element, target
+                    elif fragment.element:
+                        # Fragment is already mounted, check if it needs to be moved
+                        # Count how many mounted fragments should come before this one
+                        expected_prev_count = sum(
+                            1 for f in new_children[:i] if f._mounted
+                        )
+
+                        # Find current position among mounted fragments
+                        current_pos = self.children.index(fragment)
+
+                        # Check if fragment is already at correct position relative
+                        # to other mounted fragments
+                        if current_pos != expected_prev_count:
+                            # Fragment needs to be moved in the DOM
+                            # Remove from current position
+                            self.renderer.remove(fragment.element, target)
+                            # Insert at new position
+                            self.renderer.insert(
+                                fragment.element, parent=target, anchor=anchor
                             )
 
-                            # Only move if not already in correct position
-                            if current_next != anchor:
-                                # Remove from current position
-                                # (but keep element reference)
-                                # and insert at new position
-                                self.renderer.remove(fragment.element, target)
-                                self.renderer.insert(
-                                    fragment.element, parent=target, anchor=anchor
-                                )
-
-                # Update children list
+                # Update children list to match new_children
+                # This removes any unmounted fragments and ensures correct order
                 self.children = new_children
-
-            def _get_next_sibling(element, parent):
-                """Get the next sibling element in the parent's children list"""
-                try:
-                    idx = parent.children.index(element)
-                    if idx + 1 < len(parent.children):
-                        return parent.children[idx + 1]
-                    return None
-                except (ValueError, AttributeError):
-                    return None
-
-            # Bind the helper function to self
-            self._get_next_sibling = _get_next_sibling
 
             # Watch for changes
             self._watchers["list"] = watch_effect(update_children_keyed)
