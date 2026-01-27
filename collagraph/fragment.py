@@ -572,11 +572,15 @@ class ListFragment(Fragment):
 
                 # Keys that are no longer present - unmount them
                 removed_keys = old_key_set - new_key_set
+                removed_fragments = set()
                 for key in removed_keys:
                     fragment = self.key_to_fragment.pop(key)
-                    # Remove from children list
-                    self.children.remove(fragment)
                     fragment.unmount()
+                    removed_fragments.add(fragment)
+
+                # Create a filtered snapshot of the old children order
+                # (excluding removed fragments) for position comparisons
+                old_children = [f for f in self.children if f not in removed_fragments]
 
                 # Build new children array in the correct order
                 new_children = []
@@ -596,9 +600,22 @@ class ListFragment(Fragment):
                         self.key_to_fragment[key] = fragment
                         new_children.append(fragment)
 
-                # Now we need to reorder/mount the DOM elements to match new_children
-                # We process from the end to the beginning to avoid interference
-                # from previous moves
+                # Reconciliation strategy: Process new_children from end to
+                # start using anchors. Three different orderings in play:
+                # - old_children: The OLD order (filtered snapshot)
+                # - new_children: The desired NEW order
+                # - DOM state: Updated incrementally as we process each fragment
+                #
+                # We process backwards (end to beginning) so that anchors
+                # (elements to the right) are already in their final
+                # positions when we use them as insertion points.
+                #
+                # Example: [A, B, C] -> [C, B, A]
+                # Processing backwards (i=2,1,0):
+                #   i=2: A - anchor=None, old_pos=0, expected_pos=2 -> move to end
+                #   i=1: B - anchor=A, old_pos=1, expected_pos=1 -> no move needed
+                #   i=0: C - anchor=B, old_pos=1, expected_pos=0 -> move before B
+
                 for i in range(len(new_children) - 1, -1, -1):
                     fragment = new_children[i]
 
@@ -616,40 +633,28 @@ class ListFragment(Fragment):
                     if not fragment._mounted:
                         # Mount new fragment at the correct position
                         fragment.mount(target, anchor=anchor)
-                    else:
-                        # Fragment is already mounted, move it in the DOM if needed
-                        if fragment.element:
-                            # Check if it's already in the correct position
-                            # Get the actual next sibling in the current DOM
-                            current_next = self._get_next_sibling(
-                                fragment.element, target
+                    elif fragment.element:
+                        # Fragment is already mounted, check if it needs to be moved
+                        # Check if fragment is already at correct position relative
+                        # to other mounted fragments:
+                        # - expected_pos: position in NEW order (mounted only)
+                        # - old_pos: position in OLD order (from filtered snapshot)
+                        # Only move if these differ
+                        expected_pos = sum(1 for f in new_children[:i] if f._mounted)
+                        old_pos = old_children.index(fragment)
+
+                        if old_pos != expected_pos:
+                            # Fragment needs to be moved in the DOM
+                            # Remove from current position
+                            self.renderer.remove(fragment.element, target)
+                            # Insert at new position
+                            self.renderer.insert(
+                                fragment.element, parent=target, anchor=anchor
                             )
 
-                            # Only move if not already in correct position
-                            if current_next != anchor:
-                                # Remove from current position
-                                # (but keep element reference)
-                                # and insert at new position
-                                self.renderer.remove(fragment.element, target)
-                                self.renderer.insert(
-                                    fragment.element, parent=target, anchor=anchor
-                                )
-
-                # Update children list
+                # Update children list to match new_children
+                # This removes any unmounted fragments and ensures correct order
                 self.children = new_children
-
-            def _get_next_sibling(element, parent):
-                """Get the next sibling element in the parent's children list"""
-                try:
-                    idx = parent.children.index(element)
-                    if idx + 1 < len(parent.children):
-                        return parent.children[idx + 1]
-                    return None
-                except (ValueError, AttributeError):
-                    return None
-
-            # Bind the helper function to self
-            self._get_next_sibling = _get_next_sibling
 
             # Watch for changes
             self._watchers["list"] = watch_effect(update_children_keyed)
