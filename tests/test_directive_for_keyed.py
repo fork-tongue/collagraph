@@ -514,8 +514,16 @@ def test_keyed_components_preserve_state(parse_source):
     counter_b.increment()
     assert counter_b.state["count"] == 1
 
-    # Counter C stays at 0
-    assert counter_c.state["count"] == 0
+    # Increment counter C twice
+    counter_c.increment()
+    counter_c.increment()
+    assert counter_c.state["count"] == 2
+
+    assert [child.text for child in container.children[0].children] == [
+        "A: 3",
+        "B: 1",
+        "C: 2",
+    ]
 
     # Now reorder the items: C, A, B
     state["items"] = [
@@ -539,9 +547,14 @@ def test_keyed_components_preserve_state(parse_source):
     assert counter_fragments[2].component is counter_b
     assert counter_b.state["count"] == 1
 
-    # The component with id=3 (C) should still have count=0
+    # The component with id=3 (C) should still have count=2
     assert counter_fragments[0].component is counter_c
-    assert counter_c.state["count"] == 0
+    assert counter_c.state["count"] == 2
+    assert [child.text for child in container.children[0].children] == [
+        "C: 2",
+        "A: 3",
+        "B: 1",
+    ]
 
 
 def test_duplicate_keys_behavior(parse_source):
