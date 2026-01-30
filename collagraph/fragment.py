@@ -605,7 +605,6 @@ class ListFragment(Fragment):
                         self.key_to_fragment[key] = fragment
                         new_children.append(fragment)
 
-                # Optimization: Use LIS to find elements that don't need moving
                 # Map reused fragments to their old positions, skip new ones
                 old_positions = []
                 reused_indices = []
@@ -615,6 +614,11 @@ class ListFragment(Fragment):
                         reused_indices.append(i)
 
                 # Find LIS - these fragments are already in correct order
+                # Example: [A, B, C] -> [C, A, B]
+                # Old positions: {A:0, B:1, C:2}
+                # Map to old positions: [2, 0, 1]
+                # LIS: [0, 1] (A, B already in order)
+                # Only move C
                 lis_indices = longest_increasing_subsequence(old_positions)
                 # Convert LIS result to set of new_children indices
                 dont_move = {reused_indices[i] for i in lis_indices}
@@ -628,16 +632,6 @@ class ListFragment(Fragment):
                 # We process backwards (end to beginning) so that anchors
                 # (elements to the right) are already in their final
                 # positions when we use them as insertion points.
-                #
-                # Optimization: Use LIS to identify elements already in correct
-                # relative order - these don't need to move.
-                #
-                # Example: [A, B, C] -> [C, A, B]
-                # Old positions: {A:0, B:1, C:2}
-                # Map to old positions: [2, 0, 1]
-                # LIS: [0, 1] (A, B already in order)
-                # Only move C
-
                 for i in range(len(new_children) - 1, -1, -1):
                     fragment = new_children[i]
 
