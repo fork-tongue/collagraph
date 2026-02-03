@@ -60,7 +60,10 @@ class PygfxRenderer(Renderer):
         parent: gfx.WorldObject,
         anchor: gfx.WorldObject = None,
     ):
-        parent.add(el, before=anchor)
+        try:
+            parent.add(el, before=anchor)
+        except ValueError:
+            parent.add(el)
         self._trigger()
 
     def remove(self, el: gfx.WorldObject, parent: gfx.WorldObject):
