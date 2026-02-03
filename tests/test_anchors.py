@@ -520,7 +520,12 @@ def test_anchor_ordering_deeply_nested_components(parse_source):
     assert get_child_names() == ["first", "second", "third"]
 
 
-def test_anchor_issue(parse_source):
+def test_anchor_finding_issue(parse_source):
+    """
+    The Fragment:anchor method would travel too high up the tree
+    and find anchors that were not in the current level of the tree
+    resulting in a `ValueError: list.index(x): x not in list`
+    """
     _, namespace = parse_source(
         """
         <foo v-if="True" :name="name">
@@ -625,8 +630,16 @@ def test_anchor_issue(parse_source):
     assert len(container["children"]) == 2
 
     # Now add a child item to the first item.
-    # This produces the following error
+    # This produced the following error
     # ValueError: list.index(x): x not in list
-    # It is now passing the second foo item from the root as the anchor
-    # which is not correct!
+    # It was passing the second foo item from the root list
+    # as the anchor, which couldn't be found and raised the ValueError
     state["items"][0]["children"] = [{"obj_type": "bar", "name": "bar-1"}]
+
+    assert len(container["children"]) == 2
+    assert container["children"][0]["attrs"]["name"] == "foo-1"
+    assert container["children"][1]["attrs"]["name"] == "foo-2"
+
+    assert len(container["children"][0]["children"]) == 1
+    assert container["children"][0]["children"][0]["type"] == "bar"
+    assert container["children"][0]["children"][0]["attrs"]["name"] == "bar-1"
