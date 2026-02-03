@@ -140,6 +140,20 @@ class Fragment:
         """
         return self.template_children
 
+    def iter_all_children(self) -> Iterable[Fragment]:
+        """
+        Yield ALL children for tree traversal (template + runtime-generated).
+
+        Used by hot reload and other code that needs to traverse the complete
+        fragment tree. Unlike render_children(), this includes:
+        - All template_children (even inactive branches)
+        - Runtime-generated fragments (ListFragment, DynamicFragment)
+        - ComponentFragment's rendered_fragment and slot_content
+
+        Subclasses override to include their specific child collections.
+        """
+        yield from self.template_children
+
     def first(self) -> Any | None:
         """
         Returns the first DOM element (if any), from either itself, or its
@@ -558,6 +572,11 @@ class ListFragment(Fragment):
         """Return generated fragments for current list items."""
         return self._generated_fragments
 
+    def iter_all_children(self) -> Iterable[Fragment]:
+        """Yield template children (factory) and all generated fragments."""
+        yield from self.template_children
+        yield from self._generated_fragments
+
     def set_create_fragment(
         self,
         create_fragment: Callable[[], Fragment],
@@ -801,6 +820,14 @@ class ComponentFragment(Fragment):
             yield self.rendered_fragment
         else:
             yield from self.template_children
+
+    def iter_all_children(self) -> Iterable[Fragment]:
+        """Yield all children: template, rendered, and slot content."""
+        yield from self.template_children
+        if self.rendered_fragment:
+            yield self.rendered_fragment
+        for slot_fragments in self.slot_content.values():
+            yield from slot_fragments
 
     def first(self) -> Any | None:
         """Return the first element from the rendered component fragment."""
@@ -1067,6 +1094,12 @@ class DynamicFragment(Fragment):
 
     def render_children(self) -> Iterable[Fragment]:
         """Return the active fragment."""
+        if self._active_fragment:
+            yield self._active_fragment
+
+    def iter_all_children(self) -> Iterable[Fragment]:
+        """Yield template children and active fragment."""
+        yield from self.template_children
         if self._active_fragment:
             yield self._active_fragment
 
