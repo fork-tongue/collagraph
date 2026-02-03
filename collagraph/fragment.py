@@ -149,7 +149,16 @@ class Fragment:
         # No sibling anchor found at this level. If the parent doesn't have
         # its own element (e.g., ComponentFragment, ControlFlowFragment), climb
         # up the tree to find an anchor from the parent's siblings.
+        # However, don't climb past a fragment whose rendered elements include
+        # our mount target, as anchors beyond that belong to a different subtree.
+        # This can happen when slot content is mounted into a component's elements.
         if not parent.element and parent.parent:
+            # Check if we would climb past our mount target
+            if target := self.target:
+                # Check if this parent's element subtree contains our target
+                # For ComponentFragment, first() returns the rendered element
+                if parent.first() is target:
+                    return None
             return parent.anchor()
 
         return None
