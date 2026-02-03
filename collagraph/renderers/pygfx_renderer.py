@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Callable
 
 import pygfx as gfx
@@ -63,6 +64,7 @@ class PygfxRenderer(Renderer):
         try:
             parent.add(el, before=anchor)
         except ValueError:
+            warnings.warn(f"Could not find anchor in {parent}")
             parent.add(el)
         self._trigger()
 
