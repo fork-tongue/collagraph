@@ -1024,8 +1024,8 @@ class SlotFragment(Fragment):
 
         # Walk up to find the root ComponentFragment (render wrapper)
         parent = self.parent
-        while parent.parent:
-            parent = parent.parent
+        while par := parent.parent:
+            parent = par
 
         assert isinstance(parent, ComponentFragment)
         assert parent.tag is None
