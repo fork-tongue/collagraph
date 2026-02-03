@@ -1,4 +1,5 @@
-from typing import Callable
+import warnings
+from typing import Any, Callable
 
 import pygfx as gfx
 
@@ -58,9 +59,13 @@ class PygfxRenderer(Renderer):
         self,
         el: gfx.WorldObject,
         parent: gfx.WorldObject,
-        anchor: gfx.WorldObject = None,
+        anchor: gfx.WorldObject | None = None,
     ):
-        parent.add(el, before=anchor)
+        try:
+            parent.add(el, before=anchor)
+        except ValueError:
+            warnings.warn(f"Could not find anchor in {parent}")
+            parent.add(el)
         self._trigger()
 
     def remove(self, el: gfx.WorldObject, parent: gfx.WorldObject):
@@ -70,34 +75,34 @@ class PygfxRenderer(Renderer):
     def set_element_text(self, el, value: str):
         raise NotImplementedError
 
-    def set_attribute(self, obj, attr, value):
-        key = f"{type(obj).__name__}.{attr}"
+    def set_attribute(self, el: gfx.WorldObject, attr: str, value: Any):
+        key = f"{type(el).__name__}.{attr}"
 
         # Split the given attr on dots to allow for
         # local.position for instance to be set
         *attrs, attr = attr.split(".")
         for attribute in attrs:
-            obj = getattr(obj, attribute)
+            el = getattr(el, attribute)
 
         if key not in DEFAULT_ATTR_CACHE:
-            if hasattr(obj, attr):
-                default_value = getattr(obj, attr)
+            if hasattr(el, attr):
+                default_value = getattr(el, attr)
                 if hasattr(default_value, "copy"):
                     DEFAULT_ATTR_CACHE[key] = default_value.copy()
                 else:
                     DEFAULT_ATTR_CACHE[key] = default_value
 
-        setattr(obj, attr, value)
+        setattr(el, attr, value)
         self._trigger()
 
-    def remove_attribute(self, obj, attr, value):
-        key = f"{type(obj).__name__}.{attr}"
+    def remove_attribute(self, el: gfx.WorldObject, attr: str, value: Any):
+        key = f"{type(el).__name__}.{attr}"
 
         # Split the given attr on dots to allow for
         # local.position for instance to be set
         *attrs, attr = attr.split(".")
         for attribute in attrs:
-            obj = getattr(obj, attribute)
+            el = getattr(el, attribute)
 
         if key in DEFAULT_ATTR_CACHE:
             default_value = DEFAULT_ATTR_CACHE[key]
@@ -105,9 +110,9 @@ class PygfxRenderer(Renderer):
                 val = default_value.copy()
             else:
                 val = default_value
-            setattr(obj, attr, val)
+            setattr(el, attr, val)
         else:
-            delattr(obj, attr)
+            delattr(el, attr)
         self._trigger()
 
     def add_event_listener(self, el, event_type, value):
