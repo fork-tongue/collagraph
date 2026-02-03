@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from collagraph import Collagraph
     from collagraph.fragment import Fragment
 
-from collagraph.fragment import ComponentFragment, DynamicFragment
+from collagraph.fragment import ComponentFragment, DynamicFragment, ListFragment
 
 DEBOUNCE_DELAY = 0.1
 
@@ -574,35 +574,43 @@ class HotReloader:
         Recursively find affected fragments.
 
         Traverses the full fragment tree including:
-        - Regular children (fragment.children)
+        - Template children (fragment.template_children)
         - DynamicFragment's active fragment (_active_fragment)
-        - ComponentFragment's rendered content (fragment.fragment)
-        - ComponentFragment's slot contents (slot_contents)
+        - ComponentFragment's rendered content (rendered_fragment)
+        - ComponentFragment's slot content (slot_content dict)
 
         Returns True if this fragment or any descendant is affected.
         """
 
-        # Recurse into regular children
-        for child in fragment.children:
+        # Recurse into template children
+        for child in fragment.template_children:
             self._find_affected_recursive(child, changed_modules, affected)
 
         # Handle DynamicFragment - it stores the actual rendered component
-        # in _active_fragment, not in children
+        # in _active_fragment, not in template_children
         if isinstance(fragment, DynamicFragment) and fragment._active_fragment:
             self._find_affected_recursive(
                 fragment._active_fragment, changed_modules, affected
             )
 
-        # Handle ComponentFragment - traverse its rendered content and slot contents
+        # Handle ListFragment - it stores generated fragments in _generated_fragments
+        if isinstance(fragment, ListFragment):
+            for generated_child in fragment._generated_fragments:
+                self._find_affected_recursive(
+                    generated_child, changed_modules, affected
+                )
+
+        # Handle ComponentFragment - traverse its rendered content and slot content
         if isinstance(fragment, ComponentFragment):
             # The component's rendered template
-            if fragment.fragment:
+            if fragment.rendered_fragment:
                 self._find_affected_recursive(
-                    fragment.fragment, changed_modules, affected
+                    fragment.rendered_fragment, changed_modules, affected
                 )
-            # Slot contents (children passed to the component)
-            for slot_child in fragment.slot_contents:
-                self._find_affected_recursive(slot_child, changed_modules, affected)
+            # Slot content (children passed to the component)
+            for slot_fragments in fragment.slot_content.values():
+                for slot_child in slot_fragments:
+                    self._find_affected_recursive(slot_child, changed_modules, affected)
 
         # Check if this fragment itself is affected
         if isinstance(fragment, ComponentFragment) and fragment.component:
@@ -617,9 +625,9 @@ class HotReloader:
         """Remount a single ComponentFragment with updated component class.
 
         Handles fragments in various locations:
-        - Regular children (parent.children)
+        - Template children (parent.template_children)
         - DynamicFragment's active fragment (parent._active_fragment)
-        - ComponentFragment's rendered content (parent.fragment)
+        - ComponentFragment's rendered content (parent.rendered_fragment)
         """
         if not isinstance(fragment, ComponentFragment) or not fragment.component:
             return
@@ -648,30 +656,38 @@ class HotReloader:
 
         # Find anchor element (first element in next sibling) for correct positioning
         # Need to handle different parent types:
-        # - DynamicFragment: fragment is in _active_fragment, not children
-        # - ComponentFragment: fragment might be in .fragment attribute or slot_contents
-        # - Regular Fragment: fragment is in children
+        # - DynamicFragment: fragment is in _active_fragment, not template_children
+        # - ComponentFragment: fragment might be in .rendered_fragment or slot_content
+        # - ListFragment: fragment might be in _generated_fragments
+        # - Regular Fragment: fragment is in template_children
         anchor = None
         if parent:
-            # Check if fragment is in parent.children
-            if fragment in parent.children:
-                idx = parent.children.index(fragment)
-                if idx + 1 < len(parent.children):
+            # Check if fragment is in parent.template_children
+            if fragment in parent.template_children:
+                idx = parent.template_children.index(fragment)
+                if idx + 1 < len(parent.template_children):
                     # Get the first element from the next sibling's subtree
-                    anchor = self._find_root_element(parent.children[idx + 1])
-            # Check if fragment is in parent.slot_contents (for ComponentFragment)
-            elif (
-                isinstance(parent, ComponentFragment)
-                and hasattr(parent, "slot_contents")
-                and fragment in parent.slot_contents
-            ):
-                idx = parent.slot_contents.index(fragment)
-                if idx + 1 < len(parent.slot_contents):
-                    # Get the first element from the next slot sibling's subtree
-                    anchor = self._find_root_element(parent.slot_contents[idx + 1])
-            # For DynamicFragment._active_fragment or ComponentFragment.fragment,
-            # we use the fragment's own anchor() method after unmounting
-            # (anchor will remain None, which is fine - it means append at end)
+                    anchor = self._find_root_element(parent.template_children[idx + 1])
+            # Check if fragment is in parent._generated_fragments (for ListFragment)
+            elif isinstance(parent, ListFragment):
+                if fragment in parent._generated_fragments:
+                    idx = parent._generated_fragments.index(fragment)
+                    if idx + 1 < len(parent._generated_fragments):
+                        anchor = self._find_root_element(
+                            parent._generated_fragments[idx + 1]
+                        )
+            # Check if fragment is in parent.slot_content (for ComponentFragment)
+            elif isinstance(parent, ComponentFragment):
+                for slot_fragments in parent.slot_content.values():
+                    if fragment in slot_fragments:
+                        idx = slot_fragments.index(fragment)
+                        if idx + 1 < len(slot_fragments):
+                            # Get the first element from the next slot sibling's subtree
+                            anchor = self._find_root_element(slot_fragments[idx + 1])
+                        break
+            # For DynamicFragment._active_fragment or ComponentFragment's
+            # rendered_fragment, we use the fragment's own anchor() method
+            # after unmounting. anchor=None means append at end.
 
         # Unmount the old fragment
         fragment.unmount(destroy=True)
@@ -730,32 +746,34 @@ class HotReloader:
         """Recursively collect module names from fragment tree.
 
         Traverses the full fragment tree including:
-        - Regular children (fragment.children)
+        - Template children (fragment.template_children)
         - DynamicFragment's active fragment (_active_fragment)
-        - ComponentFragment's rendered content (fragment.fragment)
-        - ComponentFragment's slot contents (slot_contents)
+        - ComponentFragment's rendered content (rendered_fragment)
+        - ComponentFragment's slot content (slot_content dict)
         """
         if isinstance(fragment, ComponentFragment) and fragment.component:
             module_name = type(fragment.component).__module__
             modules.add(module_name)
 
-        # Recurse into regular children
-        for child in fragment.children:
+        # Recurse into template children
+        for child in fragment.template_children:
             self._collect_used_modules_recursive(child, modules)
 
         # Handle DynamicFragment - it stores the actual rendered component
-        # in _active_fragment, not in children
+        # in _active_fragment, not in template_children
         if isinstance(fragment, DynamicFragment) and fragment._active_fragment:
             self._collect_used_modules_recursive(fragment._active_fragment, modules)
 
-        # Handle ComponentFragment - traverse its rendered content and slot contents
+        # Handle ComponentFragment - traverse its rendered content and slot content
         if isinstance(fragment, ComponentFragment):
             # The component's rendered template
-            if fragment.fragment:
-                self._collect_used_modules_recursive(fragment.fragment, modules)
-            # Slot contents (children passed to the component)
-            for slot_child in fragment.slot_contents:
-                self._collect_used_modules_recursive(slot_child, modules)
+            if fragment.rendered_fragment:
+                rendered = fragment.rendered_fragment
+                self._collect_used_modules_recursive(rendered, modules)
+            # Slot content (children passed to the component)
+            for slot_fragments in fragment.slot_content.values():
+                for slot_child in slot_fragments:
+                    self._collect_used_modules_recursive(slot_child, modules)
 
     def _find_root_element(self, fragment: Fragment) -> Any:
         """
@@ -768,8 +786,14 @@ class HotReloader:
         if fragment.element is not None:
             return fragment.element
 
-        # Check children
-        for child in fragment.children:
+        # For ComponentFragment, check rendered_fragment first
+        if isinstance(fragment, ComponentFragment) and fragment.rendered_fragment:
+            element = self._find_root_element(fragment.rendered_fragment)
+            if element is not None:
+                return element
+
+        # Check template children
+        for child in fragment.template_children:
             element = self._find_root_element(child)
             if element is not None:
                 return element
@@ -820,11 +844,11 @@ class HotReloader:
 
             # Collect children's state
             child_state = state_tree[identity]["children"]
-            for i, child in enumerate(fragment.children):
+            for i, child in enumerate(fragment.template_children):
                 self._collect_state_recursive(child, child_state, i)
         else:
-            # Non-component fragment, just recurse into children
-            for i, child in enumerate(fragment.children):
+            # Non-component fragment, just recurse into template children
+            for i, child in enumerate(fragment.template_children):
                 self._collect_state_recursive(child, state_tree, i)
 
     def _restore_component_state(self, fragment: Fragment, state_tree: dict) -> int:
@@ -869,13 +893,13 @@ class HotReloader:
 
                 # Restore children's state
                 child_state = preserved.get("children", {})
-                for i, child in enumerate(fragment.children):
+                for i, child in enumerate(fragment.template_children):
                     restored_count += self._restore_state_recursive(
                         child, child_state, i
                     )
         else:
-            # Non-component fragment, just recurse into children
-            for i, child in enumerate(fragment.children):
+            # Non-component fragment, just recurse into template children
+            for i, child in enumerate(fragment.template_children):
                 restored_count += self._restore_state_recursive(child, state_tree, i)
 
         return restored_count

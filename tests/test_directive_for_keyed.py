@@ -494,8 +494,12 @@ def test_keyed_components_preserve_state(parse_source):
     gui.render(App, container, state=state)
 
     # Get the component fragments
+    # Navigate through: app's render wrapper → app element → list_fragment → generated
+    # Note: gui.fragment is a render wrapper (tag=None) so we use template_children
     app_fragment = gui.fragment
-    counter_fragments = app_fragment.children[0].children[0].children
+    app_element = app_fragment.template_children[0]  # <app>
+    list_fragment = app_element.template_children[0]
+    counter_fragments = list_fragment._generated_fragments
 
     # Get references to the counter components
     counter_a = counter_fragments[0].component
@@ -525,7 +529,7 @@ def test_keyed_components_preserve_state(parse_source):
     ]
 
     # Get the counter fragments again (they've been reordered)
-    counter_fragments = app_fragment.children[0].children[0].children
+    counter_fragments = list_fragment._generated_fragments
 
     # Verify the components maintained their state
     # The component with id=1 (A) should still have count=3
