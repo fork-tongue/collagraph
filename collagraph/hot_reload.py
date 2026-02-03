@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from collagraph import Collagraph
     from collagraph.fragment import Fragment
 
-from collagraph.fragment import ComponentFragment, ListFragment
+from collagraph.fragment import ComponentFragment
 
 DEBOUNCE_DELAY = 0.1
 
@@ -623,39 +623,24 @@ class HotReloader:
         target = fragment.target
 
         # Find anchor element (first element in next sibling) for correct positioning
-        # Need to handle different parent types:
-        # - DynamicFragment: fragment is in _active_fragment, not template_children
-        # - ComponentFragment: fragment might be in .rendered_fragment or slot_content
-        # - ListFragment: fragment might be in _generated_fragments
-        # - Regular Fragment: fragment is in template_children
+        # Use render_children() to find the fragment's position among its siblings,
+        # but also check slot_content for ComponentFragment parents since slot content
+        # is rendered by SlotFragment, not directly by ComponentFragment
         anchor = None
         if parent:
-            # Check if fragment is in parent.template_children
-            if fragment in parent.template_children:
-                idx = parent.template_children.index(fragment)
-                if idx + 1 < len(parent.template_children):
-                    # Get the first element from the next sibling's subtree
-                    anchor = self._find_root_element(parent.template_children[idx + 1])
-            # Check if fragment is in parent._generated_fragments (for ListFragment)
-            elif isinstance(parent, ListFragment):
-                if fragment in parent._generated_fragments:
-                    idx = parent._generated_fragments.index(fragment)
-                    if idx + 1 < len(parent._generated_fragments):
-                        anchor = self._find_root_element(
-                            parent._generated_fragments[idx + 1]
-                        )
-            # Check if fragment is in parent.slot_content (for ComponentFragment)
+            siblings = list(parent.render_children())
+            if fragment in siblings:
+                idx = siblings.index(fragment)
+                if idx + 1 < len(siblings):
+                    anchor = self._find_root_element(siblings[idx + 1])
             elif isinstance(parent, ComponentFragment):
+                # Check if fragment is in slot_content
                 for slot_fragments in parent.slot_content.values():
                     if fragment in slot_fragments:
                         idx = slot_fragments.index(fragment)
                         if idx + 1 < len(slot_fragments):
-                            # Get the first element from the next slot sibling's subtree
                             anchor = self._find_root_element(slot_fragments[idx + 1])
                         break
-            # For DynamicFragment._active_fragment or ComponentFragment's
-            # rendered_fragment, we use the fragment's own anchor() method
-            # after unmounting. anchor=None means append at end.
 
         # Unmount the old fragment
         fragment.unmount(destroy=True)
