@@ -518,3 +518,115 @@ def test_anchor_ordering_deeply_nested_components(parse_source):
     # Show second again
     state["second"] = True
     assert get_child_names() == ["first", "second", "third"]
+
+
+def test_anchor_issue(parse_source):
+    _, namespace = parse_source(
+        """
+        <foo v-if="True" :name="name">
+          <slot />
+        </foo>
+
+        <script>
+        import collagraph as cg
+        class Foo(cg.Component):
+            pass
+        </script>
+        """
+    )
+    _, namespace = parse_source(
+        """
+        <bar v-if="True" :name="name" />
+
+        <script>
+        import collagraph as cg
+        class Bar(cg.Component):
+            pass
+        </script>
+        """,
+        namespace=namespace,
+    )
+    _, namespace = parse_source(
+        """
+        <component
+          v-bind="props"
+          :is="type_map(obj_type)"
+        >
+          <Item
+            v-for="item in props.get('children', [])"
+            v-bind="item"
+          />
+        </component>
+
+
+        <script>
+        import collagraph as cg
+        try:
+            from foo import Foo
+        except ImportError:
+            pass
+        try:
+            from bar import Bar
+        except ImportError:
+            pass
+
+        def type_map(obj_type):
+            return {"foo": Foo, "bar": Bar}[obj_type]
+
+
+        class Item(cg.Component):
+            pass
+        </script>
+        """,
+        namespace=namespace,
+    )
+
+    App, namespace = parse_source(
+        """
+        <Item
+          v-for="it in items"
+          v-bind="it"
+        />
+
+        <script>
+        try:
+            import Item
+        except ImportError:
+            pass
+
+
+        import collagraph as cg
+        class App(cg.Component):
+            pass
+        </script>
+        """,
+        namespace=namespace,
+    )
+
+    state = reactive({"items": []})
+
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    container = {"type": "root"}
+    gui.render(App, container, state=state)
+
+    assert "children" not in container
+
+    state["items"].append({"obj_type": "foo", "name": "foo-1"})
+
+    assert len(container["children"]) == 1
+    assert container["children"][0]["type"] == "foo"
+    assert container["children"][0]["attrs"]["name"] == "foo-1"
+
+    state["items"].append({"obj_type": "foo", "name": "foo-2"})
+
+    assert len(container["children"]) == 2
+
+    # Now add a child item to the first item.
+    # This produces the following error
+    # ValueError: list.index(x): x not in list
+    # It is now passing the second foo item from the root as the anchor
+    # which is not correct!
+    state["items"][0]["children"] = [{"obj_type": "bar", "name": "bar-1"}]
