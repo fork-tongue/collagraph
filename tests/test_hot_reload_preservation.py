@@ -281,12 +281,35 @@ def test_event_handlers_preserved_after_reload(temp_dir):
 
     def find_child_component(fragment):
         """Helper to find the EventChild component in the fragment tree."""
-        from collagraph.fragment import ComponentFragment
+        from collagraph.fragment import ComponentFragment, ListFragment
 
         if isinstance(fragment, ComponentFragment) and fragment.component:
             if type(fragment.component).__name__ == "EventChild":
                 return fragment
-        for child in fragment.children:
+
+        # Check rendered_fragment for component usage sites
+        if isinstance(fragment, ComponentFragment) and fragment.rendered_fragment:
+            result = find_child_component(fragment.rendered_fragment)
+            if result:
+                return result
+
+        # Check slot_content
+        if isinstance(fragment, ComponentFragment):
+            for slot_fragments in fragment.slot_content.values():
+                for child in slot_fragments:
+                    result = find_child_component(child)
+                    if result:
+                        return result
+
+        # Check generated fragments for ListFragment
+        if isinstance(fragment, ListFragment):
+            for child in fragment._generated_fragments:
+                result = find_child_component(child)
+                if result:
+                    return result
+
+        # Check template_children
+        for child in fragment.template_children:
             result = find_child_component(child)
             if result:
                 return result
@@ -1364,12 +1387,35 @@ def test_multiple_events_preserved(temp_dir):
     gui.render(multi_event_parent.MultiEventParent, container)
 
     def find_child_component(fragment):
-        from collagraph.fragment import ComponentFragment
+        from collagraph.fragment import ComponentFragment, ListFragment
 
         if isinstance(fragment, ComponentFragment) and fragment.component:
             if type(fragment.component).__name__ == "MultiEventChild":
                 return fragment
-        for child in fragment.children:
+
+        # Check rendered_fragment for component usage sites
+        if isinstance(fragment, ComponentFragment) and fragment.rendered_fragment:
+            result = find_child_component(fragment.rendered_fragment)
+            if result:
+                return result
+
+        # Check slot_content
+        if isinstance(fragment, ComponentFragment):
+            for slot_fragments in fragment.slot_content.values():
+                for child in slot_fragments:
+                    result = find_child_component(child)
+                    if result:
+                        return result
+
+        # Check generated fragments for ListFragment
+        if isinstance(fragment, ListFragment):
+            for child in fragment._generated_fragments:
+                result = find_child_component(child)
+                if result:
+                    return result
+
+        # Check template_children
+        for child in fragment.template_children:
             result = find_child_component(child)
             if result:
                 return result
