@@ -1,0 +1,223 @@
+<!--
+  Run this example as follows:
+  uv run collagraph examples/pyside/treewidget_drag_drop_reparent.cgx
+
+  Features:
+  - Drag within the tree to reorder and reparent items
+  - Drop files from Finder/Explorer onto the tree to insert new nodes
+-->
+<window title="TreeWidget drag/drop + external drops" :size="[800, 600]">
+  <widget :layout="{'type': 'Box', 'direction': 'TopToBottom'}">
+    <label
+      text="Drag nodes to reorder/reparent. Drop files from your OS to insert them into the tree."
+    />
+
+    <drag-drop-treewidget
+      object-name="tree"
+      :column-count="1"
+      :header-labels="['Name']"
+      :selection-mode="QtWidgets.QAbstractItemView.SingleSelection"
+    >
+      <Node
+        v-for="node in nodes"
+        :key="node['id']"
+        :node="node"
+      />
+    </drag-drop-treewidget>
+
+    <label :text="status" />
+  </widget>
+</window>
+
+<script>
+import os
+import uuid
+
+import collagraph as cg
+from observ import reactive
+from PySide6 import QtCore, QtWidgets
+
+from examples.pyside.treewidget_drag_drop_node import Node
+
+
+class DragDropTreeWidget(QtWidgets.QTreeWidget):
+    """QTreeWidget that (1) accepts external file drops and (2) notifies on internal moves."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.on_tree_changed = None
+        self.on_external_urls_dropped = None
+
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
+        self.setDropIndicatorShown(True)
+        self.setDefaultDropAction(QtCore.Qt.DropAction.MoveAction)
+        # DragDrop allows both internal moves and external drops.
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
+
+    def dragEnterEvent(self, event):  # noqa: N802
+        if event.source() is self or event.mimeData().hasUrls():
+            event.acceptProposedAction()
+            return
+        super().dragEnterEvent(event)
+
+    def dragMoveEvent(self, event):  # noqa: N802
+        if event.source() is self or event.mimeData().hasUrls():
+            event.acceptProposedAction()
+            return
+        super().dragMoveEvent(event)
+
+    def dropEvent(self, event):  # noqa: N802
+        # External files from Finder/Explorer come in as URLs.
+        if event.source() is not self and event.mimeData().hasUrls():
+            urls = []
+            for url in event.mimeData().urls():
+                local = url.toLocalFile()
+                urls.append(local or url.toString())
+
+            parent_id, row = self._drop_target(event)
+            if callable(self.on_external_urls_dropped):
+                self.on_external_urls_dropped(urls, parent_id, row)
+
+            event.acceptProposedAction()
+            return
+
+        # Internal move: let Qt do the move, then sync the resulting tree.
+        super().dropEvent(event)
+        if callable(self.on_tree_changed):
+            QtCore.QTimer.singleShot(0, self.on_tree_changed)
+
+    def _drop_target(self, event):
+        # Qt6: QDropEvent.position() -> QPointF
+        pos = event.position().toPoint() if hasattr(event, "position") else event.pos()
+        item = self.itemAt(pos)
+        root = self.invisibleRootItem()
+
+        if item is None:
+            return None, root.childCount()
+
+        where = self.dropIndicatorPosition()
+
+        if where == QtWidgets.QAbstractItemView.OnItem:
+            parent_item = item
+            row = item.childCount()
+        elif where == QtWidgets.QAbstractItemView.AboveItem:
+            parent_item = item.parent() or root
+            row = parent_item.indexOfChild(item)
+        elif where == QtWidgets.QAbstractItemView.BelowItem:
+            parent_item = item.parent() or root
+            row = parent_item.indexOfChild(item) + 1
+        else:
+            parent_item = root
+            row = root.childCount()
+
+        parent_id = (
+            None
+            if parent_item is root
+            else parent_item.data(0, QtCore.Qt.ItemDataRole.UserRole)
+        )
+        return parent_id, row
+
+
+cg.PySideRenderer.register_element("drag-drop-treewidget", DragDropTreeWidget)
+
+
+def make_node(name: str, *, path: str | None = None, node_id: str | None = None, children=None):
+    return reactive(
+        {
+            "id": node_id or uuid.uuid4().hex,
+            "name": name,
+            "path": path,
+            "children": reactive(children or []),
+        }
+    )
+
+
+class TreeWidgetDragDropReparent(cg.Component):
+    def init(self):
+        self.state["nodes"] = reactive(
+            [
+                make_node(
+                    "Project",
+                    children=[
+                        make_node("README.md"),
+                        make_node("src", children=[make_node("main.py"), make_node("utils.py")]),
+                    ],
+                ),
+                make_node("Assets", children=[make_node("logo.png"), make_node("styles.css")]),
+            ]
+        )
+        self.state["status"] = "Ready"
+
+    def mounted(self):
+        tree = self.element.findChild(DragDropTreeWidget, "tree")
+        self._tree = tree
+        if not tree:  # pragma: no cover
+            return
+
+        tree.on_tree_changed = self.sync_from_widget
+        tree.on_external_urls_dropped = self.external_urls_dropped
+
+    def external_urls_dropped(self, urls: list[str], parent_id: str | None, row: int):
+        new_nodes = []
+        for path in urls:
+            name = os.path.basename(path.rstrip(os.sep)) or path
+            new_nodes.append(make_node(name, path=path))
+
+        siblings = self._children_list_for_parent(parent_id)
+        row = max(0, min(int(row), len(siblings)))
+        for i, n in enumerate(new_nodes):
+            siblings.insert(row + i, n)
+
+        self.state["status"] = f"Dropped {len(new_nodes)} external item(s)"
+
+    def sync_from_widget(self):
+        tree = getattr(self, "_tree", None)
+        if not tree:
+            return
+
+        by_id = {}
+
+        def index_nodes(nodes):
+            for n in nodes:
+                by_id[n["id"]] = n
+                index_nodes(n["children"])
+
+        index_nodes(self.state["nodes"])
+
+        root = tree.invisibleRootItem()
+        new_nodes = []
+        for i in range(root.childCount()):
+            new_nodes.append(self._sync_item(root.child(i), by_id))
+
+        self.state["nodes"] = reactive(new_nodes)
+        self.state["status"] = "Reordered (internal drag)"
+
+    def _sync_item(self, item, by_id):
+        node_id = item.data(0, QtCore.Qt.ItemDataRole.UserRole)
+        node = by_id.get(node_id) or make_node(item.text(0), node_id=str(node_id))
+        node["name"] = item.text(0)
+
+        children = []
+        for i in range(item.childCount()):
+            children.append(self._sync_item(item.child(i), by_id))
+        node["children"] = reactive(children)
+
+        return node
+
+    def _children_list_for_parent(self, parent_id: str | None):
+        if parent_id is None:
+            return self.state["nodes"]
+
+        def find(nodes):
+            for n in nodes:
+                if n["id"] == parent_id:
+                    return n
+                found = find(n["children"])
+                if found:
+                    return found
+            return None
+
+        parent = find(self.state["nodes"])
+        return parent["children"] if parent else self.state["nodes"]
+</script>
