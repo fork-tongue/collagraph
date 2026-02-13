@@ -1,13 +1,13 @@
 <treewidgetitem
   :content="{0: node['name']}"
   :data="(0, QtCore.Qt.ItemDataRole.UserRole, node['id'])"
->
-  <!-- :flags="(
+  :flags="(
     QtCore.Qt.ItemIsEnabled
     | QtCore.Qt.ItemIsSelectable
     | QtCore.Qt.ItemIsDragEnabled
     | QtCore.Qt.ItemIsDropEnabled
-  )" -->
+  )"
+>
   <Node
     v-for="child in node['children']"
     :key="child['id']"

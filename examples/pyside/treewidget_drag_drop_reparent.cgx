@@ -6,16 +6,17 @@
   - Drag within the tree to reorder and reparent items
   - Drop files from Finder/Explorer onto the tree to insert new nodes
 -->
-<window title="TreeWidget drag/drop + external drops" :size="[800, 600]">
-  <widget :layout="{'type': 'Box', 'direction': 'TopToBottom'}">
-    <label
-      text="Drag nodes to reorder/reparent. Drop files from your OS to insert them into the tree."
-    />
 
+<window
+  :size="[800, 600]"
+  title="TreeWidget drag/drop + external drops"
+>
+  <widget :layout="{'type': 'Box', 'direction': 'TopToBottom'}">
+    <label text="Drag nodes to reorder/reparent. Drop files from your OS to insert them into the tree." />
     <drag-drop-treewidget
-      object-name="tree"
       :column-count="1"
       :header-labels="['Name']"
+      object-name="tree"
       :selection-mode="QtWidgets.QAbstractItemView.SingleSelection"
     >
       <Node
@@ -24,7 +25,6 @@
         :node="node"
       />
     </drag-drop-treewidget>
-
     <label :text="status" />
   </widget>
 </window>
@@ -34,10 +34,9 @@ import os
 import uuid
 
 import collagraph as cg
+from examples.pyside.treewidget_drag_drop_node import Node
 from observ import reactive
 from PySide6 import QtCore, QtWidgets
-
-from examples.pyside.treewidget_drag_drop_node import Node
 
 
 class DragDropTreeWidget(QtWidgets.QTreeWidget):
@@ -56,13 +55,16 @@ class DragDropTreeWidget(QtWidgets.QTreeWidget):
         self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
 
     def dragEnterEvent(self, event):  # noqa: N802
-        if event.source() is self or event.mimeData().hasUrls():
+        # Don't short-circuit internal drags: QAbstractItemView updates the
+        # drop indicator during its drag handlers.
+        if event.source() is not self and event.mimeData().hasUrls():
             event.acceptProposedAction()
             return
         super().dragEnterEvent(event)
 
     def dragMoveEvent(self, event):  # noqa: N802
-        if event.source() is self or event.mimeData().hasUrls():
+        # Same here: delegate internal drags so the indicator is updated.
+        if event.source() is not self and event.mimeData().hasUrls():
             event.acceptProposedAction()
             return
         super().dragMoveEvent(event)
@@ -122,7 +124,9 @@ class DragDropTreeWidget(QtWidgets.QTreeWidget):
 cg.PySideRenderer.register_element("drag-drop-treewidget", DragDropTreeWidget)
 
 
-def make_node(name: str, *, path: str | None = None, node_id: str | None = None, children=None):
+def make_node(
+    name: str, *, path: str | None = None, node_id: str | None = None, children=None
+):
     return reactive(
         {
             "id": node_id or uuid.uuid4().hex,
@@ -141,10 +145,15 @@ class TreeWidgetDragDropReparent(cg.Component):
                     "Project",
                     children=[
                         make_node("README.md"),
-                        make_node("src", children=[make_node("main.py"), make_node("utils.py")]),
+                        make_node(
+                            "src",
+                            children=[make_node("main.py"), make_node("utils.py")],
+                        ),
                     ],
                 ),
-                make_node("Assets", children=[make_node("logo.png"), make_node("styles.css")]),
+                make_node(
+                    "Assets", children=[make_node("logo.png"), make_node("styles.css")]
+                ),
             ]
         )
         self.state["status"] = "Ready"
@@ -221,3 +230,4 @@ class TreeWidgetDragDropReparent(cg.Component):
         parent = find(self.state["nodes"])
         return parent["children"] if parent else self.state["nodes"]
 </script>
+
