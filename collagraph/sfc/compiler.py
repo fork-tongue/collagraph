@@ -39,7 +39,7 @@ def construct_ast(path, template=None):
     class definition as `render` function.
     """
     if not template:
-        template = Path(path).read_text()
+        template = Path(path).read_text(encoding="utf-8")
 
     # Parse the file component into a tree of Elements
     parser = CGXParser()
