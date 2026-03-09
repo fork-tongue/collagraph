@@ -26,7 +26,7 @@ def load(path, namespace=None):
         </script>
 
     """
-    template = path.read_text()
+    template = path.read_text(encoding="utf-8")
 
     return load_from_string(template, path, namespace=namespace)
 
