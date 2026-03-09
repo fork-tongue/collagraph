@@ -12,6 +12,82 @@ from .renderers import Renderer
 from .weak import weak
 
 
+def move_fragment_dom(
+    fragment: Fragment, renderer: Renderer, target: Any, anchor: Any | None
+) -> None:
+    """
+    Recursively move all DOM elements in a fragment tree to a new position.
+
+    For fragments with a direct element, moves that element.
+    For fragments without (e.g. ComponentFragment), recursively moves children.
+    """
+    if fragment.element:
+        # Fragment has a single element - move it
+        renderer.remove(fragment.element, target)
+        renderer.insert(fragment.element, parent=target, anchor=anchor)
+    else:
+        # Fragment without direct element - move all child DOM elements
+        for child in fragment.children:
+            if child._mounted:
+                move_fragment_dom(child, renderer, target, anchor)
+
+
+def longest_increasing_subsequence(nums: list[int]) -> list[int]:
+    """
+    Find the longest increasing subsequence in a list of numbers.
+    Returns the indices of elements in the LIS.
+
+    Used to optimize keyed list reconciliation by finding which elements
+    are already in the correct relative order and don't need to move.
+
+    Example:
+        nums = [2, 0, 1]
+        returns [1, 2]  # indices of values 0, 1 (the LIS)
+    """
+    if not nums:
+        return []
+
+    n = len(nums)
+    # tails[i] = smallest tail element for LIS of length i+1
+    tails = []
+    # predecessor[i] = index of previous element in LIS ending at i
+    predecessor = [-1] * n
+    # tail_indices[i] = index in nums of tails[i]
+    tail_indices = []
+
+    for i, num in enumerate(nums):
+        # Binary search for the position to insert num
+        left, right = 0, len(tails)
+        while left < right:
+            mid = (left + right) // 2
+            if tails[mid] < num:
+                left = mid + 1
+            else:
+                right = mid
+
+        # Update predecessor
+        if left > 0:
+            predecessor[i] = tail_indices[left - 1]
+
+        # Update or append to tails
+        if left < len(tails):
+            tails[left] = num
+            tail_indices[left] = i
+        else:
+            tails.append(num)
+            tail_indices.append(i)
+
+    # Reconstruct the LIS indices
+    result = []
+    current = tail_indices[-1]
+    while current != -1:
+        result.append(current)
+        current = predecessor[current]
+
+    result.reverse()
+    return result
+
+
 class Fragment:
     """
     A fragment is something that describes an element as a kind of function.
@@ -582,6 +658,11 @@ class ListFragment(Fragment):
                 # (excluding removed fragments) for position comparisons
                 old_children = [f for f in self.children if f not in removed_fragments]
 
+                # Build a map from fragment to its old position
+                old_fragment_positions = {
+                    frag: i for i, frag in enumerate(old_children)
+                }
+
                 # Build new children array in the correct order
                 new_children = []
                 for i, key in enumerate(new_keys):
@@ -600,6 +681,20 @@ class ListFragment(Fragment):
                         self.key_to_fragment[key] = fragment
                         new_children.append(fragment)
 
+                # Optimization: Use LIS to find elements that don't need moving
+                # Map reused fragments to their old positions, skip new ones
+                old_positions = []
+                reused_indices = []
+                for i, fragment in enumerate(new_children):
+                    if fragment in old_fragment_positions:
+                        old_positions.append(old_fragment_positions[fragment])
+                        reused_indices.append(i)
+
+                # Find LIS - these fragments are already in correct order
+                lis_indices = longest_increasing_subsequence(old_positions)
+                # Convert LIS result to set of new_children indices
+                dont_move = {reused_indices[i] for i in lis_indices}
+
                 # Reconciliation strategy: Process new_children from end to
                 # start using anchors. Three different orderings in play:
                 # - old_children: The OLD order (filtered snapshot)
@@ -610,11 +705,14 @@ class ListFragment(Fragment):
                 # (elements to the right) are already in their final
                 # positions when we use them as insertion points.
                 #
-                # Example: [A, B, C] -> [C, B, A]
-                # Processing backwards (i=2,1,0):
-                #   i=2: A - anchor=None, old_pos=0, expected_pos=2 -> move to end
-                #   i=1: B - anchor=A, old_pos=1, expected_pos=1 -> no move needed
-                #   i=0: C - anchor=B, old_pos=1, expected_pos=0 -> move before B
+                # Optimization: Use LIS to identify elements already in correct
+                # relative order - these don't need to move.
+                #
+                # Example: [A, B, C] -> [C, A, B]
+                # Old positions: {A:0, B:1, C:2}
+                # Map to old positions: [2, 0, 1]
+                # LIS: [0, 1] (A, B already in order)
+                # Only move C
 
                 for i in range(len(new_children) - 1, -1, -1):
                     fragment = new_children[i]
@@ -633,24 +731,10 @@ class ListFragment(Fragment):
                     if not fragment._mounted:
                         # Mount new fragment at the correct position
                         fragment.mount(target, anchor=anchor)
-                    elif fragment.element:
-                        # Fragment is already mounted, check if it needs to be moved
-                        # Check if fragment is already at correct position relative
-                        # to other mounted fragments:
-                        # - expected_pos: position in NEW order (mounted only)
-                        # - old_pos: position in OLD order (from filtered snapshot)
-                        # Only move if these differ
-                        expected_pos = sum(1 for f in new_children[:i] if f._mounted)
-                        old_pos = old_children.index(fragment)
-
-                        if old_pos != expected_pos:
-                            # Fragment needs to be moved in the DOM
-                            # Remove from current position
-                            self.renderer.remove(fragment.element, target)
-                            # Insert at new position
-                            self.renderer.insert(
-                                fragment.element, parent=target, anchor=anchor
-                            )
+                    elif i not in dont_move:
+                        # Fragment needs to be moved (not in LIS)
+                        # Move the fragment and all its DOM children
+                        move_fragment_dom(fragment, self.renderer, target, anchor)
 
                 # Update children list to match new_children
                 # This removes any unmounted fragments and ensures correct order
