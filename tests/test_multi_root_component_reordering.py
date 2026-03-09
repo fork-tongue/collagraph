@@ -3,68 +3,7 @@
 from observ import reactive
 
 from collagraph import Collagraph, EventLoopType
-from collagraph.renderers import Renderer
-
-
-class CustomElement:
-    def __init__(self, *args, type=None, **kwargs):
-        super().__setattr__(
-            "_data",
-            {
-                "type": type,
-                "children": [],
-                "event_listeners": {},
-                **kwargs,
-            },
-        )
-
-    def __getattr__(self, name):
-        if name.startswith("_"):
-            return super().__getattr__(name)
-        return self._data[name]
-
-    def __setattr__(self, name, value):
-        if name.startswith("_"):
-            super().__setattr__(name, value)
-        self._data[name] = value
-
-    def __repr__(self):
-        attrs = {
-            k: v
-            for k, v in self._data.items()
-            if k not in ["children", "event_listeners"]
-        }
-        return f"<{self.type} {attrs}>"
-
-
-class CustomElementRenderer(Renderer):
-    def create_element(self, type):
-        return CustomElement(type=type)
-
-    def insert(self, el, parent, anchor=None):
-        idx = parent.children.index(anchor) if anchor else len(parent.children)
-        parent.children.insert(idx, el)
-
-    def remove(self, el, parent):
-        parent.children.remove(el)
-
-    def set_attribute(self, el, attr: str, value):
-        setattr(el, attr, value)
-
-    def remove_attribute(self, el, attr: str, value):
-        delattr(el, attr)
-
-    def add_event_listener(self, el, event_type, value):
-        pass
-
-    def remove_event_listener(self, el, event_type, value):
-        pass
-
-    def create_text_element(self):
-        raise NotImplementedError
-
-    def set_element_text(self):
-        raise NotImplementedError
+from tests.conftest import CustomElement, CustomElementRenderer
 
 
 def test_multi_root_component_reordering(parse_source):
