@@ -25,6 +25,7 @@ class Collagraph:
         self._hot_reload = hot_reload
         self._hot_reload_watchdog = hot_reload_watchdog
         self._hot_reloader = None
+        self._in_hot_reload = False
         if not event_loop_type:
             event_loop_type = (
                 renderer.preferred_event_loop_type() or EventLoopType.DEFAULT
@@ -78,3 +79,7 @@ class Collagraph:
         if self._hot_reloader is None:
             return False
         return self._hot_reloader.reload(preserve_state=preserve_state)
+
+    @property
+    def is_hot_reloading(self) -> bool:
+        return self._in_hot_reload

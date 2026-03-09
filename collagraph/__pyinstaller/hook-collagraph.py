@@ -26,7 +26,7 @@ def collect_hidden_imports(folder):
 
     hidden_imports = set()
     for path in folder.glob("**/*.cgx"):
-        template = path.read_text()
+        template = path.read_text(encoding="utf-8")
         # Parse the file component into a tree of Node instances
         parser = CGXParser()
         parser.feed(template)
