@@ -11,15 +11,4 @@ gui = cg.Collagraph(
 )
 gui.render(TodoList, container)
 
-
-def serialize(obj):
-    """Serialize the rendered dict tree to a JSON-compatible structure."""
-    if isinstance(obj, dict):
-        return {k: serialize(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [serialize(v) for v in obj]
-    return obj
-
-
-result = serialize(container)
-print(json.dumps(result, indent=2))
+print(json.dumps(container, indent=2))

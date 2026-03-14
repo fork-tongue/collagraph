@@ -1,8 +1,6 @@
-<template>
-  <item :label="format_label(props['text'], props['done'])" />
-</template>
+<item :label="format_label(props['text'], props['done'])" />
 
-<script lang="python">
+<script>
 import collagraph as cg
 from helpers import format_label
 
@@ -10,3 +8,4 @@ from helpers import format_label
 class TodoItem(cg.Component):
     pass
 </script>
+

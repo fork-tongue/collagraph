@@ -1,15 +1,13 @@
-<template>
-  <list>
-    <TodoItem
-      v-for="todo in state['todos']"
-      :key="todo['id']"
-      :text="todo['text']"
-      :done="todo['done']"
-    />
-  </list>
-</template>
+<list>
+  <TodoItem
+    v-for="todo in state['todos']"
+    :done="todo['done']"
+    :key="todo['id']"
+    :text="todo['text']"
+  />
+</list>
 
-<script lang="python">
+<script>
 import collagraph as cg
 from todo_item import TodoItem
 
@@ -22,3 +20,4 @@ class TodoList(cg.Component):
             {"id": 3, "text": "Deploy app", "done": False},
         ]
 </script>
+
