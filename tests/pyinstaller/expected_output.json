@@ -1,0 +1,28 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "list",
+      "children": [
+        {
+          "type": "item",
+          "attrs": {
+            "label": "[todo] Buy groceries"
+          }
+        },
+        {
+          "type": "item",
+          "attrs": {
+            "label": "[done] Write tests"
+          }
+        },
+        {
+          "type": "item",
+          "attrs": {
+            "label": "[todo] Deploy app"
+          }
+        }
+      ]
+    }
+  ]
+}
