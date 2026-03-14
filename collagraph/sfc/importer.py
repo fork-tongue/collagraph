@@ -66,5 +66,8 @@ class CGXPathFinder(MetaPathFinder):
                 return spec
 
 
-# Add cgx path finder at the end of the list of finders
-sys.meta_path.append(CGXPathFinder())
+# Add cgx path finder at the end of the list of finders.
+# Skip when running as a frozen PyInstaller bundle, since CGX files
+# are pre-compiled to Python modules by the PyInstaller hook.
+if not getattr(sys, "frozen", False):
+    sys.meta_path.append(CGXPathFinder())
