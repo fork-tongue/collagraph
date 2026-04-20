@@ -1,11 +1,9 @@
-import pytest
 from observ import reactive
 
 from collagraph import Collagraph, DictRenderer, EventLoopType
 from collagraph.renderers.dict_renderer import format_dict
 
 
-@pytest.mark.xfail
 def test_text_elements():
     from tests.data.text.expressions import Example
 
