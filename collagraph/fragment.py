@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import Any
 from weakref import ref
 
 from observ import computed, reactive, watch_effect
-from observ.watcher import Watcher, watch  # type: ignore
+from observ.watcher import Watcher, watch
 
 from .component import Component
 from .renderers import Renderer
@@ -14,10 +14,22 @@ from .weak import weak
 
 class Fragment:
     """
-    A fragment is something that describes an element as a kind of function.
-    In the cgx template, elements are functions that describe what an element
-    should be like based on certain input. Directives such as v-if and v-for serve
-    as functions that govern a dynamic list of elements.
+    A Fragment describes an element in the UI tree.
+
+    Fragments form two conceptual trees:
+
+    1. **Template Tree** (static): The structure defined in the CGX template.
+       Parent-child relationships are fixed at compile time. A v-if branch
+       is always a child of its ControlFlowFragment, even when hidden.
+       Stored in `template_children`.
+
+    2. **Render Tree** (dynamic): What's actually mounted to the DOM.
+       Changes based on reactive state. Only includes currently visible
+       fragments. Accessed via `render_children()`.
+
+    Subclasses override `render_children()` to control which template
+    children are actually rendered (e.g., ControlFlowFragment returns
+    only the active branch).
     """
 
     def __init__(
@@ -34,8 +46,8 @@ class Fragment:
         # Reference to the renderer
         # TODO: don't pass the renderer to the fragments...
         self.renderer = renderer
-        # List of child fragments
-        self.children: list[Fragment] = []
+        # Template children: static structure from compilation
+        self.template_children: list[Fragment] = []
         # Dom element (if any)
         self.element: Any | None = None
         # Target dom-element to render in
@@ -43,8 +55,11 @@ class Fragment:
         # Name of slot to be rendered into
         self.slot_name: str | None = None
 
-        # Weak ref to parent fragment
+        # Weak ref to parent fragment (template tree)
         self._parent: ref[Fragment] | None = ref(parent) if parent else None
+        # Weak ref to render parent (for anchor lookups when mounted as slot content)
+        # When set, anchor() uses this instead of _parent
+        self._render_parent: ref[Fragment] | None = None
         # Static attributes for the DOM element
         self._attributes: dict[str, str] = {}
         # Events for the DOM element
@@ -63,19 +78,18 @@ class Fragment:
 
         self._mounted = False
 
-        # Make sure that the relationship between this
-        # item and its parent is set correctly
+        # Register with parent if provided
+        # Note: For slot content, the compiler should NOT pass parent here
+        # and instead call register_child() after setting slot_name
         if parent:
             parent.register_child(self)
-
-        # FIXME: should fragments also be able to be 'anchored'???
 
     def __repr__(self):
         return f"<{type(self).__name__}({self.tag}-[{id(self)}])>"
 
     def debug(self, indent: int = 0):
         print(f"{'  ' * indent}<{self.tag}>")  # noqa: T201
-        for child in self.children:
+        for child in self.render_children():
             if child._mounted:
                 child.debug(indent + 1)
 
@@ -83,11 +97,20 @@ class Fragment:
     def parent(self) -> Fragment | None:
         return self._parent() if self._parent else None
 
+    @property
+    def render_parent(self) -> Fragment | None:
+        """
+        Parent for render tree operations (anchor lookup).
+        Returns _render_parent if set, otherwise falls back to parent.
+        """
+        if self._render_parent:
+            return self._render_parent()
+        return self.parent
+
     def _component_parent(self) -> Component | None:
         """
         Returns the component of the first parent ComponentFragment that
         has a component property. Or None, if not there.
-
         """
         # TODO: would be nice if we could cache the _component_parent in a clever way
         parent = self.parent
@@ -101,63 +124,77 @@ class Fragment:
 
     @parent.setter
     def parent(self, parent: Fragment | None):
-        # TODO: should this also check that this item is
-        # now in the list of the parent's children?
         self._parent = ref(parent) if parent else None
 
     def register_child(self, child: Fragment) -> None:
-        self.children.append(child)
+        """Register a child fragment in the template tree."""
+        self.template_children.append(child)
+
+    def render_children(self) -> Iterable[Fragment]:
+        """
+        Return children that should be rendered (mounted).
+
+        For base Fragment, all template children are rendered.
+        Subclasses override to filter (e.g., ControlFlowFragment
+        returns only the active branch).
+        """
+        return self.template_children
+
+    def iter_all_children(self) -> Iterable[Fragment]:
+        """
+        Yield ALL children for tree traversal (template + runtime-generated).
+
+        Used by hot reload and other code that needs to traverse the complete
+        fragment tree. Unlike render_children(), this includes:
+        - All template_children (even inactive branches)
+        - Runtime-generated fragments (ListFragment, DynamicFragment)
+        - ComponentFragment's rendered_fragment and slot_content
+
+        Subclasses override to include their specific child collections.
+        """
+        yield from self.template_children
 
     def first(self) -> Any | None:
         """
         Returns the first DOM element (if any), from either itself, or its
-        descendants. This recursively searches through children to find the
-        first actual DOM element.
+        rendered descendants.
         """
         if self.element:
             return self.element
-        for child in self.children:
+        for child in self.render_children():
             if element := child.first():
                 return element
+        return None
 
     def anchor(self) -> Any | None:
         """
-        Returns the fragment that serves as anchor for this fragment.
-        Anchor is the first mounted item *after* the current item.
+        Returns the DOM element that serves as anchor for this fragment.
+        Anchor is the first element of the next sibling in the render tree.
         """
-        parent = self.parent
-        assert parent is not None
+        parent = self.render_parent
+        if parent is None:
+            return None
 
-        # Check if this fragment is in parent's children
-        if self in parent.children:
-            idx = parent.children.index(self)
-            length = len(parent.children) - 1
-            while 0 <= idx < length:
-                idx += 1
-                if element := parent.children[idx].first():
+        # Find myself in parent's render children and get next sibling's element
+        siblings = list(parent.render_children())
+        try:
+            idx = siblings.index(self)
+            for sibling in siblings[idx + 1 :]:
+                if element := sibling.first():
                     return element
-        # Fragment might be slot content - check parent's slot_contents if it's
-        # a ComponentFragment
-        elif isinstance(parent, ComponentFragment) and self in parent.slot_contents:
-            idx = parent.slot_contents.index(self)
-            length = len(parent.slot_contents) - 1
-            while 0 <= idx < length:
-                idx += 1
-                if element := parent.slot_contents[idx].first():
-                    return element
+        except ValueError:
+            pass  # Not in render children
 
         # No sibling anchor found at this level. If the parent doesn't have
         # its own element (e.g., ComponentFragment, ControlFlowFragment), climb
         # up the tree to find an anchor from the parent's siblings.
         # However, don't climb past a fragment whose rendered elements include
         # our mount target, as anchors beyond that belong to a different subtree.
-        # This can happen when slot content is mounted into a component's elements.
-        if not parent.element and parent.parent:
+        if not parent.element and parent.render_parent:
             # Check if we would climb past our mount target
+            # Skip this check for SlotFragment since its first() includes us
             if target := self.target:
-                # Check if this parent's element subtree contains our target
-                # For ComponentFragment, first() returns the rendered element
-                if parent.first() is target:
+                if not isinstance(parent, SlotFragment) and parent.first() is target:
                     return None
             return parent.anchor()
 
@@ -368,7 +405,8 @@ class Fragment:
 
         if self.element:
             self.renderer.insert(self.element, parent=target, anchor=anchor)
-        for child in self.children:
+
+        for child in self.render_children():
             # For virtual elements, mount in target and use the
             # anchor for the correct placement
             if not self.element:
@@ -420,7 +458,8 @@ class Fragment:
                 # Static refs - just unregister the name
                 self._unregister_ref(self._ref_name)
 
-        for child in self.children:
+        # Unmount all template children (cleanup everything, not just rendered)
+        for child in self.template_children:
             child.unmount(destroy=destroy)
 
         self._remove()
@@ -447,15 +486,37 @@ class Fragment:
                 unwatch()
             self._watchers = {}
 
-        # TODO: maybe control flow fragments needs another custom 'parenting'
-        # solution where the control flow fragment keeps references to the
-        # 'child' elements
-        # if self.parent and not isinstance(self.parent, ControlFlowFragment):
-        #     if self in self.parent.children:
-        #         self.parent.children.remove(self)
-
 
 class ControlFlowFragment(Fragment):
+    """
+    Fragment for conditional rendering (v-if/v-else-if/v-else).
+
+    Template children are all the branches. Only one (or zero) is rendered
+    at a time based on the conditions.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The currently active (rendered) child branch
+        self._active_child: Fragment | None = None
+
+    def render_children(self) -> Iterable[Fragment]:
+        """Return only the active branch (0 or 1 fragments)."""
+        if self._active_child:
+            yield self._active_child
+
+    def _compute_active_child(self) -> Fragment | None:
+        """Determine which branch should be active based on conditions."""
+        for child in self.template_children:
+            if child._condition is not None:
+                # if and else-if blocks
+                if child._condition():
+                    return child
+            else:
+                # else block (no condition)
+                return child
+        return None
+
     def mount(self, target: Any, anchor: Any | None = None):
         if self._mounted:
             return
@@ -467,6 +528,7 @@ class ControlFlowFragment(Fragment):
                 return  # No need to remount, since it is the same fragment
             if old:
                 old.unmount(destroy=False)
+            self._active_child = new
             if new:
                 anch = anchor
                 if anch is None and self.parent:
@@ -475,14 +537,7 @@ class ControlFlowFragment(Fragment):
 
         @weak(self)
         def active_child(self):
-            for child in self.children:
-                if child._condition is not None:
-                    # if and else-if blocks
-                    if child._condition():
-                        return child
-                else:
-                    # else block
-                    return child
+            return self._compute_active_child()
 
         self._watchers["control_flow"] = watch(
             active_child,
@@ -495,19 +550,13 @@ class ControlFlowFragment(Fragment):
 
 class ListFragment(Fragment):
     """
-    1. Handle expression (for 'X' in 'Y') in multiple parts (by analyzing the
-       AST):
-        A. Create a watcher for collection 'Y'
-        B. Callback will create (or update existing) Fragments
-            - When unkeyed:
-                idx = 0
-                for 'X' in 'Y':
-                    if idx < len(fragments):
-                        fragment = fragments[idx]
-                    else:
-                        fragment = Fragment(...)
-                    ...
-                    idx += 1
+    Fragment for list rendering (v-for).
+
+    The template_children contains the template for one item (used as a factory).
+    Generated fragments for each list item are stored in _generated_fragments.
+
+    For keyed lists, fragments are tracked by key for efficient reordering.
+    For unkeyed lists, fragments are reused by index.
     """
 
     def __init__(self, *args, **kwargs):
@@ -516,6 +565,17 @@ class ListFragment(Fragment):
         self.expression: Callable[[], list[Any]] | None = None
         self.is_keyed: bool = False
         self.key_extractor: Callable[[Any], Any] | None = None
+        # Generated fragments for current list items
+        self._generated_fragments: list[Fragment] = []
+
+    def render_children(self) -> Iterable[Fragment]:
+        """Return generated fragments for current list items."""
+        return self._generated_fragments
+
+    def iter_all_children(self) -> Iterable[Fragment]:
+        """Yield template children (factory) and all generated fragments."""
+        yield from self.template_children
+        yield from self._generated_fragments
 
     def set_create_fragment(
         self,
@@ -583,12 +643,12 @@ class ListFragment(Fragment):
                 removed_keys = old_key_set - new_key_set
                 for key in removed_keys:
                     fragment = self.key_to_fragment.pop(key)
-                    # Remove from children list
-                    self.children.remove(fragment)
+                    # Remove from generated fragments list
+                    self._generated_fragments.remove(fragment)
                     fragment.unmount()
 
-                # Build new children array in the correct order
-                new_children = []
+                # Build new fragments array in the correct order
+                new_fragments = []
                 for i, key in enumerate(new_keys):
                     item = new_key_to_item[key]
 
@@ -596,26 +656,26 @@ class ListFragment(Fragment):
                         # Reuse existing fragment
                         fragment = self.key_to_fragment[key]
                         # Update the context with new item value
-                        new_children.append(fragment)
+                        new_fragments.append(fragment)
                     else:
                         # Create new fragment for new key
                         context = reactive({"context": item})
                         fragment = self.create_fragment(lambda c=context: c["context"])
                         fragment.parent = self
                         self.key_to_fragment[key] = fragment
-                        new_children.append(fragment)
+                        new_fragments.append(fragment)
 
-                # Now we need to reorder/mount the DOM elements to match new_children
+                # Now we need to reorder/mount the DOM elements to match new_fragments
                 # We process from the end to the beginning to avoid interference
                 # from previous moves
-                for i in range(len(new_children) - 1, -1, -1):
-                    fragment = new_children[i]
+                for i in range(len(new_fragments) - 1, -1, -1):
+                    fragment = new_fragments[i]
 
                     # Determine the correct anchor for this position
                     # The anchor is the element after this position
-                    if i + 1 < len(new_children):
+                    if i + 1 < len(new_fragments):
                         # Anchor is the next fragment's first element
-                        next_fragment = new_children[i + 1]
+                        next_fragment = new_fragments[i + 1]
                         anchor = next_fragment.first()
                     else:
                         # This is the last item, use the list's anchor
@@ -644,8 +704,8 @@ class ListFragment(Fragment):
                                     fragment.element, parent=target, anchor=anchor
                                 )
 
-                # Update children list
-                self.children = new_children
+                # Update generated fragments list
+                self._generated_fragments = new_fragments
 
             def _get_next_sibling(element, parent):
                 """Get the next sibling element in the parent's children list"""
@@ -667,14 +727,15 @@ class ListFragment(Fragment):
             @weak(self)
             def update_children(self):
                 items = expression()
-                for index in reversed(range(len(items), len(self.children))):
+                num_generated = len(self._generated_fragments)
+                for index in reversed(range(len(items), num_generated)):
                     # Remove extra items and context
-                    fragment = self.children.pop(index)
+                    fragment = self._generated_fragments.pop(index)
                     fragment.unmount()
                     self.values.pop(index)
 
                 for i, item in enumerate(items):
-                    if i < len(self.children):
+                    if i < len(self._generated_fragments):
                         # Update the content for existing values
                         self.values[i]["context"] = item
                     else:
@@ -684,7 +745,7 @@ class ListFragment(Fragment):
                         fragment = self.create_fragment(
                             lambda i=i: self.values[i]["context"]
                         )
-                        self.children.append(fragment)
+                        self._generated_fragments.append(fragment)
                         fragment.parent = self
                         fragment.mount(target, anchor=self.anchor())
 
@@ -692,38 +753,86 @@ class ListFragment(Fragment):
             # which adds/removes/updates all the child fragments
             self._watchers["list"] = watch_effect(update_children)
 
-        for child in self.children:
+        for child in self._generated_fragments:
             if not child.element:
                 child.mount(target, anchor=self.anchor())
 
         self._mounted = True
 
     def unmount(self, destroy=True):
+        # First unmount all generated fragments
+        for child in self._generated_fragments:
+            child.unmount(destroy=destroy)
+        # Clear the generated fragments, so that they get recreated on remount
+        self._generated_fragments = []
+        # Then call parent unmount for cleanup
         super().unmount(destroy=destroy)
-        # Clear the children array, so that they get recreated on remount
-        self.children = []
 
 
 class ComponentFragment(Fragment):
+    """
+    Fragment for component instances.
+
+    ComponentFragment has two modes based on whether `tag` is set:
+
+    1. When `tag` is set (component usage site, e.g., <MyComponent>):
+       - `slot_content` dict maps slot names to fragment lists
+       - `rendered_fragment` holds the component's render output
+       - `render_children()` yields `rendered_fragment`
+
+    2. When `tag` is None (render wrapper inside component):
+       - `template_children` contains the component's template output
+       - `render_children()` returns `template_children`
+    """
+
     def __init__(self, *args, props=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.component: Component | None = None
-        self.fragment: Fragment | None = None
+        # The fragment returned by component.render()
+        self.rendered_fragment: Fragment | None = None
         self.props: dict[Any, Any] | None = props
         self.slots: dict = {}
-        self.slot_contents = []
+        # Slot content: maps slot name to list of fragments
+        # Content with no explicit slot goes to "default"
+        self.slot_content: dict[str, list[Fragment]] = {}
         assert "tag" not in kwargs or callable(kwargs["tag"])
 
     def register_child(self, child: Fragment) -> None:
+        """
+        Register a child fragment.
+
+        When tag is set (component usage), children are slot content.
+        When tag is None (render wrapper), children are template children.
+        """
         if self.tag:
-            self.slot_contents.append(child)
+            # This is a component usage - children are slot content
+            slot_name = child.slot_name or "default"
+            if slot_name not in self.slot_content:
+                self.slot_content[slot_name] = []
+            self.slot_content[slot_name].append(child)
         else:
-            self.children.append(child)
+            # This is a render wrapper - children are template children
+            self.template_children.append(child)
+
+    def render_children(self) -> Iterable[Fragment]:
+        """Return the rendered fragment (component's output)."""
+        if self.rendered_fragment:
+            yield self.rendered_fragment
+        else:
+            yield from self.template_children
+
+    def iter_all_children(self) -> Iterable[Fragment]:
+        """Yield all children: template, rendered, and slot content."""
+        yield from self.template_children
+        if self.rendered_fragment:
+            yield self.rendered_fragment
+        for slot_fragments in self.slot_content.values():
+            yield from slot_fragments
 
     def first(self) -> Any | None:
-        """Return the first element from the rendered component fragment"""
-        if self.fragment:
-            return self.fragment.first()
+        """Return the first element from the rendered component fragment."""
+        if self.rendered_fragment:
+            return self.rendered_fragment.first()
         return super().first()
 
     def create(self):
@@ -751,9 +860,8 @@ class ComponentFragment(Fragment):
         parent = self._component_parent()
         assert not isinstance(self.tag, str)
         self.component = self.tag(props=self.props, parent=parent)
-        self.fragment = self.component.render(self.renderer)
-        self.fragment.parent = self
-        self.children.append(self.fragment)
+        self.rendered_fragment = self.component.render(self.renderer)
+        self.rendered_fragment.parent = self
 
         # Add all event handlers
         for event, handler in self._events.items():
@@ -786,17 +894,17 @@ class ComponentFragment(Fragment):
         self.target = target
         self.create()
 
-        if self.fragment:
-            self.fragment.mount(target, anchor)
+        if self.rendered_fragment:
+            self.rendered_fragment.mount(target, anchor)
         else:
-            for child in self.children:
+            for child in self.render_children():
                 child.mount(target, anchor)
 
         if self.component:
             from collections import deque
 
-            # Use fifo data structure (double-ended queue)
-            lookup = deque(self.children)
+            # Find the first element in the render tree
+            lookup = deque(self.render_children())
             try:
                 while True:
                     child = lookup.popleft()
@@ -804,7 +912,7 @@ class ComponentFragment(Fragment):
                         self.component._element = element
                         lookup.clear()
                         break
-                    lookup.extend(child.children)
+                    lookup.extend(child.render_children())
             except IndexError:
                 pass
 
@@ -820,6 +928,10 @@ class ComponentFragment(Fragment):
 
     def register_slot(self, name, fragment: SlotFragment):
         self.slots[name] = fragment
+
+    def get_slot_content(self, name: str) -> list[Fragment]:
+        """Get slot content for a given slot name."""
+        return self.slot_content.get(name, [])
 
     def _set_attr(self, attr, value):
         self.props[attr] = value
@@ -847,84 +959,122 @@ class ComponentFragment(Fragment):
         if self.component:
             self.component.before_unmount()
 
-        # Unmount slot contents before calling super
-        for slot_content in self.slot_contents:
-            slot_content.unmount(destroy=destroy)
+        # Unmount the rendered fragment (component's output) - for component usage site
+        if self.rendered_fragment:
+            self.rendered_fragment.unmount(destroy=destroy)
 
-        # Set _ref_name to None before calling super to prevent double cleanup
+        # Unmount slot content
+        for slot_fragments in self.slot_content.values():
+            for fragment in slot_fragments:
+                fragment.unmount(destroy=destroy)
+
+        # Unmount template children (for render wrapper with tag=None)
+        for child in self.template_children:
+            child.unmount(destroy=destroy)
+
+        # Set _ref_name to None before cleanup
         temp_ref_name = self._ref_name
         temp_ref_is_dynamic = self._ref_is_dynamic
         self._ref_name = None
         self._ref_is_dynamic = False
-        super().unmount(destroy=destroy)
-        if not destroy:
-            self._ref_name = temp_ref_name
-            self._ref_is_dynamic = temp_ref_is_dynamic
-        else:
-            # Clear ComponentFragment-specific state for full destruction
-            # This ensures proper cleanup of any dangling items. Especially
-            # needed for hot-reload where the component is first destroyed
-            # and then remounted and needs to be fully recreated from scratch.
-            self.fragment = None
-            self.children.clear()
-            self.slot_contents.clear()
+
+        self._mounted = False
+        self._remove()
+
+        if destroy:
+            self.element = None
+            self.target = None
+            self._attributes = {}
+            self._events = {}
+            for unwatch in self._watchers.values():
+                unwatch()
+            self._watchers = {}
+            self._condition = None
+            self.tag = None
+            # Clear ComponentFragment-specific state
+            self.rendered_fragment = None
+            self.template_children.clear()
+            self.slot_content.clear()
             self.slots.clear()
             self.component = None
             self.props = None
+        else:
+            self.element = None
+            for unwatch in self._watchers.values():
+                unwatch()
+            self._watchers = {}
+            self._ref_name = temp_ref_name
+            self._ref_is_dynamic = temp_ref_is_dynamic
 
 
 class SlotFragment(Fragment):
     """
-    Fragment that describes a 'slot' element
+    Fragment that renders slot content from a component's usage site.
 
-    Problem with this: mounting works on 'this' item, which means that
-    it only controls this instance, and not its children...
-    So if we need another layer of abstraction to (conditionally) mount
-    a subtree, we'll need a different mechanism. Probably.
+    SlotFragment looks up slot content from the parent ComponentFragment
+    and renders it at the slot's location inside the component's template.
 
-    Instead of 'mounting' an element, we could for instance 'attach' an
-    element to its parent. So basically we ask the parent to mount/unmount
-    the current element. The parent can then redirect the actual mounting
-    to wherever it is actually needed?
-
-    Workaround: use a template tag if dynamic slot content is needed.
-    See: tests/data/slots/dynamic_if_template.cgx
+    Note: For dynamic slot content (v-if on slot content), use a template
+    tag wrapper. See: tests/data/slots/dynamic_if_template.cgx
     """
 
     def __init__(self, *args, name, tag=None, props=None, **kwargs):
         super().__init__(*args, tag=None, **kwargs)
         self.name = name
 
+        # Walk up to find the root ComponentFragment (render wrapper)
         parent = self.parent
-        while parent.parent:
-            parent = parent.parent
+        while par := parent.parent:
+            parent = par
 
         assert isinstance(parent, ComponentFragment)
         assert parent.tag is None
-        self.parent_component = parent
-        self.parent_component.register_slot(name, self)
+        self._root_component = parent
+        self._root_component.register_slot(name, self)
 
     def set_attribute(self, attr: str, value: Any):
         # name is a reserved attribute for slots
         if attr != "name":
             super().set_attribute(attr, value)
 
+    def render_children(self) -> Iterable[Fragment]:
+        """
+        Return slot content from the component usage site.
+
+        If there's slot content for this slot name, return it.
+        Otherwise, return template_children (default slot content).
+        """
+        # Get the ComponentFragment that represents the component usage
+        component_usage = self._root_component.parent
+        if isinstance(component_usage, ComponentFragment):
+            slot_content = component_usage.get_slot_content(self.name)
+            if slot_content:
+                return slot_content
+        # Fall back to default slot content (template children)
+        return self.template_children
+
     def mount(self, target: Any, anchor: Any | None = None):
-        component_parent = self.parent_component.parent
-        if component_parent.slot_contents:
-            for item in component_parent.slot_contents:
-                if item.slot_name == self.name:
-                    item.mount(target, anchor)
-        else:
-            super().mount(target, anchor)
+        if self._mounted:
+            return
+
+        self.target = target
+
+        # Mount slot content (or default content)
+        # Set render_parent so that slot content looks for anchors within the slot
+        for child in self.render_children():
+            child._render_parent = ref(self)
+            child.mount(target, anchor)
+
+        self._mounted = True
 
 
 class DynamicFragment(Fragment):
     """
     Fragment for dynamic component tags: <component :is="expression" />
 
-    Handles switching between different tag types (components or elements)
-    based on a reactive expression.
+    Template children are the slot content to pass to the dynamic component.
+    The active fragment (ComponentFragment or Fragment) is created based
+    on the reactive expression value.
     """
 
     def __init__(
@@ -942,8 +1092,19 @@ class DynamicFragment(Fragment):
         # Watcher for the expression
         self._type_watcher: Watcher | None = None
 
+    def render_children(self) -> Iterable[Fragment]:
+        """Return the active fragment."""
+        if self._active_fragment:
+            yield self._active_fragment
+
+    def iter_all_children(self) -> Iterable[Fragment]:
+        """Yield template children and active fragment."""
+        yield from self.template_children
+        if self._active_fragment:
+            yield self._active_fragment
+
     def create(self):
-        """Create the initial fragment based on expression value"""
+        """Create the initial fragment based on expression value."""
         # Evaluate expression to get initial tag
         tag = self._expression()
 
@@ -958,8 +1119,6 @@ class DynamicFragment(Fragment):
 
             # Unmount current fragment
             if self._active_fragment:
-                # Note: _active_fragment is no longer in self.children
-                # (it's removed in _create_fragment_for_tag)
                 self._active_fragment.unmount(destroy=False)
 
             # Create new fragment
@@ -976,25 +1135,25 @@ class DynamicFragment(Fragment):
         )
 
     def _create_fragment_for_tag(self, tag):
-        """Create appropriate fragment for the given tag"""
-        # Save existing children before creating active fragment
-        # If we had a ComponentFragment, children are in its slot_contents
+        """Create appropriate fragment for the given tag."""
+        # Get existing children to transfer
+        # If we had a ComponentFragment, get its slot content
         if (
             self._active_fragment
             and isinstance(self._active_fragment, ComponentFragment)
             and self._active_fragment.tag is not None
         ):
-            # Get children from previous ComponentFragment's slot_contents
-            existing_children = self._active_fragment.slot_contents.copy()
+            # Collect all slot content from the ComponentFragment
+            existing_children = []
+            for fragments in self._active_fragment.slot_content.values():
+                existing_children.extend(fragments)
         else:
-            # Get children from DynamicFragment's children
-            existing_children = self.children.copy()
+            # Get children from DynamicFragment's template_children
+            existing_children = self.template_children.copy()
 
         if callable(tag):
             # Component class - create ComponentFragment
-            # Don't pass parent, so that the register_child method is skipped
-            # so that the _active_fragment won't be part of the children
-            # which are whatever is specified in the template
+            # Don't pass parent to skip register_child
             self._active_fragment = ComponentFragment(
                 self.renderer,
                 tag=tag,
@@ -1004,17 +1163,15 @@ class DynamicFragment(Fragment):
             self._active_fragment._parent = ref(self)
 
             # Transfer existing children as slot content
-            # ComponentFragment.register_child() adds them to slot_contents
-            # when tag is set
             for child in existing_children:
                 child._parent = ref(self._active_fragment)
-                # Set slot_name to "default" if not already set (e.g., by v-slot:name)
-                if not hasattr(child, "slot_name") or child.slot_name is None:
+                # Set slot_name to "default" if not already set
+                if child.slot_name is None:
                     child.slot_name = "default"
                 self._active_fragment.register_child(child)
         else:
             # String tag - create regular Fragment
-            # Also don't pass parent here
+            # Don't pass parent to skip register_child
             self._active_fragment = Fragment(
                 self.renderer,
                 tag=tag,
@@ -1025,7 +1182,7 @@ class DynamicFragment(Fragment):
             # Transfer existing children to the active fragment
             for child in existing_children:
                 child._parent = ref(self._active_fragment)
-                self._active_fragment.children.append(child)
+                self._active_fragment.template_children.append(child)
 
         # Transfer attributes, bindings, events from self to active fragment
         self._active_fragment._attributes.update(self._attributes)
@@ -1057,8 +1214,8 @@ class DynamicFragment(Fragment):
             if destroy:
                 self._active_fragment = None
 
-        # Standard cleanup
-        for child in self.children:
+        # Standard cleanup for template children
+        for child in self.template_children:
             child.unmount(destroy=destroy)
 
         self._remove()

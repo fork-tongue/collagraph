@@ -195,6 +195,43 @@ def ast_set_slot_name(el: str, name: str) -> ast.Assign:
     )
 
 
+def ast_register_with_parent(el: str, parent: str) -> ast.Expr:
+    """Generate: el._parent = weakref.ref(parent); parent.register_child(el)"""
+    # el._parent = ref(parent)
+    # parent.register_child(el)
+    # We need a statement that does both, but AST single expressions are limited.
+    # Let's use a simple expression that sets parent and calls register_child:
+    # (el.__setattr__('_parent', ref(parent)), parent.register_child(el))
+    # Actually, let's just generate two statements and wrap in a list
+    return [
+        ast.Assign(
+            targets=[
+                ast.Attribute(
+                    value=ast.Name(id=el, ctx=ast.Load()),
+                    attr="_parent",
+                    ctx=ast.Store(),
+                )
+            ],
+            value=ast.Call(
+                func=ast.Name(id="ref", ctx=ast.Load()),
+                args=[ast.Name(id=parent, ctx=ast.Load())],
+                keywords=[],
+            ),
+        ),
+        ast.Expr(
+            value=ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id=parent, ctx=ast.Load()),
+                    attr="register_child",
+                    ctx=ast.Load(),
+                ),
+                args=[ast.Name(id=el, ctx=ast.Load())],
+                keywords=[],
+            )
+        ),
+    ]
+
+
 def ast_named_lambda(
     source: ast.Expression, names: set[str], list_names: list[dict[str, set[str]]]
 ) -> ast.Expr:
@@ -332,7 +369,15 @@ def ast_set_condition(
     )
 
 
-def ast_create_control_flow(name: str, parent: str) -> ast.Assign:
+def ast_create_control_flow(name: str, parent: str | None) -> ast.Assign:
+    keywords = []
+    if parent is not None:
+        keywords.append(
+            ast.keyword(
+                arg="parent",
+                value=ast.Name(id=parent, ctx=ast.Load()),
+            )
+        )
     return ast.Assign(
         targets=[ast.Name(id=name, ctx=ast.Store())],
         value=ast.Call(
@@ -340,12 +385,7 @@ def ast_create_control_flow(name: str, parent: str) -> ast.Assign:
             args=[
                 ast.Name(id="renderer", ctx=ast.Load()),
             ],
-            keywords=[
-                ast.keyword(
-                    arg="parent",
-                    value=ast.Name(id=parent, ctx=ast.Load()),
-                )
-            ],
+            keywords=keywords,
         ),
     )
 
@@ -402,6 +442,13 @@ def create_collagraph_render_function(
                 ast.alias(name="Fragment"),
                 ast.alias(name="SlotFragment"),
             ],
+            level=0,
+        )
+    )
+    body.append(
+        ast.ImportFrom(
+            module="weakref",
+            names=[ast.alias(name="ref")],
             level=0,
         )
     )
@@ -725,6 +772,13 @@ def create_collagraph_render_function(
             is_dynamic_component = child.tag == "component" and ":is" in child.attrs
             is_expression = child.attrs.get(":is") if is_dynamic_component else None
 
+            # Determine early if this element is slot content (child of a component)
+            # This affects whether we pass parent to ControlFlowFragment/Fragment
+            parent_is_component = False
+            if parent_node := (child.parent and child.parent()):
+                if is_component_tag(parent_node.tag, names):
+                    parent_is_component = True
+
             added_slot_name = False
             for key, value in child.attrs.items():
                 if not is_directive(key):
@@ -742,7 +796,10 @@ def create_collagraph_render_function(
                 elif key == DIRECTIVE_IF:
                     assert control_flow_parent is not None
                     assert target is not None
-                    result.append(ast_create_control_flow(control_flow_parent, target))
+                    # Don't pass parent if slot content - we'll register later
+                    cf_parent = None if parent_is_component else target
+                    cf_stmt = ast_create_control_flow(control_flow_parent, cf_parent)
+                    result.append(cf_stmt)
                     condition = ast_set_condition(el, value, names, list_names)
                 elif key == DIRECTIVE_ELSE_IF:
                     condition = ast_set_condition(el, value, names, list_names)
@@ -763,15 +820,35 @@ def create_collagraph_render_function(
                 else:
                     raise NotImplementedError(key)
 
+            # Determine if this is slot content (child of a component)
+            # We've already determined parent_is_component above
+            # However, if there's a control_flow_parent, the element itself is not
+            # slot content - the control_flow wrapper is. The element is just a
+            # child of the control_flow.
+            is_slot_content = parent_is_component and not control_flow_parent
+
+            # The control_flow itself is slot content if parent is a component
+            control_flow_is_slot_content = (
+                parent_is_component and control_flow_parent is not None
+            )
+
             # Check if we need to mark the item as content for the default slot
-            if not added_slot_name:
-                if parent_node := (child.parent and child.parent()):
-                    if is_component_tag(parent_node.tag, names):
-                        # If there's a control flow wrapper (v-if/v-else-if/v-else),
-                        # set slot_name on the control flow fragment since that's
-                        # what gets registered in slot_contents
-                        slot_target = control_flow_parent if control_flow_parent else el
-                        attributes.append(ast_set_slot_name(slot_target, "default"))
+            if is_slot_content and not added_slot_name:
+                attributes.append(ast_set_slot_name(el, "default"))
+            elif control_flow_is_slot_content and not added_slot_name:
+                # set slot_name on the control flow fragment since that's
+                # what gets registered in slot_content
+                attributes.append(ast_set_slot_name(control_flow_parent, "default"))
+
+            # For slot content:
+            # 1. Create fragment WITHOUT parent (so register_child isn't called)
+            # 2. Set slot_name (already in attributes)
+            # 3. Manually set parent and call register_child
+            # Note: When there's a control_flow_parent, the element is created with
+            # control_flow_parent as its parent, and control_flow_parent is registered
+            # with `parent` (the component).
+            actual_parent = control_flow_parent or parent
+            create_parent = None if is_slot_content else actual_parent
 
             # Create the appropriate fragment type
             if is_dynamic_component:
@@ -780,7 +857,7 @@ def create_collagraph_render_function(
                     ast_create_dynamic_fragment(
                         el,
                         is_expression,
-                        parent=control_flow_parent or parent,
+                        parent=create_parent,
                         names=names,
                         list_names=list_names,
                     )
@@ -803,7 +880,7 @@ def create_collagraph_render_function(
                         el,
                         child.tag,
                         is_component=is_component,
-                        parent=control_flow_parent or parent,
+                        parent=create_parent,
                         node=child,
                     )
                 )
@@ -812,6 +889,15 @@ def create_collagraph_render_function(
             result.extend(attributes)
             result.extend(binds)
             result.extend(events)
+
+            # For slot content, register with parent AFTER slot_name is set
+            # Note: `parent` may be None for v-if elements, use `target` instead
+            if is_slot_content and target:
+                # Direct slot content (no control_flow wrapper)
+                result.extend(ast_register_with_parent(el, target))
+            elif control_flow_is_slot_content and target:
+                # Control flow is the slot content, register it with the component
+                result.extend(ast_register_with_parent(control_flow_parent, target))
 
             # Process the children
             result.extend(create_children(child.children, el, names, list_names))
