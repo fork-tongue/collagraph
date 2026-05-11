@@ -4,5 +4,6 @@ __pycache__
 .coverage
 dist
 build
+*.spec
 uv.lock
 .venv

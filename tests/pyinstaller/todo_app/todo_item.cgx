@@ -1,0 +1,11 @@
+<item :label="format_label(props['text'], props['done'])" />
+
+<script>
+import collagraph as cg
+from helpers import format_label
+
+
+class TodoItem(cg.Component):
+    pass
+</script>
+
