@@ -4,17 +4,19 @@ from ... import PySideRenderer
 from .qobject import set_attribute as qobject_set_attribute
 
 
-def _snapshot_expansion(item: QTreeWidgetItem) -> list[tuple[QTreeWidgetItem, bool]]:
-    """Record ``isExpanded`` for ``item`` and all its descendants.
+def _snapshot_item_state(
+    item: QTreeWidgetItem,
+) -> list[tuple[QTreeWidgetItem, bool, bool]]:
+    """Record ``(isExpanded, isSelected)`` for ``item`` and all descendants.
 
-    Qt collapses an entire subtree when ``removeChild`` is called on its
-    root, so callers snapshot the state here before removing and restore
-    it after re-inserting (keyed v-for reordering).
+    Qt resets both bits across a ``removeChild``, so callers snapshot
+    here before removing and restore after re-inserting (the path
+    keyed-v-for reordering takes).
     """
-    snapshot: list[tuple[QTreeWidgetItem, bool]] = []
+    snapshot: list[tuple[QTreeWidgetItem, bool, bool]] = []
 
     def walk(it: QTreeWidgetItem) -> None:
-        snapshot.append((it, it.isExpanded()))
+        snapshot.append((it, it.isExpanded(), it.isSelected()))
         for i in range(it.childCount()):
             walk(it.child(i))
 
@@ -22,9 +24,12 @@ def _snapshot_expansion(item: QTreeWidgetItem) -> list[tuple[QTreeWidgetItem, bo
     return snapshot
 
 
-def _restore_expansion(snapshot: list[tuple[QTreeWidgetItem, bool]]) -> None:
-    for it, expanded in snapshot:
+def _restore_item_state(
+    snapshot: list[tuple[QTreeWidgetItem, bool, bool]],
+) -> None:
+    for it, expanded, selected in snapshot:
         it.setExpanded(expanded)
+        it.setSelected(selected)
 
 
 @PySideRenderer.register_insert(QTreeWidgetItem)
@@ -42,24 +47,24 @@ def insert(self, el: QTreeWidgetItem, anchor=None):
             if self.treeWidget():
                 # ``el`` may already be in the tree (legacy code paths
                 # call insert without removing first); snapshot so we
-                # can preserve its expansion across removeChild.
-                expansion = _snapshot_expansion(el)
+                # can preserve its expansion/selection across removeChild.
+                state = _snapshot_item_state(el)
                 self.removeChild(el)
                 self.insertChild(index, el)
-                _restore_expansion(expansion)
+                _restore_item_state(state)
             else:
                 self.insertChild(index, el)
         else:
             self.addChild(el)
 
-        # Restore expansion that was snapshotted at remove-time (keyed
-        # reorder via a separate remove/insert pair, see remove() below).
-        if hasattr(el, "_expansion_snapshot"):
-            _restore_expansion(el._expansion_snapshot)
-            del el._expansion_snapshot
+        # Restore state snapshotted at remove-time (keyed reorder via a
+        # separate remove/insert pair, see remove() below).
+        if hasattr(el, "_state_snapshot"):
+            _restore_item_state(el._state_snapshot)
+            del el._state_snapshot
 
-        # After mounting, process some attributes that can only
-        # be adjusted when the item is mounted in the tree structure
+        # After mounting, process some attributes that can only be
+        # adjusted when the item is mounted in the tree structure.
         if hasattr(el, "_expanded"):
             el.setExpanded(el._expanded)
             delattr(el, "_expanded")
@@ -79,11 +84,11 @@ def remove(self, el: QTreeWidgetItem):
         tree_widget.blockSignals(True)
 
     try:
-        # Stash expansion so a paired insert() (keyed reorder) can put
-        # the subtree back the way it was. The stash is consumed by the
-        # next insert of ``el``; if the item is being removed for good
-        # the attribute is simply garbage-collected with it.
-        el._expansion_snapshot = _snapshot_expansion(el)
+        # Stash UI state so a paired insert() (keyed reorder) can put
+        # the subtree back the way it was. The stash is consumed by
+        # the next insert of ``el``; if the item is being removed for
+        # good the attribute is garbage-collected with it.
+        el._state_snapshot = _snapshot_item_state(el)
         self.removeChild(el)
     finally:
         if tree_widget:

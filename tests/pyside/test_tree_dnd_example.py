@@ -342,6 +342,128 @@ def test_drop_signal_reorders_within_root(qtbot, example_component):
     _screenshot(container, "06_after_drop_above")
 
 
+def test_drop_preserves_selection(qtbot, example_component):
+    """Selection should follow items across a move."""
+    _renderer, gui, container = _render(example_component)
+    tree_widget = None
+
+    def find():
+        nonlocal tree_widget
+        tree_widget = container.findChild(QtWidgets.QTreeWidget, "tree")
+        assert tree_widget is not None and tree_widget.topLevelItemCount() == 3
+
+    qtbot.waitUntil(find, timeout=1000)
+    component = gui.fragment.component
+
+    # Select "Bread" (root index 2) and drop it onto "Fruit" (root index 0).
+    bread_id = component.state["tree"][2]["id"]
+    _select_paths_via_state(container, [[2]])
+
+    def selection_visible_in_state():
+        assert component.state["selected_ids"] == [bread_id]
+
+    qtbot.waitUntil(selection_visible_in_state, timeout=1000)
+
+    tree_widget.itemDropped.emit([[2]], [0], "on")
+
+    def bread_still_selected_at_new_position():
+        # Tree should have 2 roots now; Bread is the last child of Fruit.
+        assert tree_widget.topLevelItemCount() == 2
+        fruit = tree_widget.topLevelItem(0)
+        moved = fruit.child(fruit.childCount() - 1)
+        assert moved.text(0) == "Bread"
+        assert moved.isSelected() is True
+        # State agrees.
+        assert component.state["selected_ids"] == [bread_id]
+        assert component.state["selected_paths"] == [[0, 3]]
+
+    qtbot.waitUntil(bread_still_selected_at_new_position, timeout=1500)
+
+
+def test_chained_drop_within_same_parent_preserves_selection(qtbot, example_component):
+    """Two drops in a row should both keep the moved item selected.
+
+    Regression for the case where Bread is first dropped onto Fruit
+    (becoming Fruit's last child) and then reordered above Apple — an
+    in-place reorder inside Fruit. Without snapshotting the item's
+    ``isSelected`` bit across the renderer's remove/insert pair, the
+    selection vanished on the second drop.
+    """
+    _renderer, gui, container = _render(example_component)
+    tree_widget = None
+
+    def find():
+        nonlocal tree_widget
+        tree_widget = container.findChild(QtWidgets.QTreeWidget, "tree")
+        assert tree_widget is not None and tree_widget.topLevelItemCount() == 3
+
+    qtbot.waitUntil(find, timeout=1000)
+    component = gui.fragment.component
+    bread_id = component.state["tree"][2]["id"]
+
+    _select_paths_via_state(container, [[2]])
+    qtbot.waitUntil(lambda: component.state["selected_ids"] == [bread_id], timeout=1000)
+
+    # Step 1: drop Bread onto Fruit (Bread becomes the last child).
+    tree_widget.itemDropped.emit([[2]], [0], "on")
+
+    def step1_landed():
+        fruit = tree_widget.topLevelItem(0)
+        assert fruit.childCount() == 4
+        assert fruit.child(3).text(0) == "Bread"
+        assert fruit.child(3).isSelected() is True
+        assert component.state["selected_paths"] == [[0, 3]]
+
+    qtbot.waitUntil(step1_landed, timeout=1500)
+
+    # Step 2: drop Bread above Apple (in-place reorder inside Fruit).
+    tree_widget.itemDropped.emit([[0, 3]], [0, 0], "above")
+
+    def step2_landed():
+        fruit = tree_widget.topLevelItem(0)
+        labels = [fruit.child(i).text(0) for i in range(fruit.childCount())]
+        assert labels == ["Bread", "Apple", "Banana", "Berries"]
+        # Selection must follow Bread into its new spot.
+        assert fruit.child(0).isSelected() is True
+        assert component.state["selected_ids"] == [bread_id]
+        assert component.state["selected_paths"] == [[0, 0]]
+
+    qtbot.waitUntil(step2_landed, timeout=1500)
+
+
+def test_reorder_preserves_selection(qtbot, example_component):
+    """In-place reorder via drag should also keep the selection."""
+    _renderer, gui, container = _render(example_component)
+    tree_widget = None
+
+    def find():
+        nonlocal tree_widget
+        tree_widget = container.findChild(QtWidgets.QTreeWidget, "tree")
+        assert tree_widget is not None and tree_widget.topLevelItemCount() == 3
+
+    qtbot.waitUntil(find, timeout=1000)
+    component = gui.fragment.component
+
+    bread_id = component.state["tree"][2]["id"]
+    _select_paths_via_state(container, [[2]])
+    qtbot.waitUntil(lambda: component.state["selected_ids"] == [bread_id], timeout=1000)
+
+    # Drop Bread above Fruit: root order becomes Bread, Fruit, Vegetables.
+    tree_widget.itemDropped.emit([[2]], [0], "above")
+
+    def reordered_with_selection():
+        labels = [
+            tree_widget.topLevelItem(i).text(0)
+            for i in range(tree_widget.topLevelItemCount())
+        ]
+        assert labels == ["Bread", "Fruit", "Vegetables"]
+        assert tree_widget.topLevelItem(0).isSelected() is True
+        assert component.state["selected_ids"] == [bread_id]
+        assert component.state["selected_paths"] == [[0]]
+
+    qtbot.waitUntil(reordered_with_selection, timeout=1500)
+
+
 def test_drop_into_own_descendant_is_a_noop(qtbot, example_component):
     _renderer, _gui, container = _render(example_component)
     tree_widget = None

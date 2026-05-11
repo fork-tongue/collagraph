@@ -72,6 +72,7 @@ import collagraph as cg
 import examples.pyside.tree_dnd_widget  # noqa: F401
 from examples.pyside.tree_dnd_model import (
     add_item,
+    find_path_by_id,
     get_node,
     make_node,
     move_items,
@@ -268,8 +269,14 @@ class TreeDndExample(cg.Component):
         )
         if target_id is not None and target_id not in self.state["expanded_ids"]:
             self.state["expanded_ids"].append(target_id)
-        self.state["selected_paths"] = []
-        self.state["selected_ids"] = []
+        # Selection rides along with the move. ``selected_ids`` already
+        # tracks the moved nodes (their ids are stable); just recompute
+        # ``selected_paths`` against the new tree layout.
+        self.state["selected_paths"] = [
+            find_path_by_id(self.state["tree"], nid)
+            for nid in self.state["selected_ids"]
+            if find_path_by_id(self.state["tree"], nid) is not None
+        ]
 
     # -------------------------------------------------------- status bar
 
