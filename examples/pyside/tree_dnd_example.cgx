@@ -1,0 +1,179 @@
+<!--
+  Drag-and-drop tree-widget example.
+
+  Run as:
+    uv run collagraph examples/pyside/tree_dnd_example.cgx
+
+  Demonstrates:
+   * a tree state of arbitrary depth managed by ``tree_dnd_model``
+   * a custom QTreeWidget that turns drops into state mutations
+   * add / remove / regroup-selection actions, all going through state
+-->
+<window title="Tree DnD Example" :size="[520, 520]">
+  <widget :layout="{'type': 'Box', 'direction': 'TopToBottom'}">
+    <label text="Drag items to reorganise. Multi-select then 'Group' to nest them." />
+
+    <dnd-treewidget
+      object-name="tree"
+      :column-count="1"
+      :header-labels="['Label']"
+      @item-dropped="on_drop"
+      @item-selection-changed="on_selection_changed"
+    >
+      <TreeNodeItem
+        v-for="node in tree"
+        :key="node.id"
+        :node="node"
+        :selected_ids="selected_ids"
+      />
+    </dnd-treewidget>
+
+    <widget :layout="{'type': 'Box', 'direction': 'LeftToRight'}">
+      <button text="Add root" @clicked="add_root" />
+      <button
+        text="Add child"
+        :enabled="len(selected_paths) == 1"
+        @clicked="add_child"
+      />
+      <button
+        text="Remove"
+        :enabled="bool(selected_paths)"
+        @clicked="remove_selected"
+      />
+      <button
+        text="Group"
+        :enabled="len(selected_paths) >= 2"
+        @clicked="group_selected"
+      />
+    </widget>
+
+    <label :text="status_text()" />
+  </widget>
+</window>
+
+
+<script>
+import collagraph as cg
+from PySide6 import QtWidgets
+
+from examples.pyside.tree_dnd_item import TreeNodeItem
+from examples.pyside.tree_dnd_model import (
+    TreeNode,
+    add_item,
+    move_items,
+    regroup_selection,
+    remove_items,
+)
+# Importing for the side effect of registering the custom element.
+import examples.pyside.tree_dnd_widget  # noqa: F401
+
+
+class TreeDndExample(cg.Component):
+    def init(self):
+        self.state["tree"] = [
+            TreeNode(
+                "Fruit",
+                children=[
+                    TreeNode("Apple"),
+                    TreeNode("Banana"),
+                    TreeNode(
+                        "Berries",
+                        children=[
+                            TreeNode("Strawberry"),
+                            TreeNode("Blueberry"),
+                        ],
+                    ),
+                ],
+            ),
+            TreeNode(
+                "Vegetables",
+                children=[
+                    TreeNode("Carrot"),
+                    TreeNode("Potato"),
+                ],
+            ),
+            TreeNode("Bread"),
+        ]
+        # Paths of currently selected items (list of int-lists).
+        self.state["selected_paths"] = []
+        # Cache of currently-selected ids; recomputed when selection changes.
+        self.state["selected_ids"] = []
+
+    # ----------------------------------------------------- selection sync
+
+    def on_selection_changed(self):
+        tree_widget = self.element.findChild(QtWidgets.QTreeWidget, "tree")
+        if tree_widget is None:
+            return
+        paths = []
+        ids = []
+        for item in tree_widget.selectedItems():
+            path = []
+            cursor = item
+            while cursor is not None:
+                parent = cursor.parent()
+                if parent is None:
+                    path.insert(0, tree_widget.indexOfTopLevelItem(cursor))
+                    break
+                path.insert(0, parent.indexOfChild(cursor))
+                cursor = parent
+            paths.append(path)
+            ids.append(self._node_at_path(path).id)
+        self.state["selected_paths"] = paths
+        self.state["selected_ids"] = ids
+
+    def _node_at_path(self, path):
+        items = self.state["tree"]
+        node = items[path[0]]
+        for idx in path[1:]:
+            node = node.children[idx]
+        return node
+
+    # --------------------------------------------------- button handlers
+
+    def add_root(self):
+        node = add_item(self.state["tree"], [], "New item")
+        self.state["selected_paths"] = [[len(self.state["tree"]) - 1]]
+        self.state["selected_ids"] = [node.id]
+
+    def add_child(self):
+        parent_path = self.state["selected_paths"][0]
+        node = add_item(self.state["tree"], parent_path, "New child")
+        self.state["selected_ids"] = [node.id]
+
+    def remove_selected(self):
+        paths = [list(p) for p in self.state["selected_paths"]]
+        remove_items(self.state["tree"], paths)
+        self.state["selected_paths"] = []
+        self.state["selected_ids"] = []
+
+    def group_selected(self):
+        paths = [list(p) for p in self.state["selected_paths"]]
+        new_group = regroup_selection(self.state["tree"], paths, label="Group")
+        self.state["selected_paths"] = []
+        self.state["selected_ids"] = [new_group.id] if new_group else []
+
+    # ---------------------------------------------------- drag-drop sink
+
+    def on_drop(self, source_paths, target_path, position):
+        # Both lists arrive as plain Python lists from the Qt signal.
+        target = list(target_path) if target_path else None
+        move_items(
+            self.state["tree"],
+            [list(p) for p in source_paths],
+            target,
+            position,
+        )
+        self.state["selected_paths"] = []
+        self.state["selected_ids"] = []
+
+    # -------------------------------------------------------- status bar
+
+    def status_text(self):
+        count = len(self.state["selected_paths"])
+        if count == 0:
+            return "No selection."
+        if count == 1:
+            return "1 item selected."
+        return f"{count} items selected."
+</script>

@@ -626,22 +626,24 @@ class ListFragment(Fragment):
                         # Mount new fragment at the correct position
                         fragment.mount(target, anchor=anchor)
                     else:
-                        # Fragment is already mounted, move it in the DOM if needed
-                        if fragment.element:
+                        # Fragment is already mounted, move it in the DOM if
+                        # needed. Use .first() rather than .element so we
+                        # also move the rendered element of a ComponentFragment
+                        # (whose own .element is always None).
+                        element = fragment.first()
+                        if element is not None:
                             # Check if it's already in the correct position
                             # Get the actual next sibling in the current DOM
-                            current_next = self._get_next_sibling(
-                                fragment.element, target
-                            )
+                            current_next = self._get_next_sibling(element, target)
 
                             # Only move if not already in correct position
                             if current_next != anchor:
                                 # Remove from current position
                                 # (but keep element reference)
                                 # and insert at new position
-                                self.renderer.remove(fragment.element, target)
+                                self.renderer.remove(element, target)
                                 self.renderer.insert(
-                                    fragment.element, parent=target, anchor=anchor
+                                    element, parent=target, anchor=anchor
                                 )
 
                 # Update children list

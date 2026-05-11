@@ -1,0 +1,22 @@
+<treewidgetitem
+  :content="{0: node.label}"
+  :selected="node.id in selected_ids"
+  :expanded="True"
+>
+  <TreeNodeItem
+    v-for="child in node.children"
+    :key="child.id"
+    :node="child"
+    :selected_ids="selected_ids"
+  />
+</treewidgetitem>
+
+
+<script>
+import collagraph as cg
+
+
+class TreeNodeItem(cg.Component):
+    """Recursively renders a TreeNode and its descendants."""
+    pass
+</script>
