@@ -7,6 +7,3 @@ build
 *.spec
 uv.lock
 .venv
-
-# Ignore the screenshots from the test suite
-tests/pyside/_screenshots

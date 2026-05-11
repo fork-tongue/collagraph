@@ -4,9 +4,6 @@ These tests drive ``examples/pyside/tree_dnd_example.cgx`` through its
 public state-mutation entry points (the same ones the buttons call) and
 through the custom ``itemDropped`` signal, then verify the QTreeWidget
 mirrors what the state says it should be.
-
-Screenshots are written under ``tests/pyside/_screenshots/`` so the
-example's behaviour can be eyeballed after a run.
 """
 
 from __future__ import annotations
@@ -26,22 +23,11 @@ EXAMPLE_PATH = (
     Path(__file__).resolve().parents[2] / "examples" / "pyside" / "tree_dnd_example.cgx"
 )
 
-SCREENSHOT_DIR = Path(__file__).resolve().parent / "_screenshots"
-
 
 @pytest.fixture
 def example_component():
     component_class, _namespace = load(EXAMPLE_PATH)
     return component_class
-
-
-def _screenshot(widget: QtWidgets.QWidget, name: str) -> Path:
-    SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
-    path = SCREENSHOT_DIR / f"{name}.png"
-    pixmap = widget.grab()
-    assert not pixmap.isNull(), "Failed to grab widget pixmap"
-    assert pixmap.save(str(path)), f"Failed to save screenshot to {path}"
-    return path
 
 
 def _labels_in_tree(tree_widget: QtWidgets.QTreeWidget) -> list:
@@ -136,12 +122,6 @@ def test_example_renders_initial_tree(qtbot, example_component):
 
     qtbot.waitUntil(check_structure, timeout=1000)
 
-    container.resize(520, 520)
-    container.show()
-    qtbot.waitExposed(container)
-    tree_widget.expandAll()
-    _screenshot(container, "01_initial")
-
 
 # --------------------------------------------------------------------------- #
 # add / remove
@@ -171,12 +151,6 @@ def test_add_root_item(qtbot, example_component):
         assert tree_widget.topLevelItem(3).text(0) == "New item"
 
     qtbot.waitUntil(check_added, timeout=1000)
-
-    container.resize(520, 520)
-    container.show()
-    qtbot.waitExposed(container)
-    tree_widget.expandAll()
-    _screenshot(container, "02_after_add_root")
 
 
 def test_remove_selected_item(qtbot, example_component):
@@ -212,12 +186,6 @@ def test_remove_selected_item(qtbot, example_component):
         assert labels == ["Fruit", "Vegetables"]
 
     qtbot.waitUntil(check_removed, timeout=1000)
-
-    container.resize(520, 520)
-    container.show()
-    qtbot.waitExposed(container)
-    tree_widget.expandAll()
-    _screenshot(container, "03_after_remove")
 
 
 # --------------------------------------------------------------------------- #
@@ -266,12 +234,6 @@ def test_group_selection_creates_new_group(qtbot, example_component):
 
     qtbot.waitUntil(check_grouped, timeout=1000)
 
-    container.resize(520, 520)
-    container.show()
-    qtbot.waitExposed(container)
-    tree_widget.expandAll()
-    _screenshot(container, "04_after_group")
-
 
 # --------------------------------------------------------------------------- #
 # drag-and-drop
@@ -305,12 +267,6 @@ def test_drop_signal_moves_item_into_target(qtbot, example_component):
 
     qtbot.waitUntil(check_moved, timeout=1000)
 
-    container.resize(520, 520)
-    container.show()
-    qtbot.waitExposed(container)
-    tree_widget.expandAll()
-    _screenshot(container, "05_after_drop_on")
-
 
 def test_drop_signal_reorders_within_root(qtbot, example_component):
     _renderer, _gui, container = _render(example_component)
@@ -334,12 +290,6 @@ def test_drop_signal_reorders_within_root(qtbot, example_component):
         assert labels == ["Bread", "Fruit", "Vegetables"]
 
     qtbot.waitUntil(check_reordered, timeout=1000)
-
-    container.resize(520, 520)
-    container.show()
-    qtbot.waitExposed(container)
-    tree_widget.expandAll()
-    _screenshot(container, "06_after_drop_above")
 
 
 def test_drop_preserves_selection(qtbot, example_component):
@@ -490,78 +440,6 @@ def test_drop_into_own_descendant_is_a_noop(qtbot, example_component):
 
 
 # --------------------------------------------------------------------------- #
-# combined scenario
-# --------------------------------------------------------------------------- #
-
-
-def test_full_workflow_screenshots(qtbot, example_component):
-    """End-to-end: add → group → drop, capturing screenshots at each step."""
-    _renderer, _gui, container = _render(example_component)
-    container.resize(520, 520)
-    container.show()
-    qtbot.waitExposed(container)
-
-    tree_widget = None
-
-    def find():
-        nonlocal tree_widget
-        tree_widget = container.findChild(QtWidgets.QTreeWidget, "tree")
-        assert tree_widget is not None and tree_widget.topLevelItemCount() == 3
-
-    qtbot.waitUntil(find, timeout=1000)
-    tree_widget.expandAll()
-    _screenshot(container, "07_workflow_initial")
-
-    # 1) Add a root item.
-    add_root = next(
-        b
-        for b in container.findChildren(QtWidgets.QPushButton)
-        if b.text() == "Add root"
-    )
-    qtbot.mouseClick(add_root, QtCore.Qt.LeftButton)
-
-    def four_roots():
-        assert tree_widget.topLevelItemCount() == 4
-
-    qtbot.waitUntil(four_roots, timeout=1000)
-    tree_widget.expandAll()
-    _screenshot(container, "07_workflow_after_add")
-
-    # 2) Select the new item and two siblings, then group.
-    _select_paths_via_state(container, [[1], [2], [3]])
-    group_button = next(
-        b for b in container.findChildren(QtWidgets.QPushButton) if b.text() == "Group"
-    )
-
-    def group_enabled():
-        assert group_button.isEnabled()
-
-    qtbot.waitUntil(group_enabled, timeout=1000)
-    qtbot.mouseClick(group_button, QtCore.Qt.LeftButton)
-
-    def two_roots_with_group():
-        assert tree_widget.topLevelItemCount() == 2
-        assert tree_widget.topLevelItem(1).text(0) == "Group"
-
-    qtbot.waitUntil(two_roots_with_group, timeout=1000)
-    tree_widget.expandAll()
-    _screenshot(container, "07_workflow_after_group")
-
-    # 3) Drop the new group onto Fruit.
-    tree_widget.itemDropped.emit([[1]], [0], "on")
-
-    def group_moved_into_fruit():
-        assert tree_widget.topLevelItemCount() == 1
-        fruit = tree_widget.topLevelItem(0)
-        last_child = fruit.child(fruit.childCount() - 1)
-        assert last_child.text(0) == "Group"
-
-    qtbot.waitUntil(group_moved_into_fruit, timeout=1500)
-    tree_widget.expandAll()
-    _screenshot(container, "07_workflow_after_drop")
-
-
-# --------------------------------------------------------------------------- #
 # expansion state
 # --------------------------------------------------------------------------- #
 
@@ -680,11 +558,6 @@ def test_expansion_survives_reorder(qtbot, example_component):
 
     qtbot.waitUntil(reordered_and_still_expanded, timeout=1500)
 
-    container.resize(520, 560)
-    container.show()
-    qtbot.waitExposed(container)
-    _screenshot(container, "08_reorder_keeps_expansion")
-
 
 # --------------------------------------------------------------------------- #
 # rename
@@ -746,8 +619,3 @@ def test_user_edit_writes_back_to_state(qtbot, example_component):
         assert component.state["tree"][0]["children"][0]["label"] == "Granny Smith"
 
     qtbot.waitUntil(state_reflects_rename, timeout=1000)
-
-    container.resize(520, 560)
-    container.show()
-    qtbot.waitExposed(container)
-    _screenshot(container, "09_after_rename")
