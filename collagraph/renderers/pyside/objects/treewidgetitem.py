@@ -4,6 +4,29 @@ from ... import PySideRenderer
 from .qobject import set_attribute as qobject_set_attribute
 
 
+def _snapshot_expansion(item: QTreeWidgetItem) -> list[tuple[QTreeWidgetItem, bool]]:
+    """Record ``isExpanded`` for ``item`` and all its descendants.
+
+    Qt collapses an entire subtree when ``removeChild`` is called on its
+    root, so callers snapshot the state here before removing and restore
+    it after re-inserting (keyed v-for reordering).
+    """
+    snapshot: list[tuple[QTreeWidgetItem, bool]] = []
+
+    def walk(it: QTreeWidgetItem) -> None:
+        snapshot.append((it, it.isExpanded()))
+        for i in range(it.childCount()):
+            walk(it.child(i))
+
+    walk(item)
+    return snapshot
+
+
+def _restore_expansion(snapshot: list[tuple[QTreeWidgetItem, bool]]) -> None:
+    for it, expanded in snapshot:
+        it.setExpanded(expanded)
+
+
 @PySideRenderer.register_insert(QTreeWidgetItem)
 def insert(self, el: QTreeWidgetItem, anchor=None):
     if not isinstance(el, QTreeWidgetItem):
@@ -17,10 +40,23 @@ def insert(self, el: QTreeWidgetItem, anchor=None):
         if anchor is not None:
             index = self.indexOfChild(anchor)
             if self.treeWidget():
+                # ``el`` may already be in the tree (legacy code paths
+                # call insert without removing first); snapshot so we
+                # can preserve its expansion across removeChild.
+                expansion = _snapshot_expansion(el)
                 self.removeChild(el)
-            self.insertChild(index, el)
+                self.insertChild(index, el)
+                _restore_expansion(expansion)
+            else:
+                self.insertChild(index, el)
         else:
             self.addChild(el)
+
+        # Restore expansion that was snapshotted at remove-time (keyed
+        # reorder via a separate remove/insert pair, see remove() below).
+        if hasattr(el, "_expansion_snapshot"):
+            _restore_expansion(el._expansion_snapshot)
+            del el._expansion_snapshot
 
         # After mounting, process some attributes that can only
         # be adjusted when the item is mounted in the tree structure
@@ -43,6 +79,11 @@ def remove(self, el: QTreeWidgetItem):
         tree_widget.blockSignals(True)
 
     try:
+        # Stash expansion so a paired insert() (keyed reorder) can put
+        # the subtree back the way it was. The stash is consumed by the
+        # next insert of ``el``; if the item is being removed for good
+        # the attribute is simply garbage-collected with it.
+        el._expansion_snapshot = _snapshot_expansion(el)
         self.removeChild(el)
     finally:
         if tree_widget:

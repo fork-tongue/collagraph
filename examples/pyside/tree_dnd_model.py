@@ -1,20 +1,20 @@
 """Tree-model logic for the drag-and-drop tree-widget example.
 
-The whole tree is stored as plain ``TreeNode`` instances whose ``children``
-attribute is an ``observ`` reactive list. The functions below operate on
-that structure and produce mutations that the renderer can pick up.
+Nodes are stored as plain Python dicts so the entire tree lives inside
+one big reactive structure (the component's ``state``). Each node has
+the keys ``id``, ``label``, ``expanded`` and ``children`` (a list of
+child node dicts).
 
-Keeping these operations in a pure-Python module (no Qt, no collagraph)
-makes them easy to TDD — see ``tests/test_tree_dnd_model.py``.
+Keeping the operations in this module — no Qt, no collagraph — lets
+them be exhaustively tested via ``tests/test_tree_dnd_model.py``.
 """
 
 from __future__ import annotations
 
 from itertools import count
+from typing import Any
 
-from observ import reactive
-
-# Module-level id generator so newly added nodes get stable :key values for
+# Module-level id generator so each node has a stable :key value for
 # the v-for keyed reconciliation in the .cgx template.
 _id_counter = count(1)
 
@@ -23,23 +23,21 @@ def _next_id() -> int:
     return next(_id_counter)
 
 
-class TreeNode:
-    """A single node in the tree.
+Node = dict[str, Any]
 
-    ``children`` is a reactive list, so the framework can observe
-    mutations (append / insert / pop) and rebuild the affected
-    sub-tree without us having to touch the QTreeWidget directly.
-    """
 
-    __slots__ = ("children", "id", "label")
-
-    def __init__(self, label: str, children: list["TreeNode"] | None = None):
-        self.id = _next_id()
-        self.label = label
-        self.children = reactive(list(children) if children else [])
-
-    def __repr__(self) -> str:  # pragma: no cover - debug helper
-        return f"TreeNode({self.label!r}, id={self.id})"
+def make_node(
+    label: str,
+    children: list[Node] | None = None,
+    expanded: bool = True,
+) -> Node:
+    """Create a fresh tree node as a plain dict."""
+    return {
+        "id": _next_id(),
+        "label": label,
+        "expanded": expanded,
+        "children": list(children) if children else [],
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -51,30 +49,45 @@ def get_node(tree, path):
     """Return the node at ``path`` within ``tree``.
 
     ``path`` is a list of indices: ``[2, 0]`` means
-    ``tree[2].children[0]``.
+    ``tree[2]["children"][0]``.
     """
     node = tree[path[0]]
     for idx in path[1:]:
-        node = node.children[idx]
+        node = node["children"][idx]
     return node
 
 
 def _parent_list_and_index(tree, path):
-    """Return the reactive list that contains ``path`` and the final index."""
+    """Return the children-list that contains ``path`` and the final index."""
     items = tree
     for idx in path[:-1]:
-        items = items[idx].children
+        items = items[idx]["children"]
     return items, path[-1]
 
 
 def find_path(tree, target):
-    """Depth-first search for ``target``; return its path or ``None``."""
+    """Depth-first search for ``target`` by identity. Returns ``None`` if absent."""
 
     def walk(items, prefix):
         for idx, node in enumerate(items):
             if node is target:
                 return [*prefix, idx]
-            found = walk(node.children, [*prefix, idx])
+            found = walk(node["children"], [*prefix, idx])
+            if found is not None:
+                return found
+        return None
+
+    return walk(tree, [])
+
+
+def find_path_by_id(tree, node_id):
+    """Depth-first search for the first node whose ``id`` equals ``node_id``."""
+
+    def walk(items, prefix):
+        for idx, node in enumerate(items):
+            if node["id"] == node_id:
+                return [*prefix, idx]
+            found = walk(node["children"], [*prefix, idx])
             if found is not None:
                 return found
         return None
@@ -90,8 +103,7 @@ def find_path(tree, target):
 def prune_descendants(paths):
     """Remove paths whose ancestor is also in the set.
 
-    Returns a list of unique paths (as lists). Order is not specified
-    — callers that care should sort the result.
+    Returns unique paths as lists (order unspecified).
     """
     unique = {tuple(p) for p in paths}
     pruned = []
@@ -108,27 +120,33 @@ def prune_descendants(paths):
 
 
 def add_item(tree, parent_path, label):
-    """Append a new ``TreeNode(label)`` under ``parent_path``.
+    """Append a new node ``label`` under ``parent_path``.
 
-    ``parent_path`` of ``[]`` adds the item at the root level.
+    ``parent_path`` of ``[]`` adds at the root level.
     """
-    new_node = TreeNode(label)
+    new_node = make_node(label)
     if not parent_path:
         tree.append(new_node)
     else:
-        get_node(tree, parent_path).children.append(new_node)
+        get_node(tree, parent_path)["children"].append(new_node)
     return new_node
+
+
+def rename_item(tree, path, label):
+    """Update the ``label`` of the node at ``path`` (no-op when unchanged)."""
+    node = get_node(tree, path)
+    if node["label"] != label:
+        node["label"] = label
 
 
 def remove_items(tree, paths):
     """Remove every node referenced by ``paths``.
 
     Overlapping paths (a parent and a descendant both selected) are
-    collapsed first so we only remove each subtree once.
+    collapsed first so each subtree is removed at most once.
     """
     pruned = prune_descendants(paths)
-    # Sort descending so earlier removals don't invalidate later indices
-    # within the same parent.
+    # Sort descending so earlier removals don't invalidate later indices.
     for path in sorted(pruned, reverse=True):
         parent_list, idx = _parent_list_and_index(tree, path)
         parent_list.pop(idx)
@@ -137,27 +155,28 @@ def remove_items(tree, paths):
 def regroup_selection(tree, paths, label="Group"):
     """Wrap the roots of ``paths`` in a new group at the first root's spot.
 
-    The returned node is the freshly created group (or ``None`` when
-    the selection is empty).
+    Returns the freshly created group, or ``None`` for an empty
+    selection.
     """
     roots = sorted(prune_descendants(paths))
     if not roots:
         return None
 
-    # Grab references before mutating; paths become stale otherwise.
-    nodes = [get_node(tree, p) for p in roots]
-    anchor_path = roots[0]
-    anchor_parent_list, anchor_idx = _parent_list_and_index(tree, anchor_path)
+    # Remember the order in which the user selected the roots.
+    ordered_ids = [get_node(tree, p)["id"] for p in roots]
+    anchor_parent_list, anchor_idx = _parent_list_and_index(tree, roots[0])
 
-    # Remove originals deepest/last-first so indices stay valid.
+    # Pop roots (descending order) and stash them by id so the group's
+    # children can be rebuilt in the original tree order.
+    by_id: dict[int, Node] = {}
     for path in sorted(roots, reverse=True):
         parent_list, idx = _parent_list_and_index(tree, path)
-        parent_list.pop(idx)
+        node = parent_list.pop(idx)
+        by_id[node["id"]] = node
 
-    new_group = TreeNode(label, children=nodes)
-    # The anchor parent list shrank by however many siblings of the
-    # anchor (including itself) we removed; recompute the insertion
-    # index by clamping into the (now-shorter) list.
+    group_children = [by_id[i] for i in ordered_ids]
+    new_group = make_node(label, children=group_children)
+
     insert_idx = min(anchor_idx, len(anchor_parent_list))
     anchor_parent_list.insert(insert_idx, new_group)
     return new_group
@@ -177,41 +196,40 @@ def move_items(tree, source_paths, target_path, position):
     if not sources:
         return
 
-    # Filter out cycles: target must not be inside any source subtree.
+    # Filter out cycles: target must not lie inside any source subtree.
     if target_path is not None:
         target_tuple = tuple(target_path)
-        sources = [
-            s
-            for s in sources
-            if target_tuple[: len(s)] != tuple(s)
-        ]
+        sources = [s for s in sources if target_tuple[: len(s)] != tuple(s)]
         if not sources:
             return
 
-    # Capture references before mutating.
-    source_nodes = [get_node(tree, p) for p in sources]
-    target_node = (
-        get_node(tree, target_path)
+    # Capture sources and target by id (id survives the popping below).
+    ordered_ids = [get_node(tree, p)["id"] for p in sources]
+    target_id = (
+        get_node(tree, target_path)["id"]
         if target_path is not None and position != "viewport"
         else None
     )
 
-    # Remove sources, deepest/last first.
+    # Pop sources (descending) so indices remain stable across the pop.
+    by_id: dict[int, Node] = {}
     for path in sorted(sources, reverse=True):
         parent_list, idx = _parent_list_and_index(tree, path)
-        parent_list.pop(idx)
+        node = parent_list.pop(idx)
+        by_id[node["id"]] = node
 
-    # Resolve the destination *after* the removal so indices reflect
-    # reality.
-    if position == "viewport" or target_node is None:
+    # Resolve the destination *after* removal, using the target's id
+    # because its path may have shifted.
+    if position == "viewport" or target_id is None:
         dest_parent, dest_idx = tree, len(tree)
     elif position == "on":
-        dest_parent = target_node.children
-        dest_idx = len(target_node.children)
+        target_now = get_node(tree, find_path_by_id(tree, target_id))
+        dest_parent = target_now["children"]
+        dest_idx = len(target_now["children"])
     else:
-        new_target_path = find_path(tree, target_node)
+        new_target_path = find_path_by_id(tree, target_id)
         dest_parent, t_idx = _parent_list_and_index(tree, new_target_path)
         dest_idx = t_idx + (1 if position == "below" else 0)
 
-    for offset, node in enumerate(source_nodes):
-        dest_parent.insert(dest_idx + offset, node)
+    for offset, nid in enumerate(ordered_ids):
+        dest_parent.insert(dest_idx + offset, by_id[nid])

@@ -5,13 +5,15 @@
     uv run collagraph examples/pyside/tree_dnd_example.cgx
 
   Demonstrates:
-   * a tree state of arbitrary depth managed by ``tree_dnd_model``
+   * one big reactive (nested) dict state managed by ``tree_dnd_model``
    * a custom QTreeWidget that turns drops into state mutations
-   * add / remove / regroup-selection actions, all going through state
+   * selection, expansion and labels are all driven from state
+   * double-click an item to rename it
+   * add / remove / regroup-selection actions on the side
 -->
-<window title="Tree DnD Example" :size="[520, 520]">
+<window title="Tree DnD Example" :size="[520, 560]">
   <widget :layout="{'type': 'Box', 'direction': 'TopToBottom'}">
-    <label text="Drag items to reorganise. Multi-select then 'Group' to nest them." />
+    <label text="Drag to reorganise · double-click to rename · multi-select then Group" />
 
     <dnd-treewidget
       object-name="tree"
@@ -19,10 +21,14 @@
       :header-labels="['Label']"
       @item-dropped="on_drop"
       @item-selection-changed="on_selection_changed"
+      @item-expanded="on_item_expanded"
+      @item-collapsed="on_item_collapsed"
+      @item-double-clicked="on_item_double_clicked"
+      @item-changed="on_item_changed"
     >
       <TreeNodeItem
         v-for="node in tree"
-        :key="node.id"
+        :key="node['id']"
         :node="node"
         :selected_ids="selected_ids"
       />
@@ -54,15 +60,17 @@
 
 <script>
 import collagraph as cg
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from examples.pyside.tree_dnd_item import TreeNodeItem
 from examples.pyside.tree_dnd_model import (
-    TreeNode,
     add_item,
+    get_node,
+    make_node,
     move_items,
     regroup_selection,
     remove_items,
+    rename_item,
 )
 # Importing for the side effect of registering the custom element.
 import examples.pyside.tree_dnd_widget  # noqa: F401
@@ -70,76 +78,121 @@ import examples.pyside.tree_dnd_widget  # noqa: F401
 
 class TreeDndExample(cg.Component):
     def init(self):
+        # The whole tree lives in one nested reactive structure.
         self.state["tree"] = [
-            TreeNode(
-                "Fruit",
-                children=[
-                    TreeNode("Apple"),
-                    TreeNode("Banana"),
-                    TreeNode(
-                        "Berries",
-                        children=[
-                            TreeNode("Strawberry"),
-                            TreeNode("Blueberry"),
-                        ],
-                    ),
-                ],
-            ),
-            TreeNode(
-                "Vegetables",
-                children=[
-                    TreeNode("Carrot"),
-                    TreeNode("Potato"),
-                ],
-            ),
-            TreeNode("Bread"),
+            make_node("Fruit", children=[
+                make_node("Apple"),
+                make_node("Banana"),
+                make_node("Berries", children=[
+                    make_node("Strawberry"),
+                    make_node("Blueberry"),
+                ]),
+            ]),
+            make_node("Vegetables", children=[
+                make_node("Carrot"),
+                make_node("Potato"),
+            ]),
+            make_node("Bread"),
         ]
         # Paths of currently selected items (list of int-lists).
         self.state["selected_paths"] = []
-        # Cache of currently-selected ids; recomputed when selection changes.
+        # Ids of the currently selected items - cheap membership test
+        # for the per-item ``:selected`` binding.
         self.state["selected_ids"] = []
+
+    # ----------------------------------------------------- helpers
+
+    def _tree_widget(self):
+        return self.element.findChild(QtWidgets.QTreeWidget, "tree")
+
+    def _path_for_item(self, item):
+        tree_widget = self._tree_widget()
+        if tree_widget is None or item is None:
+            return None
+        path = []
+        cursor = item
+        while cursor is not None:
+            parent = cursor.parent()
+            if parent is None:
+                path.insert(0, tree_widget.indexOfTopLevelItem(cursor))
+                break
+            path.insert(0, parent.indexOfChild(cursor))
+            cursor = parent
+        return path
 
     # ----------------------------------------------------- selection sync
 
     def on_selection_changed(self):
-        tree_widget = self.element.findChild(QtWidgets.QTreeWidget, "tree")
+        tree_widget = self._tree_widget()
         if tree_widget is None:
             return
-        paths = []
-        ids = []
-        for item in tree_widget.selectedItems():
-            path = []
-            cursor = item
-            while cursor is not None:
-                parent = cursor.parent()
-                if parent is None:
-                    path.insert(0, tree_widget.indexOfTopLevelItem(cursor))
-                    break
-                path.insert(0, parent.indexOfChild(cursor))
-                cursor = parent
-            paths.append(path)
-            ids.append(self._node_at_path(path).id)
+        paths = [self._path_for_item(it) for it in tree_widget.selectedItems()]
         self.state["selected_paths"] = paths
-        self.state["selected_ids"] = ids
+        self.state["selected_ids"] = [
+            get_node(self.state["tree"], p)["id"] for p in paths
+        ]
 
-    def _node_at_path(self, path):
-        items = self.state["tree"]
-        node = items[path[0]]
-        for idx in path[1:]:
-            node = node.children[idx]
-        return node
+    # --------------------------------------------------- expansion sync
+
+    def on_item_expanded(self, item):
+        path = self._path_for_item(item)
+        if path:
+            get_node(self.state["tree"], path)["expanded"] = True
+
+    def on_item_collapsed(self, item):
+        path = self._path_for_item(item)
+        if path:
+            get_node(self.state["tree"], path)["expanded"] = False
+
+    # ---------------------------------------------------------- rename
+
+    def on_item_double_clicked(self, item, column):
+        if column != 0:
+            return
+        tree_widget = self._tree_widget()
+        if tree_widget is None:
+            return
+        # ``setFlags`` itself emits ``itemChanged``; block signals so the
+        # editable bit doesn't ping-pong through our rename handler.
+        tree_widget.blockSignals(True)
+        try:
+            item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
+        finally:
+            tree_widget.blockSignals(False)
+        tree_widget.editItem(item, column)
+
+    def on_item_changed(self, item, column):
+        if column != 0:
+            return
+        path = self._path_for_item(item)
+        if path is None:
+            return
+        new_label = item.text(column)
+        rename_item(self.state["tree"], path, new_label)
+        # Clear the editable bit so a single click no longer puts the
+        # item into edit mode. ``setFlags`` also emits ``itemChanged``,
+        # so block signals to avoid recursion.
+        tree_widget = self._tree_widget()
+        if tree_widget is not None:
+            tree_widget.blockSignals(True)
+            try:
+                item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
+            finally:
+                tree_widget.blockSignals(False)
 
     # --------------------------------------------------- button handlers
 
     def add_root(self):
         node = add_item(self.state["tree"], [], "New item")
         self.state["selected_paths"] = [[len(self.state["tree"]) - 1]]
-        self.state["selected_ids"] = [node.id]
+        self.state["selected_ids"] = [node["id"]]
 
     def add_child(self):
         parent_path = self.state["selected_paths"][0]
         node = add_item(self.state["tree"], parent_path, "New child")
-        self.state["selected_ids"] = [node.id]
+        # Make sure the parent is expanded so the new child is visible.
+        get_node(self.state["tree"], parent_path)["expanded"] = True
+        self.state["selected_ids"] = [node["id"]]
 
     def remove_selected(self):
         paths = [list(p) for p in self.state["selected_paths"]]
@@ -151,12 +204,11 @@ class TreeDndExample(cg.Component):
         paths = [list(p) for p in self.state["selected_paths"]]
         new_group = regroup_selection(self.state["tree"], paths, label="Group")
         self.state["selected_paths"] = []
-        self.state["selected_ids"] = [new_group.id] if new_group else []
+        self.state["selected_ids"] = [new_group["id"]] if new_group else []
 
     # ---------------------------------------------------- drag-drop sink
 
     def on_drop(self, source_paths, target_path, position):
-        # Both lists arrive as plain Python lists from the Qt signal.
         target = list(target_path) if target_path else None
         move_items(
             self.state["tree"],

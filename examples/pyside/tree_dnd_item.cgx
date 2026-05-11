@@ -1,11 +1,11 @@
 <treewidgetitem
-  :content="{0: node.label}"
-  :selected="node.id in selected_ids"
-  :expanded="True"
+  :content="{0: node['label']}"
+  :selected="node['id'] in selected_ids"
+  :expanded="node['expanded']"
 >
   <TreeNodeItem
-    v-for="child in node.children"
-    :key="child.id"
+    v-for="child in node['children']"
+    :key="child['id']"
     :node="child"
     :selected_ids="selected_ids"
   />
@@ -17,6 +17,10 @@ import collagraph as cg
 
 
 class TreeNodeItem(cg.Component):
-    """Recursively renders a TreeNode and its descendants."""
+    """Recursively renders a node and its descendants.
+
+    All visible state (label, selection, expansion) is read from the
+    ``node`` prop, which is a proxy onto the parent's reactive tree.
+    """
     pass
 </script>

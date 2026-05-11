@@ -23,10 +23,7 @@ import collagraph as cg
 from collagraph.sfc import load
 
 EXAMPLE_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "examples"
-    / "pyside"
-    / "tree_dnd_example.cgx"
+    Path(__file__).resolve().parents[2] / "examples" / "pyside" / "tree_dnd_example.cgx"
 )
 
 SCREENSHOT_DIR = Path(__file__).resolve().parent / "_screenshots"
@@ -197,9 +194,7 @@ def test_remove_selected_item(qtbot, example_component):
     _select_paths_via_state(container, [[2]])
 
     remove_button = next(
-        b
-        for b in container.findChildren(QtWidgets.QPushButton)
-        if b.text() == "Remove"
+        b for b in container.findChildren(QtWidgets.QPushButton) if b.text() == "Remove"
     )
 
     def button_enabled():
@@ -246,9 +241,7 @@ def test_group_selection_creates_new_group(qtbot, example_component):
     _select_paths_via_state(container, [[1], [2]])
 
     group_button = next(
-        b
-        for b in container.findChildren(QtWidgets.QPushButton)
-        if b.text() == "Group"
+        b for b in container.findChildren(QtWidgets.QPushButton) if b.text() == "Group"
     )
 
     def group_enabled():
@@ -444,3 +437,191 @@ def test_full_workflow_screenshots(qtbot, example_component):
     qtbot.waitUntil(group_moved_into_fruit, timeout=1500)
     tree_widget.expandAll()
     _screenshot(container, "07_workflow_after_drop")
+
+
+# --------------------------------------------------------------------------- #
+# expansion state
+# --------------------------------------------------------------------------- #
+
+
+def test_initial_state_reflects_expanded_flags(qtbot, example_component):
+    """``expanded`` defaults to True so the seed tree mounts open."""
+    _renderer, _gui, container = _render(example_component)
+
+    tree_widget = None
+
+    def find():
+        nonlocal tree_widget
+        tree_widget = container.findChild(QtWidgets.QTreeWidget, "tree")
+        assert tree_widget is not None and tree_widget.topLevelItemCount() == 3
+
+    qtbot.waitUntil(find, timeout=1000)
+
+    def all_expanded():
+        for i in range(tree_widget.topLevelItemCount()):
+            item = tree_widget.topLevelItem(i)
+            # Items without children report False, so only check the ones that do.
+            if item.childCount() > 0:
+                assert item.isExpanded(), f"item {item.text(0)} should be expanded"
+
+    qtbot.waitUntil(all_expanded, timeout=1000)
+
+
+def test_user_collapse_writes_back_to_state(qtbot, example_component):
+    """Collapsing an item via Qt updates ``state[tree][i]['expanded']``."""
+    _renderer, gui, container = _render(example_component)
+
+    tree_widget = None
+
+    def find():
+        nonlocal tree_widget
+        tree_widget = container.findChild(QtWidgets.QTreeWidget, "tree")
+        assert tree_widget is not None and tree_widget.topLevelItemCount() == 3
+
+    qtbot.waitUntil(find, timeout=1000)
+
+    fruit_item = tree_widget.topLevelItem(0)
+    assert fruit_item.text(0) == "Fruit"
+
+    # Simulate the user collapsing the first row.
+    fruit_item.setExpanded(False)
+
+    component = gui.fragment.component
+
+    def state_reflects_collapse():
+        assert component.state["tree"][0]["expanded"] is False
+
+    qtbot.waitUntil(state_reflects_collapse, timeout=1000)
+
+
+def test_state_collapse_propagates_to_widget(qtbot, example_component):
+    """Writing ``expanded = False`` into state collapses the item."""
+    _renderer, gui, container = _render(example_component)
+
+    tree_widget = None
+
+    def find():
+        nonlocal tree_widget
+        tree_widget = container.findChild(QtWidgets.QTreeWidget, "tree")
+        assert tree_widget is not None and tree_widget.topLevelItemCount() == 3
+
+    qtbot.waitUntil(find, timeout=1000)
+    component = gui.fragment.component
+
+    fruit_item = tree_widget.topLevelItem(0)
+    qtbot.waitUntil(lambda: fruit_item.isExpanded() is True, timeout=1000)
+
+    component.state["tree"][0]["expanded"] = False
+    qtbot.waitUntil(lambda: fruit_item.isExpanded() is False, timeout=1000)
+
+
+def test_expansion_survives_reorder(qtbot, example_component):
+    """Reordering must not collapse the expanded subtree on the moved item.
+
+    Without the renderer's expansion-snapshot, Qt's ``removeChild`` would
+    reset ``isExpanded()`` for the subtree being moved.
+    """
+    _renderer, _gui, container = _render(example_component)
+
+    tree_widget = None
+
+    def find():
+        nonlocal tree_widget
+        tree_widget = container.findChild(QtWidgets.QTreeWidget, "tree")
+        assert tree_widget is not None and tree_widget.topLevelItemCount() == 3
+
+    qtbot.waitUntil(find, timeout=1000)
+
+    # Sanity: Fruit is expanded after initial mount.
+    def fruit_expanded():
+        assert tree_widget.topLevelItem(0).isExpanded() is True
+
+    qtbot.waitUntil(fruit_expanded, timeout=1000)
+
+    # Move Bread above Fruit; Fruit shifts from index 0 to index 1.
+    tree_widget.itemDropped.emit([[2]], [0], "above")
+
+    def reordered_and_still_expanded():
+        labels = [
+            tree_widget.topLevelItem(i).text(0)
+            for i in range(tree_widget.topLevelItemCount())
+        ]
+        assert labels == ["Bread", "Fruit", "Vegetables"]
+        # Fruit (now at index 1) should still be expanded.
+        assert tree_widget.topLevelItem(1).isExpanded() is True
+        # Vegetables (now at index 2) should still be expanded.
+        assert tree_widget.topLevelItem(2).isExpanded() is True
+
+    qtbot.waitUntil(reordered_and_still_expanded, timeout=1500)
+
+    container.resize(520, 560)
+    container.show()
+    qtbot.waitExposed(container)
+    _screenshot(container, "08_reorder_keeps_expansion")
+
+
+# --------------------------------------------------------------------------- #
+# rename
+# --------------------------------------------------------------------------- #
+
+
+def test_rename_via_state_updates_widget(qtbot, example_component):
+    _renderer, gui, container = _render(example_component)
+
+    tree_widget = None
+
+    def find():
+        nonlocal tree_widget
+        tree_widget = container.findChild(QtWidgets.QTreeWidget, "tree")
+        assert tree_widget is not None and tree_widget.topLevelItemCount() == 3
+
+    qtbot.waitUntil(find, timeout=1000)
+    component = gui.fragment.component
+
+    component.state["tree"][0]["label"] = "Produce"
+
+    def widget_reflects_rename():
+        assert tree_widget.topLevelItem(0).text(0) == "Produce"
+
+    qtbot.waitUntil(widget_reflects_rename, timeout=1000)
+
+
+def test_user_edit_writes_back_to_state(qtbot, example_component):
+    """Simulate Qt firing ``itemChanged`` after the user edits the text."""
+    _renderer, gui, container = _render(example_component)
+
+    tree_widget = None
+
+    def find():
+        nonlocal tree_widget
+        tree_widget = container.findChild(QtWidgets.QTreeWidget, "tree")
+        assert tree_widget is not None and tree_widget.topLevelItemCount() == 3
+
+    qtbot.waitUntil(find, timeout=1000)
+    component = gui.fragment.component
+
+    apple_item = tree_widget.topLevelItem(0).child(0)
+    assert apple_item.text(0) == "Apple"
+
+    # First a double-click puts the item into edit mode...
+    tree_widget.itemDoubleClicked.emit(apple_item, 0)
+
+    def is_editable():
+        from PySide6 import QtCore as _QtCore
+
+        assert bool(apple_item.flags() & _QtCore.Qt.ItemIsEditable)
+
+    qtbot.waitUntil(is_editable, timeout=1000)
+
+    # ...then the user types and Qt commits, which fires itemChanged.
+    apple_item.setText(0, "Granny Smith")
+
+    def state_reflects_rename():
+        assert component.state["tree"][0]["children"][0]["label"] == "Granny Smith"
+
+    qtbot.waitUntil(state_reflects_rename, timeout=1000)
+
+    container.resize(520, 560)
+    container.show()
+    qtbot.waitExposed(container)
+    _screenshot(container, "09_after_rename")
