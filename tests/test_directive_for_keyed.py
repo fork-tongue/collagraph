@@ -7,121 +7,8 @@ import pytest
 from observ import reactive
 
 from collagraph import Collagraph, EventLoopType
-from collagraph.renderers import DictRenderer, Renderer
-
-
-class CustomElement:
-    def __init__(self, *args, type=None, **kwargs):
-        super().__setattr__(
-            "_data",
-            {
-                "type": type,
-                "children": [],
-                "event_listeners": {},
-                **kwargs,
-            },
-        )
-
-    def __getattr__(self, name):
-        if name.startswith("_"):
-            return super().__getattr__(name)
-        return self._data[name]
-
-    def __setattr__(self, name, value):
-        if name.startswith("_"):
-            super().__setattr__(name, value)
-        self._data[name] = value
-
-    def add_event_listener(self, event_type, value):
-        event_listeners = self._data["event_listeners"]
-        listeners = event_listeners.setdefault(event_type, [])
-        listeners.append(value)
-
-    def remove_event_listener(self, event_type, value):
-        event_listeners = self._data["event_listeners"]
-        listeners = event_listeners.get(event_type)
-        listeners.remove(value)
-        if not listeners:
-            del event_listeners[event_type]
-
-    def trigger(self, event_type):
-        event_listeners = self._data["event_listeners"]
-        for listener in event_listeners.get(event_type, []):
-            listener()
-
-    def __repr__(self):
-        attributes = ", ".join(
-            [
-                f"{attr}='{self._data[attr]}'"
-                for attr in self._data
-                if attr not in ["type", "children"]
-            ]
-        )
-        return f"<{self.type} {attributes}>"
-
-
-class CustomElementRenderer(Renderer):
-    def create_element(self, type):
-        obj = CustomElement(type=type)
-        return obj
-
-    def insert(self, el, parent, anchor=None):
-        idx = parent.children.index(anchor) if anchor else len(parent.children)
-        parent.children.insert(idx, el)
-
-    def remove(self, el, parent):
-        parent.children.remove(el)
-
-    def set_attribute(self, el, attr: str, value):
-        setattr(el, attr, value)
-
-    def remove_attribute(self, el, attr: str, value):
-        delattr(el, attr)
-
-    def add_event_listener(self, el, event_type, value):
-        el.add_event_listener(event_type, value)
-
-    def remove_event_listener(self, el, event_type, value):
-        el.remove_event_listener(event_type, value)
-
-    def create_text_element(self):
-        raise NotImplementedError
-
-    def set_element_text(self):
-        raise NotImplementedError
-
-
-class TrackingRenderer(CustomElementRenderer):
-    """Renderer that tracks DOM operations for efficiency testing."""
-
-    def __init__(self):
-        super().__init__()
-        self.insert_count = 0
-        self.remove_count = 0
-        self.create_count = 0
-        self.operations = []  # Log of operations
-
-    def create_element(self, type):
-        self.create_count += 1
-        self.operations.append(("create", type))
-        return super().create_element(type)
-
-    def insert(self, el, parent, anchor=None):
-        self.insert_count += 1
-        self.operations.append(("insert", el.type, "anchor" if anchor else "end"))
-        super().insert(el, parent, anchor)
-
-    def remove(self, el, parent):
-        self.remove_count += 1
-        self.operations.append(("remove", el.type))
-        super().remove(el, parent)
-
-    def reset_counters(self):
-        """Reset operation counters."""
-        self.insert_count = 0
-        self.remove_count = 0
-        self.create_count = 0
-        self.operations = []
+from collagraph.renderers import DictRenderer
+from tests.conftest import CustomElement, CustomElementRenderer, TrackingRenderer
 
 
 def test_for_keyed(parse_source, process_events):
@@ -514,8 +401,16 @@ def test_keyed_components_preserve_state(parse_source):
     counter_b.increment()
     assert counter_b.state["count"] == 1
 
-    # Counter C stays at 0
-    assert counter_c.state["count"] == 0
+    # Increment counter C twice
+    counter_c.increment()
+    counter_c.increment()
+    assert counter_c.state["count"] == 2
+
+    assert [child.text for child in container.children[0].children] == [
+        "A: 3",
+        "B: 1",
+        "C: 2",
+    ]
 
     # Now reorder the items: C, A, B
     state["items"] = [
@@ -539,9 +434,14 @@ def test_keyed_components_preserve_state(parse_source):
     assert counter_fragments[2].component is counter_b
     assert counter_b.state["count"] == 1
 
-    # The component with id=3 (C) should still have count=0
+    # The component with id=3 (C) should still have count=2
     assert counter_fragments[0].component is counter_c
-    assert counter_c.state["count"] == 0
+    assert counter_c.state["count"] == 2
+    assert [child.text for child in container.children[0].children] == [
+        "C: 2",
+        "A: 3",
+        "B: 1",
+    ]
 
 
 def test_duplicate_keys_behavior(parse_source):
