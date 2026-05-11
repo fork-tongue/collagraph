@@ -31,6 +31,7 @@
         :key="node['id']"
         :node="node"
         :selected_ids="selected_ids"
+        :expanded_ids="expanded_ids"
       />
     </dnd-treewidget>
 
@@ -99,6 +100,23 @@ class TreeDndExample(cg.Component):
         # Ids of the currently selected items - cheap membership test
         # for the per-item ``:selected`` binding.
         self.state["selected_ids"] = []
+        # Ids of the currently expanded items. Same pattern as
+        # ``selected_ids`` - per-item UI state lives next to the tree
+        # rather than inside each node. Seed: every parent open.
+        self.state["expanded_ids"] = self._collect_parent_ids(self.state["tree"])
+
+    @staticmethod
+    def _collect_parent_ids(tree):
+        ids: list[int] = []
+
+        def walk(items):
+            for node in items:
+                if node["children"]:
+                    ids.append(node["id"])
+                    walk(node["children"])
+
+        walk(tree)
+        return ids
 
     # ----------------------------------------------------- helpers
 
@@ -136,13 +154,19 @@ class TreeDndExample(cg.Component):
 
     def on_item_expanded(self, item):
         path = self._path_for_item(item)
-        if path:
-            get_node(self.state["tree"], path)["expanded"] = True
+        if not path:
+            return
+        node_id = get_node(self.state["tree"], path)["id"]
+        if node_id not in self.state["expanded_ids"]:
+            self.state["expanded_ids"].append(node_id)
 
     def on_item_collapsed(self, item):
         path = self._path_for_item(item)
-        if path:
-            get_node(self.state["tree"], path)["expanded"] = False
+        if not path:
+            return
+        node_id = get_node(self.state["tree"], path)["id"]
+        if node_id in self.state["expanded_ids"]:
+            self.state["expanded_ids"].remove(node_id)
 
     # ---------------------------------------------------------- rename
 
@@ -191,7 +215,9 @@ class TreeDndExample(cg.Component):
         parent_path = self.state["selected_paths"][0]
         node = add_item(self.state["tree"], parent_path, "New child")
         # Make sure the parent is expanded so the new child is visible.
-        get_node(self.state["tree"], parent_path)["expanded"] = True
+        parent_id = get_node(self.state["tree"], parent_path)["id"]
+        if parent_id not in self.state["expanded_ids"]:
+            self.state["expanded_ids"].append(parent_id)
         self.state["selected_ids"] = [node["id"]]
 
     def remove_selected(self):
@@ -204,18 +230,30 @@ class TreeDndExample(cg.Component):
         paths = [list(p) for p in self.state["selected_paths"]]
         new_group = regroup_selection(self.state["tree"], paths, label="Group")
         self.state["selected_paths"] = []
-        self.state["selected_ids"] = [new_group["id"]] if new_group else []
+        if new_group is None:
+            self.state["selected_ids"] = []
+        else:
+            self.state["selected_ids"] = [new_group["id"]]
+            # Open the new group so the just-bundled items stay visible.
+            self.state["expanded_ids"].append(new_group["id"])
 
     # ---------------------------------------------------- drag-drop sink
 
     def on_drop(self, source_paths, target_path, position):
         target = list(target_path) if target_path else None
+        # Capture the target id before the move shifts paths around so
+        # we can expand it afterwards when the drop lands "on" it.
+        target_id = None
+        if position == "on" and target is not None:
+            target_id = get_node(self.state["tree"], target)["id"]
         move_items(
             self.state["tree"],
             [list(p) for p in source_paths],
             target,
             position,
         )
+        if target_id is not None and target_id not in self.state["expanded_ids"]:
+            self.state["expanded_ids"].append(target_id)
         self.state["selected_paths"] = []
         self.state["selected_ids"] = []
 

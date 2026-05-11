@@ -55,10 +55,9 @@ def _build():
 # --------------------------------------------------------------------------- #
 
 
-def test_make_node_defaults_to_expanded():
+def test_make_node_basic_fields():
     n = make_node("x")
     assert n["label"] == "x"
-    assert n["expanded"] is True
     assert n["children"] == []
     assert isinstance(n["id"], int)
 
@@ -68,8 +67,12 @@ def test_make_node_ids_are_unique():
     assert len(ids) == 20
 
 
-def test_make_node_accepts_expanded_flag():
-    assert make_node("x", expanded=False)["expanded"] is False
+def test_make_node_does_not_carry_ui_state():
+    """``expanded`` and ``selected`` are tracked separately by the
+    component, not on the node itself."""
+    n = make_node("x")
+    assert "expanded" not in n
+    assert "selected" not in n
 
 
 # --------------------------------------------------------------------------- #
@@ -362,10 +365,3 @@ def test_move_preserves_node_identity_via_id():
     moved = tree[0]["children"][-1]
     assert moved["id"] == bread_id
     assert moved["label"] == "C"
-
-
-def test_move_preserves_expanded_state_of_moved_node():
-    tree = _build()
-    tree[2]["expanded"] = False
-    move_items(tree, [[2]], target_path=[0], position="on")
-    assert tree[0]["children"][-1]["expanded"] is False

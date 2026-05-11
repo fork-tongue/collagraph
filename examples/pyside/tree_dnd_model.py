@@ -2,8 +2,10 @@
 
 Nodes are stored as plain Python dicts so the entire tree lives inside
 one big reactive structure (the component's ``state``). Each node has
-the keys ``id``, ``label``, ``expanded`` and ``children`` (a list of
-child node dicts).
+the keys ``id``, ``label`` and ``children`` (a list of child node
+dicts). Per-node UI state like selection and expansion is intentionally
+kept outside the node — the component tracks those separately as lists
+of ids.
 
 Keeping the operations in this module — no Qt, no collagraph — lets
 them be exhaustively tested via ``tests/test_tree_dnd_model.py``.
@@ -26,16 +28,11 @@ def _next_id() -> int:
 Node = dict[str, Any]
 
 
-def make_node(
-    label: str,
-    children: list[Node] | None = None,
-    expanded: bool = True,
-) -> Node:
+def make_node(label: str, children: list[Node] | None = None) -> Node:
     """Create a fresh tree node as a plain dict."""
     return {
         "id": _next_id(),
         "label": label,
-        "expanded": expanded,
         "children": list(children) if children else [],
     }
 

@@ -468,7 +468,7 @@ def test_initial_state_reflects_expanded_flags(qtbot, example_component):
 
 
 def test_user_collapse_writes_back_to_state(qtbot, example_component):
-    """Collapsing an item via Qt updates ``state[tree][i]['expanded']``."""
+    """Collapsing an item via Qt removes its id from ``expanded_ids``."""
     _renderer, gui, container = _render(example_component)
 
     tree_widget = None
@@ -483,19 +483,22 @@ def test_user_collapse_writes_back_to_state(qtbot, example_component):
     fruit_item = tree_widget.topLevelItem(0)
     assert fruit_item.text(0) == "Fruit"
 
+    component = gui.fragment.component
+    fruit_id = component.state["tree"][0]["id"]
+    # Fruit was seeded as expanded.
+    assert fruit_id in component.state["expanded_ids"]
+
     # Simulate the user collapsing the first row.
     fruit_item.setExpanded(False)
 
-    component = gui.fragment.component
-
     def state_reflects_collapse():
-        assert component.state["tree"][0]["expanded"] is False
+        assert fruit_id not in component.state["expanded_ids"]
 
     qtbot.waitUntil(state_reflects_collapse, timeout=1000)
 
 
 def test_state_collapse_propagates_to_widget(qtbot, example_component):
-    """Writing ``expanded = False`` into state collapses the item."""
+    """Removing an id from ``expanded_ids`` collapses the matching item."""
     _renderer, gui, container = _render(example_component)
 
     tree_widget = None
@@ -511,7 +514,8 @@ def test_state_collapse_propagates_to_widget(qtbot, example_component):
     fruit_item = tree_widget.topLevelItem(0)
     qtbot.waitUntil(lambda: fruit_item.isExpanded() is True, timeout=1000)
 
-    component.state["tree"][0]["expanded"] = False
+    fruit_id = component.state["tree"][0]["id"]
+    component.state["expanded_ids"].remove(fruit_id)
     qtbot.waitUntil(lambda: fruit_item.isExpanded() is False, timeout=1000)
 
 
