@@ -23,10 +23,11 @@ def _path_for_item(tree_widget: QtWidgets.QTreeWidget, item) -> list[int]:
     while current is not None:
         parent = current.parent()
         if parent is None:
-            path.insert(0, tree_widget.indexOfTopLevelItem(current))
+            path.append(tree_widget.indexOfTopLevelItem(current))
             break
-        path.insert(0, parent.indexOfChild(current))
+        path.append(parent.indexOfChild(current))
         current = parent
+    path.reverse()
     return path
 
 

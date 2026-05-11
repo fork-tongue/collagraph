@@ -11,59 +11,65 @@
    * double-click an item to rename it
    * add / remove / regroup-selection actions on the side
 -->
-<window title="Tree DnD Example" :size="[520, 560]">
+
+<window
+  :size="[520, 560]"
+  title="Tree DnD Example"
+>
   <widget :layout="{'type': 'Box', 'direction': 'TopToBottom'}">
     <label text="Drag to reorganise · double-click to rename · multi-select then Group" />
-
     <dnd-treewidget
-      object-name="tree"
       :column-count="1"
       :header-labels="['Label']"
-      @item-dropped="on_drop"
-      @item-selection-changed="on_selection_changed"
-      @item-expanded="on_item_expanded"
+      object-name="tree"
+      @item-changed="on_item_changed"
       @item-collapsed="on_item_collapsed"
       @item-double-clicked="on_item_double_clicked"
-      @item-changed="on_item_changed"
+      @item-dropped="on_drop"
+      @item-expanded="on_item_expanded"
+      @item-selection-changed="on_selection_changed"
     >
       <TreeNodeItem
         v-for="node in tree"
+        :expanded_ids="expanded_ids"
         :key="node['id']"
         :node="node"
         :selected_ids="selected_ids"
-        :expanded_ids="expanded_ids"
       />
     </dnd-treewidget>
-
     <widget :layout="{'type': 'Box', 'direction': 'LeftToRight'}">
-      <button text="Add root" @clicked="add_root" />
       <button
-        text="Add child"
+        text="Add root"
+        @clicked="add_root"
+      />
+      <button
         :enabled="len(selected_paths) == 1"
+        text="Add child"
         @clicked="add_child"
       />
       <button
-        text="Remove"
         :enabled="bool(selected_paths)"
+        text="Remove"
         @clicked="remove_selected"
       />
       <button
-        text="Group"
         :enabled="len(selected_paths) >= 2"
+        text="Group"
         @clicked="group_selected"
       />
     </widget>
-
     <label :text="status_text()" />
   </widget>
 </window>
 
-
 <script>
-import collagraph as cg
+from examples.pyside.tree_dnd_item import TreeNodeItem
 from PySide6 import QtCore, QtWidgets
 
-from examples.pyside.tree_dnd_item import TreeNodeItem
+import collagraph as cg
+
+# Importing for the side effect of registering the custom element.
+import examples.pyside.tree_dnd_widget  # noqa: F401
 from examples.pyside.tree_dnd_model import (
     add_item,
     get_node,
@@ -73,26 +79,33 @@ from examples.pyside.tree_dnd_model import (
     remove_items,
     rename_item,
 )
-# Importing for the side effect of registering the custom element.
-import examples.pyside.tree_dnd_widget  # noqa: F401
 
 
 class TreeDndExample(cg.Component):
     def init(self):
         # The whole tree lives in one nested reactive structure.
         self.state["tree"] = [
-            make_node("Fruit", children=[
-                make_node("Apple"),
-                make_node("Banana"),
-                make_node("Berries", children=[
-                    make_node("Strawberry"),
-                    make_node("Blueberry"),
-                ]),
-            ]),
-            make_node("Vegetables", children=[
-                make_node("Carrot"),
-                make_node("Potato"),
-            ]),
+            make_node(
+                "Fruit",
+                children=[
+                    make_node("Apple"),
+                    make_node("Banana"),
+                    make_node(
+                        "Berries",
+                        children=[
+                            make_node("Strawberry"),
+                            make_node("Blueberry"),
+                        ],
+                    ),
+                ],
+            ),
+            make_node(
+                "Vegetables",
+                children=[
+                    make_node("Carrot"),
+                    make_node("Potato"),
+                ],
+            ),
             make_node("Bread"),
         ]
         # Paths of currently selected items (list of int-lists).
@@ -132,10 +145,11 @@ class TreeDndExample(cg.Component):
         while cursor is not None:
             parent = cursor.parent()
             if parent is None:
-                path.insert(0, tree_widget.indexOfTopLevelItem(cursor))
+                path.append(tree_widget.indexOfTopLevelItem(cursor))
                 break
-            path.insert(0, parent.indexOfChild(cursor))
+            path.append(parent.indexOfChild(cursor))
             cursor = parent
+        path.reverse()
         return path
 
     # ----------------------------------------------------- selection sync
