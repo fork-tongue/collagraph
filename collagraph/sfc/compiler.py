@@ -94,11 +94,6 @@ def construct_ast(path, template=None):
     # method to fix any `lineno` and `col_offset` attributes of the nodes
     ast.fix_missing_locations(script_tree)
 
-    if DEBUG:  # pragma: no cover
-        try:
-            _print_ast_tree_as_code(script_tree, path)
-        except Exception as e:
-            logger.warning("Could not unparse AST", exc_info=e)
     return script_tree, component_def.name
 
 
@@ -1006,19 +1001,6 @@ def check_parsed_tree(node: Element):
         raise ValueError(
             f"Expected exactly 1 script tag, found: {number_of_script_tags_in_root}"
         )
-
-
-def _print_ast_tree_as_code(tree, path):  # pragma: no cover
-    """Handy function for debugging an ast tree"""
-    from rich.console import Console
-    from rich.syntax import Syntax
-
-    plain_result = ast.unparse(tree)
-    formatted = format_code(plain_result)
-    console = Console()
-    syntax = Syntax(formatted, "python")
-    console.print(f"#---{path}---")
-    console.print(syntax)
 
 
 def format_code(code):  # pragma: no cover
