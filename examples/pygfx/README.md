@@ -22,6 +22,7 @@ Shows a point cloud. Adjust the count to see how far you can push it.
 uv run collagraph --renderer pygfx --state '{"count": 25}' examples/pygfx/landmarks.cgx
 ```
 Shows random 3D landmarks with labels rendered as child text nodes of `<text>` elements.
+Click a landmark sphere to increment and rename its label while highlighting both sphere and text color.
 
 
 ## Component example

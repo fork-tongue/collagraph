@@ -8,12 +8,14 @@ Run this example as follows:
   <group v-for="idx, landmark in enumerate(landmarks)">
     <mesh
       :geometry="sphere_geometry"
-      :material="sphere_material"
+      :material="selected_sphere_material if idx == selected else sphere_material"
       :local.position="landmark['position']"
+      @click="lambda ev: click_landmark(idx)"
     />
     <text
       :local.position="label_position(landmark['position'])"
       :font_size="14"
+      :material="selected_label_material if idx == selected else label_material"
       screen_space
       anchor="bottom-center"
     >
@@ -31,6 +33,10 @@ import pygfx as gfx
 
 sphere_geometry = gfx.sphere_geometry(radius=0.35)
 sphere_material = gfx.MeshPhongMaterial(color=[0.2, 0.8, 1.0], pick_write=True)
+selected_sphere_material = gfx.MeshPhongMaterial(color=[1.0, 0.4, 0.2], pick_write=True)
+
+label_material = gfx.TextMaterial(color="#D6F4FF")
+selected_label_material = gfx.TextMaterial(color="#FFE066")
 
 LANDMARK_NAMES = [
     "Harbor",
@@ -58,10 +64,13 @@ class Landmarks(cg.Component):
     def init(self):
         random.seed(42)
         count = int(self.props.get("count", 20))
+        self.state["selected"] = -1
         self.state["landmarks"] = [
             {
+                "base_name": LANDMARK_NAMES[idx % len(LANDMARK_NAMES)],
                 "name": LANDMARK_NAMES[idx % len(LANDMARK_NAMES)],
                 "position": rand_position(),
+                "clicks": 0,
             }
             for idx in range(count)
         ]
@@ -69,4 +78,10 @@ class Landmarks(cg.Component):
     def label_position(self, position):
         x, y, z = position
         return (x, y + 0.75, z)
+
+    def click_landmark(self, idx):
+        landmark = self.state["landmarks"][idx]
+        landmark["clicks"] += 1
+        landmark["name"] = f"{landmark['base_name']} ({landmark['clicks']})"
+        self.state["selected"] = idx
 </script>
