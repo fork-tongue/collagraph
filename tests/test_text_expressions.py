@@ -4,6 +4,21 @@ from collagraph import Collagraph, DictRenderer, EventLoopType
 from collagraph.renderers.dict_renderer import format_dict
 
 
+class TrackingDictRenderer(DictRenderer):
+    def __init__(self):
+        super().__init__()
+        self.created_text_elements = 0
+        self.set_text_calls = 0
+
+    def create_text_element(self):
+        self.created_text_elements += 1
+        return super().create_text_element()
+
+    def set_element_text(self, el: dict, value: str):
+        self.set_text_calls += 1
+        super().set_element_text(el, value)
+
+
 def test_text_elements():
     from tests.data.text.expressions import Example
 
@@ -82,14 +97,14 @@ def test_text_elements():
     assert multiline["type"] == "TEXT_ELEMENT"
     assert static_multiline["type"] == "TEXT_ELEMENT"
     assert complex_multiline["type"] == "TEXT_ELEMENT"
-    assert static["attrs"]["content"] == "Static content"
-    assert dynamic["attrs"]["content"] == "Dynamic foo"
-    assert multiple["attrs"]["content"] == r"Even bar dyna{}mic\{} foo"
-    assert quoted["attrs"]["content"] == 'Quote "foo" and slash \\\\ bar'
-    assert multiline["attrs"]["content"] == 'Line "foo"\nnext bar'
-    assert static_multiline["attrs"]["content"] == "First line\nsecond line"
+    assert static["text"] == "Static content"
+    assert dynamic["text"] == "Dynamic foo"
+    assert multiple["text"] == r"Even bar dyna{}mic\{} foo"
+    assert quoted["text"] == 'Quote "foo" and slash \\\\ bar'
+    assert multiline["text"] == 'Line "foo"\nnext bar'
+    assert static_multiline["text"] == "First line\nsecond line"
     assert (
-        complex_multiline["attrs"]["content"]
+        complex_multiline["text"]
         == 'Complex "foo"\nmiddle {{literal}} bar\ntail foo/bar'
     )
 
@@ -98,6 +113,38 @@ def test_text_elements():
     assert split_p["children"][1]["type"] == "TEXT_ELEMENT"
     assert split_p["children"][2]["type"] == "span"
     assert split_p["children"][3]["type"] == "TEXT_ELEMENT"
-    assert split_p["children"][0]["attrs"]["content"] == "Split"
-    assert split_p["children"][1]["attrs"]["content"] == " and split by "
-    assert split_p["children"][3]["attrs"]["content"] == " element"
+    assert split_p["children"][0]["text"] == "Split"
+    assert split_p["children"][1]["text"] == " and split by "
+    assert split_p["children"][3]["text"] == " element"
+
+
+def test_text_elements_use_text_renderer_api(parse_source):
+    App, _ = parse_source(
+        """
+        <item>
+          Text content here
+        </item>
+
+        <script>
+        import collagraph as cg
+
+        class App(cg.Component):
+            pass
+        </script>
+        """
+    )
+
+    renderer = TrackingDictRenderer()
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=renderer,
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container)
+
+    assert container["children"][0]["type"] == "item"
+    assert container["children"][0]["children"][0]["type"] == "TEXT_ELEMENT"
+    assert container["children"][0]["children"][0]["text"] == "\nText content here\n"
+
+    assert renderer.created_text_elements == 1
+    assert renderer.set_text_calls == 1
