@@ -16,6 +16,14 @@ uv run collagraph --renderer pygfx --state '{"count": 100}' examples/pygfx/point
 Shows a point cloud. Adjust the count to see how far you can push it.
 
 
+## Landmarks example
+
+```shell
+uv run collagraph --renderer pygfx --state '{"count": 25}' examples/pygfx/landmarks.cgx
+```
+Shows random 3D landmarks with labels rendered as child text nodes of `<text>` elements.
+
+
 ## Component example
 
 ```shell

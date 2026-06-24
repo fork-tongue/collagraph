@@ -1,0 +1,72 @@
+<!--
+Run this example as follows:
+    uv run collagraph --renderer pygfx --state '{"count": 25}' examples/pygfx/landmarks.cgx
+-->
+<ambient-light />
+<point-light :local.position="(12, 18, 10)" />
+<group>
+  <group v-for="idx, landmark in enumerate(landmarks)">
+    <mesh
+      :geometry="sphere_geometry"
+      :material="sphere_material"
+      :local.position="landmark['position']"
+    />
+    <text
+      :local.position="label_position(landmark['position'])"
+      :font_size="14"
+      screen_space
+      anchor="bottom-center"
+    >
+      {{landmark['name']}}
+      #{{idx}}
+    </text>
+  </group>
+</group>
+
+<script>
+import random
+
+import collagraph as cg
+import pygfx as gfx
+
+sphere_geometry = gfx.sphere_geometry(radius=0.35)
+sphere_material = gfx.MeshPhongMaterial(color=[0.2, 0.8, 1.0], pick_write=True)
+
+LANDMARK_NAMES = [
+    "Harbor",
+    "Bridge",
+    "Museum",
+    "Library",
+    "Station",
+    "Observatory",
+    "Garden",
+    "Square",
+    "Market",
+    "Beacon",
+]
+
+
+def rand_position():
+    return (
+        round(random.uniform(-12.0, 12.0), 2),
+        round(random.uniform(-8.0, 8.0), 2),
+        round(random.uniform(-12.0, 12.0), 2),
+    )
+
+
+class Landmarks(cg.Component):
+    def init(self):
+        random.seed(42)
+        count = int(self.props.get("count", 20))
+        self.state["landmarks"] = [
+            {
+                "name": LANDMARK_NAMES[idx % len(LANDMARK_NAMES)],
+                "position": rand_position(),
+            }
+            for idx in range(count)
+        ]
+
+    def label_position(self, position):
+        x, y, z = position
+        return (x, y + 0.75, z)
+</script>
