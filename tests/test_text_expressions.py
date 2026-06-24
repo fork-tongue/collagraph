@@ -24,6 +24,7 @@ def test_text_elements():
         quoted_p,
         multiline_p,
         static_multiline_p,
+        complex_multiline_p,
         split_p,
     ) = result["children"]
 
@@ -33,6 +34,7 @@ def test_text_elements():
     assert quoted_p["type"] == "p"
     assert multiline_p["type"] == "p"
     assert static_multiline_p["type"] == "p"
+    assert complex_multiline_p["type"] == "p"
     assert split_p["type"] == "p"
 
     assert (
@@ -42,6 +44,7 @@ def test_text_elements():
         and "children" in quoted_p
         and "children" in multiline_p
         and "children" in static_multiline_p
+        and "children" in complex_multiline_p
     ), format_dict(container)
 
     assert (
@@ -51,16 +54,26 @@ def test_text_elements():
         == len(quoted_p["children"])
         == len(multiline_p["children"])
         == len(static_multiline_p["children"])
+        == len(complex_multiline_p["children"])
         == 1
     ), format_dict(container)
 
-    static, dynamic, multiple, quoted, multiline, static_multiline = (
+    (
+        static,
+        dynamic,
+        multiple,
+        quoted,
+        multiline,
+        static_multiline,
+        complex_multiline,
+    ) = (
         static_p["children"][0],
         dynamic_p["children"][0],
         multiple_p["children"][0],
         quoted_p["children"][0],
         multiline_p["children"][0],
         static_multiline_p["children"][0],
+        complex_multiline_p["children"][0],
     )
     assert static["type"] == "TEXT_ELEMENT"
     assert dynamic["type"] == "TEXT_ELEMENT"
@@ -68,12 +81,17 @@ def test_text_elements():
     assert quoted["type"] == "TEXT_ELEMENT"
     assert multiline["type"] == "TEXT_ELEMENT"
     assert static_multiline["type"] == "TEXT_ELEMENT"
+    assert complex_multiline["type"] == "TEXT_ELEMENT"
     assert static["attrs"]["content"] == "Static content"
     assert dynamic["attrs"]["content"] == "Dynamic foo"
     assert multiple["attrs"]["content"] == r"Even bar dyna{}mic\{} foo"
     assert quoted["attrs"]["content"] == 'Quote "foo" and slash \\\\ bar'
     assert multiline["attrs"]["content"] == 'Line "foo"\nnext bar'
     assert static_multiline["attrs"]["content"] == "First line\nsecond line"
+    assert (
+        complex_multiline["attrs"]["content"]
+        == 'Complex "foo"\nmiddle {{literal}} bar\ntail foo/bar'
+    )
 
     assert len(split_p["children"]) == 4
     assert split_p["children"][0]["type"] == "TEXT_ELEMENT"

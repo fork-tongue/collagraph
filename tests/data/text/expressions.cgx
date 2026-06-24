@@ -8,6 +8,9 @@
       next {{more}}</p>
     <p>First line
       second line</p>
+    <p>Complex "{{content}}"
+      middle \{{literal}} {{more}}
+        tail {{content}}/{{more}}</p>
     <p>Split<!--by a comment--> and split by <span>an</span> element</p>
   </div>
 </template>
