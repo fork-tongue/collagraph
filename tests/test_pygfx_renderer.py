@@ -2,12 +2,14 @@ import math
 from collections import namedtuple
 
 import pytest
+from observ import reactive
 
 try:
     import pygfx as gfx
 except ImportError:
     pytest.skip(reason="pygfx not installed", allow_module_level=True)
 
+from collagraph import Collagraph, EventLoopType
 from collagraph.renderers import PygfxRenderer
 
 
@@ -162,6 +164,199 @@ def test_pygfx_text_attributes_use_text_api(monkeypatch):
     assert calls == [("text", "Hello"), ("markdown", "**World**")]
     assert "text" not in text.__dict__
     assert "markdown" not in text.__dict__
+
+
+def test_pygfx_create_text_element_returns_proxy():
+    renderer = PygfxRenderer()
+
+    proxy = renderer.create_element("TEXT_ELEMENT")
+
+    assert isinstance(proxy, gfx.WorldObject)
+    assert hasattr(proxy, "_cg_content")
+
+
+def test_pygfx_text_proxy_content_update_resyncs_parent_text(monkeypatch):
+    renderer = PygfxRenderer()
+    parent = gfx.Text()
+    proxy = renderer.create_element("TEXT_ELEMENT")
+
+    calls = []
+
+    def set_text(value):
+        calls.append(value)
+
+    monkeypatch.setattr(parent, "set_text", set_text)
+
+    renderer.set_attribute(proxy, "content", "Hello")
+    assert calls == []
+
+    renderer.insert(proxy, parent)
+    assert calls == ["Hello"]
+
+    renderer.set_attribute(proxy, "content", "Updated")
+    assert calls == ["Hello", "Updated"]
+
+
+def test_pygfx_text_multiple_proxies_concatenate_in_children_order(monkeypatch):
+    renderer = PygfxRenderer()
+    parent = gfx.Text()
+
+    calls = []
+
+    def set_text(value):
+        calls.append(value)
+
+    monkeypatch.setattr(parent, "set_text", set_text)
+
+    a = renderer.create_element("TEXT_ELEMENT")
+    b = renderer.create_element("TEXT_ELEMENT")
+    c = renderer.create_element("TEXT_ELEMENT")
+
+    renderer.set_attribute(a, "content", "A")
+    renderer.set_attribute(b, "content", "B")
+    renderer.set_attribute(c, "content", "C")
+
+    renderer.insert(a, parent)
+    renderer.insert(b, parent)
+    renderer.insert(c, parent)
+
+    assert calls[-1] == "ABC"
+
+
+def test_pygfx_text_anchor_insert_updates_composition_order(monkeypatch):
+    renderer = PygfxRenderer()
+    parent = gfx.Text()
+
+    calls = []
+
+    def set_text(value):
+        calls.append(value)
+
+    monkeypatch.setattr(parent, "set_text", set_text)
+
+    a = renderer.create_element("TEXT_ELEMENT")
+    b = renderer.create_element("TEXT_ELEMENT")
+    c = renderer.create_element("TEXT_ELEMENT")
+
+    renderer.set_attribute(a, "content", "A")
+    renderer.set_attribute(b, "content", "B")
+    renderer.set_attribute(c, "content", "C")
+
+    renderer.insert(a, parent)
+    renderer.insert(c, parent)
+    renderer.insert(b, parent, anchor=c)
+
+    assert calls[-1] == "ABC"
+
+
+def test_pygfx_text_remove_middle_proxy_recomputes_joined_text(monkeypatch):
+    renderer = PygfxRenderer()
+    parent = gfx.Text()
+
+    calls = []
+
+    def set_text(value):
+        calls.append(value)
+
+    monkeypatch.setattr(parent, "set_text", set_text)
+
+    a = renderer.create_element("TEXT_ELEMENT")
+    b = renderer.create_element("TEXT_ELEMENT")
+    c = renderer.create_element("TEXT_ELEMENT")
+
+    renderer.set_attribute(a, "content", "A")
+    renderer.set_attribute(b, "content", "B")
+    renderer.set_attribute(c, "content", "C")
+
+    renderer.insert(a, parent)
+    renderer.insert(b, parent)
+    renderer.insert(c, parent)
+    renderer.remove(b, parent)
+
+    assert calls[-1] == "AC"
+
+
+def test_pygfx_text_proxy_update_after_remove_does_not_resync(monkeypatch):
+    renderer = PygfxRenderer()
+    parent = gfx.Text()
+    proxy = renderer.create_element("TEXT_ELEMENT")
+
+    calls = []
+
+    def set_text(value):
+        calls.append(value)
+
+    monkeypatch.setattr(parent, "set_text", set_text)
+
+    renderer.set_attribute(proxy, "content", "A")
+    renderer.insert(proxy, parent)
+    renderer.remove(proxy, parent)
+
+    call_count = len(calls)
+    renderer.set_attribute(proxy, "content", "B")
+
+    assert len(calls) == call_count
+
+
+def test_pygfx_text_sync_ignores_non_proxy_children(monkeypatch):
+    renderer = PygfxRenderer()
+    parent = gfx.Text()
+
+    calls = []
+
+    def set_text(value):
+        calls.append(value)
+
+    monkeypatch.setattr(parent, "set_text", set_text)
+
+    proxy_a = renderer.create_element("TEXT_ELEMENT")
+    proxy_b = renderer.create_element("TEXT_ELEMENT")
+    non_proxy = gfx.WorldObject()
+
+    renderer.set_attribute(proxy_a, "content", "A")
+    renderer.set_attribute(proxy_b, "content", "B")
+
+    renderer.insert(proxy_a, parent)
+    renderer.insert(non_proxy, parent)
+    renderer.insert(proxy_b, parent)
+
+    assert calls[-1] == "AB"
+
+
+def test_pygfx_template_text_children_update(parse_source, monkeypatch):
+    App, _ = parse_source(
+        """
+        <scene>
+          <text>Hello {{name}}!</text>
+        </scene>
+
+        <script>
+        import collagraph as cg
+
+        class App(cg.Component):
+            pass
+        </script>
+        """
+    )
+
+    calls = []
+    original_set_text = gfx.Text.set_text
+
+    def set_text(self, value):
+        calls.append(value)
+        original_set_text(self, value)
+
+    monkeypatch.setattr(gfx.Text, "set_text", set_text)
+
+    state = reactive({"name": "World"})
+    container = gfx.Scene()
+    gui = Collagraph(PygfxRenderer(), event_loop_type=EventLoopType.SYNC)
+
+    gui.render(App, container, state)
+    assert calls[-1] == "Hello World!"
+
+    state["name"] = "Collagraph"
+    assert calls[-1] == "Hello Collagraph!"
 
 
 def test_event_handlers():
