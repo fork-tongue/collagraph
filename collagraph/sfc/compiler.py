@@ -425,6 +425,55 @@ def parse_text_interpolations(text: str) -> list[tuple[bool, str]]:
     return result
 
 
+def ast_set_text_bind(
+    el: str,
+    parts: list[tuple[bool, str]],
+    names: set[str],
+    list_names: list[dict[str, set[str]]],
+) -> ast.Expr:
+    joined_values: list[ast.Constant | ast.FormattedValue] = []
+    for is_expr, part in parts:
+        if is_expr:
+            expression_ast = ast.parse(part, mode="eval")
+            joined_values.append(
+                ast.FormattedValue(
+                    value=expression_ast.body,
+                    conversion=-1,
+                )
+            )
+        elif part:
+            joined_values.append(ast.Constant(value=part))
+
+    source = ast.Expression(
+        body=ast.Call(
+            func=ast.Attribute(
+                value=ast.Name(id=el, ctx=ast.Load()),
+                attr="set_bind",
+                ctx=ast.Load(),
+            ),
+            args=[
+                ast.Constant(value="content"),
+                ast.Lambda(
+                    args=ast.arguments(
+                        posonlyargs=[],
+                        args=[],
+                        kwonlyargs=[],
+                        kw_defaults=[],
+                        defaults=[],
+                    ),
+                    body=ast.JoinedStr(values=joined_values),
+                ),
+            ],
+            keywords=[],
+        )
+    )
+    return ast_named_lambda(
+        source,
+        {"renderer", "new", el, "watch"} | names,
+        list_names,
+    )
+
+
 def safe_tag(tag):
     return tag.replace("-", "_").replace(".", "_")
 
@@ -638,36 +687,21 @@ def create_collagraph_render_function(
                 has_interpolation = "{{" in text_content and "}}" in text_content
 
                 if has_interpolation:
-                    # Create a dynamic bind for text with interpolations
-                    # Build an f-string expression from the text
                     parts = parse_text_interpolations(text_content)
-                    expr_parts = []
-                    for is_expr, part in parts:
-                        if is_expr:
-                            expr_parts.append("{" + part + "}")
-                        else:
-                            # Escape braces and backslashes in static parts for f-string
-                            # First escape backslashes that precede braces to avoid
-                            # invalid escape sequences like \{ in the f-string
-                            escaped = part.replace("\\{", "\\\\{").replace(
-                                "\\}", "\\\\}"
+                    if any(is_expr for is_expr, _ in parts):
+                        result.append(
+                            ast_set_text_bind(
+                                text_el,
+                                parts,
+                                names,
+                                list_names,
                             )
-                            # Then escape standalone braces for f-string syntax
-                            escaped = escaped.replace("{", "{{").replace("}", "}}")
-                            expr_parts.append(escaped)
-                    fstring_content = "".join(expr_parts)
-                    # Create the bind with an f-string
-                    source = ast.parse(
-                        f'{text_el}.set_bind("content", lambda: f"{fstring_content}")',
-                        mode="eval",
-                    )
-                    result.append(
-                        ast_named_lambda(
-                            source,
-                            {"renderer", "new", text_el, "watch"} | names,
-                            list_names,
                         )
-                    )
+                    else:
+                        # Only escaped/unclosed interpolation-like text was found.
+                        result.append(
+                            ast_set_attribute(text_el, "content", text_content)
+                        )
                 else:
                     # Static text - set attribute directly
                     result.append(ast_set_attribute(text_el, "content", text_content))

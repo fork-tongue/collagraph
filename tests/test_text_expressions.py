@@ -17,35 +17,49 @@ def test_text_elements():
 
     assert result["type"] == "div"
 
-    static_p, dynamic_p, multiple_p, split_p = result["children"]
+    static_p, dynamic_p, multiple_p, quoted_p, multiline_p, split_p = result["children"]
 
     assert static_p["type"] == "p"
     assert dynamic_p["type"] == "p"
     assert multiple_p["type"] == "p"
+    assert quoted_p["type"] == "p"
+    assert multiline_p["type"] == "p"
     assert split_p["type"] == "p"
 
     assert (
-        "children" in static_p and "children" in dynamic_p and "children" in multiple_p
+        "children" in static_p
+        and "children" in dynamic_p
+        and "children" in multiple_p
+        and "children" in quoted_p
+        and "children" in multiline_p
     ), format_dict(container)
 
     assert (
         len(static_p["children"])
         == len(dynamic_p["children"])
         == len(multiple_p["children"])
+        == len(quoted_p["children"])
+        == len(multiline_p["children"])
         == 1
     ), format_dict(container)
 
-    static, dynamic, multiple = (
+    static, dynamic, multiple, quoted, multiline = (
         static_p["children"][0],
         dynamic_p["children"][0],
         multiple_p["children"][0],
+        quoted_p["children"][0],
+        multiline_p["children"][0],
     )
     assert static["type"] == "TEXT_ELEMENT"
     assert dynamic["type"] == "TEXT_ELEMENT"
     assert multiple["type"] == "TEXT_ELEMENT"
+    assert quoted["type"] == "TEXT_ELEMENT"
+    assert multiline["type"] == "TEXT_ELEMENT"
     assert static["attrs"]["content"] == "Static content"
     assert dynamic["attrs"]["content"] == "Dynamic foo"
     assert multiple["attrs"]["content"] == r"Even bar dyna{}mic\{} foo"
+    assert quoted["attrs"]["content"] == 'Quote "foo" and slash \\\\ bar'
+    assert multiline["attrs"]["content"] == 'Line "foo"\nnext bar'
 
     assert len(split_p["children"]) == 4
     assert split_p["children"][0]["type"] == "TEXT_ELEMENT"
