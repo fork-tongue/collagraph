@@ -67,6 +67,26 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
         """Remove event listener for `event_type` to the element `el`."""
         pass
 
+    def save_element_state(self, el: Any) -> Optional[dict]:
+        """
+        Save renderer-specific element state for hot reload.
+
+        Called before unmounting during hot reload to preserve element state
+        that isn't part of component state (e.g., window geometry).
+
+        Returns a dict of state to preserve, or None if nothing to save.
+        """
+        return None
+
+    def restore_element_state(self, el: Any, state: dict) -> None:
+        """
+        Restore renderer-specific element state after hot reload.
+
+        Called after remounting during hot reload to restore element state
+        that was saved by save_element_state().
+        """
+        pass
+
 
 from .dict_renderer import DictRenderer
 

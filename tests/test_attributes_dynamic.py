@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 import pytest
-from observ import reactive
+from observ import reactive, to_raw
 
 from collagraph import Collagraph, EventLoopType, __version__
 from collagraph.renderers import DictRenderer
@@ -292,7 +292,7 @@ def test_dynamic_attribute_deep(parse_source):
     assert app["attrs"]["values"] == {"foo": "foo"}, app
 
     # Now override the value for 'values' with a deepcopy of the original value
-    app["attrs"]["values"] = deepcopy(app["attrs"]["values"])
+    app["attrs"]["values"] = deepcopy(to_raw(app["attrs"]["values"]))
 
     # Change initial attribute
     state["values"]["foo"] = "bar"

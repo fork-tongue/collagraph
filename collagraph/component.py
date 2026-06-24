@@ -21,6 +21,7 @@ class Component:
         self._props = readonly({} if props is None else props)
         self._state = reactive({})
         self._element = None
+        self._refs = reactive({})
         self._slots = {}
         self._event_handlers = defaultdict(set)
         self._lookup_cache = Component.__lookup_cache__[type(self)]
@@ -62,6 +63,16 @@ class Component:
     def element(self, value):
         """Prevent overwriting the element attributes."""
         raise RuntimeError("Not allowed to override element attribute")
+
+    @property
+    def refs(self):
+        """Template refs - references to elements and child components."""
+        return self._refs
+
+    @refs.setter
+    def refs(self, value):
+        """Prevent overwriting the refs attribute."""
+        raise RuntimeError("Not allowed to override refs attribute")
 
     @property
     def parent(self):
@@ -141,7 +152,7 @@ class Component:
         Helper method that is used in the template.
         The method looks up variables that are mentioned in the template.
         This provides some syntactic sugar so that users can leave out `self`,
-        `self.state` and `self.props`.
+        `self.state`, `self.props`, and `self.refs`.
         """
         cache = self._lookup_cache
         if method := cache.get(name):
@@ -153,6 +164,9 @@ class Component:
         def state_lookup(self, name, context):
             return self.state[name]
 
+        def refs_lookup(self, name, context):
+            return self.refs[name]
+
         def self_lookup(self, name, context):
             return getattr(self, name)
 
@@ -163,6 +177,8 @@ class Component:
             cache[name] = props_lookup
         elif name in self.state:
             cache[name] = state_lookup
+        elif name in self.refs:
+            cache[name] = refs_lookup
         elif hasattr(self, name):
             cache[name] = self_lookup
         elif name in context:

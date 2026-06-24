@@ -1,0 +1,23 @@
+<list>
+  <TodoItem
+    v-for="todo in state['todos']"
+    :done="todo['done']"
+    :key="todo['id']"
+    :text="todo['text']"
+  />
+</list>
+
+<script>
+import collagraph as cg
+from todo_item import TodoItem
+
+
+class TodoList(cg.Component):
+    def init(self):
+        self.state["todos"] = [
+            {"id": 1, "text": "Buy groceries", "done": False},
+            {"id": 2, "text": "Write tests", "done": True},
+            {"id": 3, "text": "Deploy app", "done": False},
+        ]
+</script>
+

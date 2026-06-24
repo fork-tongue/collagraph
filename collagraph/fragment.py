@@ -57,6 +57,9 @@ class Fragment:
         self._watchers: dict[str, Watcher] = {}
         # Conditional expression for whether the DOM element should be rendered
         self._condition: Callable | None = None
+        # Reference name or callable for template refs
+        self._ref_name: str | None = None
+        self._ref_is_dynamic: bool = False
 
         self._mounted = False
 
@@ -107,15 +110,15 @@ class Fragment:
 
     def first(self) -> Any | None:
         """
-        Returns the first DOM element (if any), from either itself, or its direct
-        decendants, in case of virtual fragments. Should not be deeper since an
-        anchor lives in the same depth in the tree.
+        Returns the first DOM element (if any), from either itself, or its
+        descendants. This recursively searches through children to find the
+        first actual DOM element.
         """
         if self.element:
             return self.element
         for child in self.children:
-            if child.element:
-                return child.element
+            if element := child.first():
+                return element
 
     def anchor(self) -> Any | None:
         """
@@ -124,18 +127,53 @@ class Fragment:
         """
         parent = self.parent
         assert parent is not None
-        idx = parent.children.index(self)
-        length = len(parent.children) - 1
-        while 0 <= idx < length:
-            idx += 1
-            if element := parent.children[idx].first():
-                return element
+
+        # Check if this fragment is in parent's children
+        if self in parent.children:
+            idx = parent.children.index(self)
+            length = len(parent.children) - 1
+            while 0 <= idx < length:
+                idx += 1
+                if element := parent.children[idx].first():
+                    return element
+        # Fragment might be slot content - check parent's slot_contents if it's
+        # a ComponentFragment
+        elif isinstance(parent, ComponentFragment) and self in parent.slot_contents:
+            idx = parent.slot_contents.index(self)
+            length = len(parent.slot_contents) - 1
+            while 0 <= idx < length:
+                idx += 1
+                if element := parent.slot_contents[idx].first():
+                    return element
+
+        # No sibling anchor found at this level. If the parent doesn't have
+        # its own element (e.g., ComponentFragment, ControlFlowFragment), climb
+        # up the tree to find an anchor from the parent's siblings.
+        # However, don't climb past a fragment whose rendered elements include
+        # our mount target, as anchors beyond that belong to a different subtree.
+        # This can happen when slot content is mounted into a component's elements.
+        if not parent.element and parent.parent:
+            # Check if we would climb past our mount target
+            if target := self.target:
+                # Check if this parent's element subtree contains our target
+                # For ComponentFragment, first() returns the rendered element
+                if parent.first() is target:
+                    return None
+            return parent.anchor()
+
+        return None
 
     def set_attribute(self, attr: str, value: Any):
         """
         Set a static attribute. Note that it is not directly applied to
         the element, that will happen in the `create` call.
         """
+        # Handle ref attribute specially
+        if attr == "ref":
+            self._ref_name = value
+            self._ref_is_dynamic = False
+            return
+
         self._attributes[attr] = value
 
     def set_bind(self, attr: str, expression: Callable):
@@ -143,6 +181,12 @@ class Fragment:
         Set a bind (dynamic attribute) to the value of the expression.
         This will wait to be applied when `create` is called.
         """
+        # Handle dynamic ref binding specially
+        if attr == "ref":
+            self._ref_name = expression
+            self._ref_is_dynamic = True
+            return
+
         self._binds.append((attr, expression, True))
 
     def set_bind_dict(self, name: str, expression: Callable[[], dict[str, Any]]):
@@ -174,6 +218,52 @@ class Fragment:
         Set a handler for an event.
         """
         self._events[event] = handler
+
+    def _register_ref(self, ref_value: Any):
+        """
+        Register a ref with the parent component.
+        Handles both string refs and callable (function) refs.
+        """
+        if not ref_value:
+            return
+
+        component = self._component_parent()
+        if not component:
+            return
+
+        # For ComponentFragment, register the component instance
+        if isinstance(self, ComponentFragment) and self.component:
+            target = self.component
+        else:
+            target = self.element
+
+        if not target:
+            return
+
+        # Function ref: call it with the element/component
+        if callable(ref_value):
+            ref_value(target)
+        # String ref: store in component.refs dict
+        elif isinstance(ref_value, str):
+            component._refs[ref_value] = target
+
+    def _unregister_ref(self, ref_value: Any):
+        """
+        Unregister a ref from the parent component.
+        """
+        if not ref_value:
+            return
+
+        component = self._component_parent()
+        if not component:
+            return
+
+        # Function ref: call it with None
+        if callable(ref_value):
+            ref_value(None)
+        # String ref: remove from component.refs dict
+        elif isinstance(ref_value, str) and ref_value in component._refs:
+            del component._refs[ref_value]
 
     def _watch_bind(self, attr, expression):
         """
@@ -244,6 +334,26 @@ class Fragment:
             else:
                 self._watch_bind_dict(name, expression)
 
+        # Set up dynamic ref watcher if needed
+        if self._ref_is_dynamic and self._ref_name:
+
+            @weak(self)
+            def ref_update(self, new_ref_value, old_ref_value):
+                # Unregister old ref
+                if old_ref_value:
+                    self._unregister_ref(old_ref_value)
+                # Register new ref
+                if new_ref_value:
+                    self._register_ref(new_ref_value)
+
+            # Watch the ref expression
+            self._watchers["ref"] = watch(
+                self._ref_name,
+                ref_update,
+                immediate=True,
+                deep=False,
+            )
+
         # IDEA/TODO: for v-for, don't create instances direct, but
         # instead, create child fragments first, then call
         # create on those instead. Might involve some reparenting
@@ -259,7 +369,17 @@ class Fragment:
         if self.element:
             self.renderer.insert(self.element, parent=target, anchor=anchor)
         for child in self.children:
-            child.mount(self.element or target)
+            # For virtual elements, mount in target and use the
+            # anchor for the correct placement
+            if not self.element:
+                child.mount(target, anchor)
+            else:
+                child.mount(self.element)
+
+        # Register static ref after element is mounted
+        # (dynamic refs are handled by the watcher created in create())
+        if not self._ref_is_dynamic and self._ref_name:
+            self._register_ref(self._ref_name)
 
         self._mounted = True
 
@@ -285,6 +405,21 @@ class Fragment:
     def unmount(self, destroy=True):
         self._mounted = False
 
+        # Clean up ref before unmounting
+        # For dynamic refs with destroy=True, we need to unregister the current value
+        # For static refs, always unregister
+        if self._ref_name:
+            if self._ref_is_dynamic:
+                # For dynamic refs, get the current value and unregister it
+                # This handles function refs being called with None
+                if "ref" in self._watchers:
+                    current_value = self._watchers["ref"].value
+                    if current_value:
+                        self._unregister_ref(current_value)
+            else:
+                # Static refs - just unregister the name
+                self._unregister_ref(self._ref_name)
+
         for child in self.children:
             child.unmount(destroy=destroy)
 
@@ -302,6 +437,8 @@ class Fragment:
             self._watchers = {}
             self._condition = None
             self.tag = None
+            self._ref_name = None
+            self._ref_is_dynamic = False
         else:
             self.element = None
             # Disable the fn and callback of the watcher to disable
@@ -326,6 +463,8 @@ class ControlFlowFragment(Fragment):
 
         @weak(self)
         def update_fragment(self, new: Fragment | None, old: Fragment | None):
+            if new is old:
+                return  # No need to remount, since it is the same fragment
             if old:
                 old.unmount(destroy=False)
             if new:
@@ -442,11 +581,20 @@ class ListFragment(Fragment):
 
                 # Keys that are no longer present - unmount them
                 removed_keys = old_key_set - new_key_set
+                removed_fragments = set()
                 for key in removed_keys:
                     fragment = self.key_to_fragment.pop(key)
-                    # Remove from children list
-                    self.children.remove(fragment)
                     fragment.unmount()
+                    removed_fragments.add(fragment)
+
+                # Create a filtered snapshot of the old children order
+                # (excluding removed fragments) for position comparisons
+                old_children = [f for f in self.children if f not in removed_fragments]
+
+                # Build a map from fragment to its old position
+                old_fragment_positions = {
+                    frag: i for i, frag in enumerate(old_children)
+                }
 
                 # Build new children array in the correct order
                 new_children = []
@@ -466,9 +614,33 @@ class ListFragment(Fragment):
                         self.key_to_fragment[key] = fragment
                         new_children.append(fragment)
 
-                # Now we need to reorder/mount the DOM elements to match new_children
-                # We process from the end to the beginning to avoid interference
-                # from previous moves
+                # Map reused fragments to their old positions, skip new ones
+                old_positions = []
+                reused_indices = []
+                for i, fragment in enumerate(new_children):
+                    if fragment in old_fragment_positions:
+                        old_positions.append(old_fragment_positions[fragment])
+                        reused_indices.append(i)
+
+                # Find LIS - these fragments are already in correct order
+                # Example: [A, B, C] -> [C, A, B]
+                # Old positions: {A:0, B:1, C:2}
+                # Map to old positions: [2, 0, 1]
+                # LIS: [0, 1] (A, B already in order)
+                # Only move C
+                lis_indices = longest_increasing_subsequence(old_positions)
+                # Convert LIS result to set of new_children indices
+                dont_move = {reused_indices[i] for i in lis_indices}
+
+                # Reconciliation strategy: Process new_children from end to
+                # start using anchors. Three different orderings in play:
+                # - old_children: The OLD order (filtered snapshot)
+                # - new_children: The desired NEW order
+                # - DOM state: Updated incrementally as we process each fragment
+                #
+                # We process backwards (end to beginning) so that anchors
+                # (elements to the right) are already in their final
+                # positions when we use them as insertion points.
                 for i in range(len(new_children) - 1, -1, -1):
                     fragment = new_children[i]
 
@@ -486,40 +658,14 @@ class ListFragment(Fragment):
                     if not fragment._mounted:
                         # Mount new fragment at the correct position
                         fragment.mount(target, anchor=anchor)
-                    else:
-                        # Fragment is already mounted, move it in the DOM if needed
-                        if fragment.element:
-                            # Check if it's already in the correct position
-                            # Get the actual next sibling in the current DOM
-                            current_next = self._get_next_sibling(
-                                fragment.element, target
-                            )
+                    elif i not in dont_move:
+                        # Fragment needs to be moved (not in LIS)
+                        # Move the fragment and all its DOM children
+                        move_fragment_dom(fragment, self.renderer, target, anchor)
 
-                            # Only move if not already in correct position
-                            if current_next != anchor:
-                                # Remove from current position
-                                # (but keep element reference)
-                                # and insert at new position
-                                self.renderer.remove(fragment.element, target)
-                                self.renderer.insert(
-                                    fragment.element, parent=target, anchor=anchor
-                                )
-
-                # Update children list
+                # Update children list to match new_children
+                # This removes any unmounted fragments and ensures correct order
                 self.children = new_children
-
-            def _get_next_sibling(element, parent):
-                """Get the next sibling element in the parent's children list"""
-                try:
-                    idx = parent.children.index(element)
-                    if idx + 1 < len(parent.children):
-                        return parent.children[idx + 1]
-                    return None
-                except (ValueError, AttributeError):
-                    return None
-
-            # Bind the helper function to self
-            self._get_next_sibling = _get_next_sibling
 
             # Watch for changes
             self._watchers["list"] = watch_effect(update_children_keyed)
@@ -620,6 +766,26 @@ class ComponentFragment(Fragment):
         for event, handler in self._events.items():
             self.component.add_event_handler(event, handler)
 
+        # Set up dynamic ref watcher if needed (for component refs)
+        if self._ref_is_dynamic and self._ref_name:
+
+            @weak(self)
+            def ref_update(self, new_ref_value, old_ref_value):
+                # Unregister old ref
+                if old_ref_value:
+                    self._unregister_ref(old_ref_value)
+                # Register new ref
+                if new_ref_value:
+                    self._register_ref(new_ref_value)
+
+            # Watch the ref expression
+            self._watchers["ref"] = watch(
+                self._ref_name,
+                ref_update,
+                immediate=True,
+                deep=False,
+            )
+
     def mount(self, target: Any, anchor: Any | None = None):
         if self._mounted:
             return
@@ -649,6 +815,12 @@ class ComponentFragment(Fragment):
             except IndexError:
                 pass
 
+            # Register static component ref after component is mounted
+            # (dynamic refs are handled by the watcher created in create())
+            # Override base class behavior to register component instance
+            if not self._ref_is_dynamic and self._ref_name:
+                self._register_ref(self._ref_name)
+
             self.component.mounted()
 
         self._mounted = True
@@ -666,6 +838,19 @@ class ComponentFragment(Fragment):
         self.props = None
 
     def unmount(self, destroy=True):
+        # Clean up component ref before unmounting
+        # Handle both static and dynamic refs
+        if self._ref_name and self.component:
+            if self._ref_is_dynamic:
+                # For dynamic refs, get the current value and unregister it
+                if "ref" in self._watchers:
+                    current_value = self._watchers["ref"].value
+                    if current_value:
+                        self._unregister_ref(current_value)
+            else:
+                # Static refs - just unregister the name
+                self._unregister_ref(self._ref_name)
+
         if self.component:
             self.component.before_unmount()
 
@@ -673,7 +858,26 @@ class ComponentFragment(Fragment):
         for slot_content in self.slot_contents:
             slot_content.unmount(destroy=destroy)
 
+        # Set _ref_name to None before calling super to prevent double cleanup
+        temp_ref_name = self._ref_name
+        temp_ref_is_dynamic = self._ref_is_dynamic
+        self._ref_name = None
+        self._ref_is_dynamic = False
         super().unmount(destroy=destroy)
+        if not destroy:
+            self._ref_name = temp_ref_name
+            self._ref_is_dynamic = temp_ref_is_dynamic
+        else:
+            # Clear ComponentFragment-specific state for full destruction
+            # This ensures proper cleanup of any dangling items. Especially
+            # needed for hot-reload where the component is first destroyed
+            # and then remounted and needs to be fully recreated from scratch.
+            self.fragment = None
+            self.children.clear()
+            self.slot_contents.clear()
+            self.slots.clear()
+            self.component = None
+            self.props = None
 
 
 class SlotFragment(Fragment):
@@ -901,3 +1105,79 @@ class DynamicFragment(Fragment):
     def _remove(self):
         if self._active_fragment:
             self._active_fragment._remove()
+
+
+def move_fragment_dom(
+    fragment: Fragment, renderer: Renderer, target: Any, anchor: Any | None
+) -> None:
+    """
+    Recursively move all DOM elements in a fragment tree to a new position.
+
+    For fragments with a direct element, moves that element.
+    For fragments without (e.g. ComponentFragment), recursively moves children.
+    """
+    if fragment.element:
+        # Fragment has a single element - move it
+        renderer.remove(fragment.element, target)
+        renderer.insert(fragment.element, parent=target, anchor=anchor)
+    else:
+        # Fragment without direct element - move all child DOM elements
+        for child in fragment.children:
+            if child._mounted:
+                move_fragment_dom(child, renderer, target, anchor)
+
+
+def longest_increasing_subsequence(nums: list[int]) -> list[int]:
+    """
+    Find the longest increasing subsequence in a list of numbers.
+    Returns the indices of elements in the LIS.
+
+    Used to optimize keyed list reconciliation by finding which elements
+    are already in the correct relative order and don't need to move.
+
+    Example:
+        nums = [2, 0, 1]
+        returns [1, 2]  # indices of values 0, 1 (the LIS)
+    """
+    if not nums:
+        return []
+
+    n = len(nums)
+    # tails[i] = smallest tail element for LIS of length i+1
+    tails = []
+    # predecessor[i] = index of previous element in LIS ending at i
+    predecessor = [-1] * n
+    # tail_indices[i] = index in nums of tails[i]
+    tail_indices = []
+
+    for i, num in enumerate(nums):
+        # Binary search for the position to insert num
+        left, right = 0, len(tails)
+        while left < right:
+            mid = (left + right) // 2
+            if tails[mid] < num:
+                left = mid + 1
+            else:
+                right = mid
+
+        # Update predecessor
+        if left > 0:
+            predecessor[i] = tail_indices[left - 1]
+
+        # Update or append to tails
+        if left < len(tails):
+            tails[left] = num
+            tail_indices[left] = i
+        else:
+            tails.append(num)
+            tail_indices.append(i)
+
+    # Reconstruct the LIS indices
+    result = []
+    current = tail_indices[-1]
+    while current != -1:
+        result.append(current)
+        current = predecessor[current]
+
+    result.reverse()
+    return result

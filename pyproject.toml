@@ -1,6 +1,6 @@
 [project]
 name = "collagraph"
-version = "0.8.10"
+version = "0.9.4"
 description = "Reactive user interfaces"
 authors = [
     { name = "Berend Klein Haneveld", email = "berendkleinhaneveld@gmail.com" },
@@ -25,12 +25,14 @@ pyside = ["PySide6>=6.6.2,!=6.8.3,!=6.9.0 ; python_version < '3.15'"]
 
 [dependency-groups]
 dev = [
-    "rich",
-    "ruff",
+    "colorlog",
     "pre-commit",
     "pytest",
     "pytest-cov",
+    "rich",
+    "ruff",
     "twine",
+    "watchdog>=3.0.0",
 ]
 # When PySide6 is not installed, then pytest-qt will break the test suite.
 # But pytest-qt can't be marked as an optional dev dependency. So instead
@@ -57,6 +59,7 @@ pyside-dev = [
 "examples/pygfx/*.py" = ["I001"]  # unsorted-imports
 "examples/pyside/flow_layout.py" = ["N802"]  # invalid-function-name
 "tests/*" = ["N806", "N802"]  # non-lowercase-variable-in-function, invalid-function-name
+"tests/pyinstaller/*" = ["I001", "T20"]  # unsorted-imports, flake8-print
 "tests/pyside/test_*.py" = ["E402"]  # module-import-not-at-top-of-file
 
 [tool.ruff.lint]

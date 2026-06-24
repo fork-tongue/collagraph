@@ -1,0 +1,124 @@
+<window
+  height="300"
+  title="Template Refs Example"
+  width="400"
+>
+  <widget>
+    <label
+      ref="titleLabel"
+      text="Template Refs Demo"
+    />
+    <widget :layout="{'type': 'box', 'direction': 'LeftToRight'}">
+      <label text="Name:" />
+      <line-edit
+        ref="nameInput"
+        placeholder="Enter your name"
+      />
+    </widget>
+    <widget :layout="{'type': 'box', 'direction': 'LeftToRight'}">
+      <label text="Email:" />
+      <line-edit
+        ref="emailInput"
+        placeholder="Enter your email"
+      />
+    </widget>
+    <widget :layout="{'type': 'box', 'direction': 'LeftToRight'}">
+      <button
+        text="Set Focus to Name"
+        @clicked="focus_name"
+      />
+      <button
+        text="Set Focus to Email"
+        @clicked="focus_email"
+      />
+    </widget>
+    <widget :layout="{'type': 'box', 'direction': 'LeftToRight'}">
+      <button
+        text="Read Values"
+        @clicked="read_values"
+      />
+      <button
+        text="Clear Fields"
+        @clicked="clear_fields"
+      />
+    </widget>
+    <label
+      ref="outputLabel"
+      text="Output will appear here"
+    />
+    <button
+      text="Change Title Color"
+      @clicked="change_title_style"
+    />
+  </widget>
+</window>
+
+<script>
+import collagraph as cg
+
+
+class TemplateRefsExample(cg.Component):
+    """
+    Example demonstrating template refs in Collagraph.
+
+    Template refs allow you to get direct access to DOM elements and child components
+    after they are mounted. Use the `ref` attribute in the template, and access the
+    element/component via `self.refs['refName']` in your component code.
+    """
+
+    def init(self):
+        """Initialize component state"""
+        self.state["color_index"] = 0
+        self.state["colors"] = ["red", "blue", "green", "purple", "orange"]
+
+    def focus_name(self):
+        """Set focus to the name input field using template ref"""
+        if "nameInput" in self.refs:
+            # Access the actual QLineEdit widget via refs
+            self.refs["nameInput"].setFocus()
+
+    def focus_email(self):
+        """Set focus to the email input field using template ref"""
+        if "emailInput" in self.refs:
+            self.refs["emailInput"].setFocus()
+
+    def read_values(self):
+        """Read values from input fields using template refs"""
+        name = ""
+        email = ""
+
+        # Access input widgets directly through refs
+        if "nameInput" in self.refs:
+            name = self.refs["nameInput"].text()
+        if "emailInput" in self.refs:
+            email = self.refs["emailInput"].text()
+
+        # Update output label using refs
+        if "outputLabel" in self.refs:
+            output = f"Name: {name}, Email: {email}"
+            self.refs["outputLabel"].setText(output)
+
+    def clear_fields(self):
+        """Clear all input fields using template refs"""
+        if "nameInput" in self.refs:
+            self.refs["nameInput"].clear()
+        if "emailInput" in self.refs:
+            self.refs["emailInput"].clear()
+        if "outputLabel" in self.refs:
+            self.refs["outputLabel"].setText("Output will appear here")
+
+    def change_title_style(self):
+        """Change the title label's color using template ref"""
+        if "titleLabel" in self.refs:
+            colors = self.state["colors"]
+            index = self.state["color_index"]
+            color = colors[index]
+
+            # Set stylesheet directly on the widget
+            self.refs["titleLabel"].setStyleSheet(
+                f"color: {color}; font-size: 18px; font-weight: bold;"
+            )
+
+            # Cycle to next color
+            self.state["color_index"] = (index + 1) % len(colors)
+</script>

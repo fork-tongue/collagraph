@@ -2,8 +2,10 @@ from PySide6.QtWidgets import (
     QBoxLayout,
     QFormLayout,
     QGridLayout,
+    QHBoxLayout,
     QLayout,
     QStackedLayout,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -15,10 +17,14 @@ DIRECTIONS = {
     "LeftToRight": QBoxLayout.Direction.LeftToRight,
     "RightToLeft": QBoxLayout.Direction.RightToLeft,
     "BottomToTop": QBoxLayout.Direction.BottomToTop,
+    "horizontal": QBoxLayout.Direction.LeftToRight,
+    "vertical": QBoxLayout.Direction.TopToBottom,
 }
 
 
 PySideRenderer.register_layout("box", QBoxLayout)
+PySideRenderer.register_layout("vbox", QVBoxLayout)
+PySideRenderer.register_layout("hbox", QHBoxLayout)
 PySideRenderer.register_layout("form", QFormLayout)
 PySideRenderer.register_layout("grid", QGridLayout)
 PySideRenderer.register_layout("stacked", QStackedLayout)
@@ -29,7 +35,7 @@ def layout_insert(self, el, anchor=None):
     self.addWidget(el)
 
 
-@PySideRenderer.register_insert(QBoxLayout, QStackedLayout)
+@PySideRenderer.register_insert(QBoxLayout, QVBoxLayout, QHBoxLayout, QStackedLayout)
 def box_layout_insert(self, el, anchor=None):
     index = -1
     if anchor is not None:
@@ -65,8 +71,10 @@ def remove_form(self, el):
     # associated widgets of the return layout item
     layout_item = self.takeRow(el)
     if layout_item:
-        layout_item.labelItem.widget().setParent(None)
-        layout_item.fieldItem.widget().setParent(None)
+        if layout_item.labelItem:
+            layout_item.labelItem.widget().setParent(None)
+        if layout_item.fieldItem:
+            layout_item.fieldItem.widget().setParent(None)
     el.setParent(None)
 
 

@@ -39,7 +39,7 @@ def construct_ast(path, template=None):
     class definition as `render` function.
     """
     if not template:
-        template = Path(path).read_text()
+        template = Path(path).read_text(encoding="utf-8")
 
     # Parse the file component into a tree of Elements
     parser = CGXParser()
@@ -822,6 +822,12 @@ def create_collagraph_render_function(
                             )
                         )
                     )
+
+                    # Set slot_name on the ListFragment if parent is a component
+                    if parent_node := (child.parent and child.parent()):
+                        if is_component_tag(parent_node.tag, names):
+                            result.append(ast_set_slot_name(name, "default"))
+
                     break
 
             if node_with_list_expression:
@@ -880,12 +886,12 @@ def create_collagraph_render_function(
             # Check if we need to mark the item as content for the default slot
             if not added_slot_name:
                 if parent_node := (child.parent and child.parent()):
-                    # This assumes that the parent_node is a component if it starts
-                    # with an uppercase character
-                    # TODO: come up with a more solid solution for figuring out
-                    # whether the parent is a component
-                    if parent_node.tag and parent_node.tag[0].isupper():
-                        attributes.append(ast_set_slot_name(el, "default"))
+                    if is_component_tag(parent_node.tag, names):
+                        # If there's a control flow wrapper (v-if/v-else-if/v-else),
+                        # set slot_name on the control flow fragment since that's
+                        # what gets registered in slot_contents
+                        slot_target = control_flow_parent if control_flow_parent else el
+                        attributes.append(ast_set_slot_name(slot_target, "default"))
 
             # Create the appropriate fragment type
             if is_dynamic_component:
@@ -910,9 +916,7 @@ def create_collagraph_render_function(
 
                 # Create regular Fragment or ComponentFragment
                 is_component = (
-                    (child.tag in names and not is_loop_variable)
-                    or child.tag[0].isupper()
-                    or "." in child.tag
+                    is_component_tag(child.tag, names) and not is_loop_variable
                 )
                 result.append(
                     ast_create_fragment(
@@ -953,6 +957,20 @@ def create_collagraph_render_function(
 
 def is_directive(key):
     return key.startswith((DIRECTIVE_PREFIX, ":", "@", "#"))
+
+
+def is_component_tag(tag: str, names: set[str]) -> bool:
+    """
+    Determine if a tag represents a component.
+
+    A tag is considered a component if:
+    - It matches an imported name or defined class (in `names`)
+    - It starts with an uppercase letter (Vue/JSX convention)
+    - It contains a dot (attribute access like `module.Component`)
+    """
+    if not tag:
+        return False
+    return tag in names or tag[0].isupper() or "." in tag
 
 
 def targets_for_list_expression(targets: ast.Name | ast.Tuple) -> set[str]:
