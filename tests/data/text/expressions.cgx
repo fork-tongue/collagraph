@@ -3,6 +3,14 @@
     <p>Static content</p>
     <p>Dynamic {{content}}</p>
     <p>Even {{more}} dyna{}mic\{} {{content}}</p>
+    <p>Quote "{{content}}" and slash \\ {{more}}</p>
+    <p>Line "{{content}}"
+      next {{more}}</p>
+    <p>First line
+      second line</p>
+    <p>Complex "{{content}}"
+      middle \{{literal}} {{more}}
+        tail {{content}}/{{more}}</p>
     <p>Split<!--by a comment--> and split by <span>an</span> element</p>
   </div>
 </template>
