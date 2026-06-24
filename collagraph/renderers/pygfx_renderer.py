@@ -84,6 +84,16 @@ class PygfxRenderer(Renderer):
         for attribute in attrs:
             el = getattr(el, attribute)
 
+        if isinstance(el, gfx.Text):
+            if attr == "text":
+                el.set_text(value)
+                self._trigger()
+                return
+            if attr == "markdown":
+                el.set_markdown(value)
+                self._trigger()
+                return
+
         if key not in DEFAULT_ATTR_CACHE:
             if hasattr(el, attr):
                 default_value = getattr(el, attr)

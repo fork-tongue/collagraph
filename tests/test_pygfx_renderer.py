@@ -141,6 +141,29 @@ def test_pygfx_attributes():
     assert material.clipping_planes == original_clipping_planes
 
 
+def test_pygfx_text_attributes_use_text_api(monkeypatch):
+    renderer = PygfxRenderer()
+    text = gfx.Text()
+
+    calls = []
+
+    def set_text(value):
+        calls.append(("text", value))
+
+    def set_markdown(value):
+        calls.append(("markdown", value))
+
+    monkeypatch.setattr(text, "set_text", set_text)
+    monkeypatch.setattr(text, "set_markdown", set_markdown)
+
+    renderer.set_attribute(text, "text", "Hello")
+    renderer.set_attribute(text, "markdown", "**World**")
+
+    assert calls == [("text", "Hello"), ("markdown", "**World**")]
+    assert "text" not in text.__dict__
+    assert "markdown" not in text.__dict__
+
+
 def test_event_handlers():
     renderer = PygfxRenderer()
 
