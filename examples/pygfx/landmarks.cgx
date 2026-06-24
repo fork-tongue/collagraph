@@ -4,23 +4,22 @@ Run this example as follows:
 -->
 <ambient-light />
 <point-light :local.position="(12, 18, 10)" />
-<group>
-  <group v-for="idx, landmark in enumerate(landmarks)">
+<group v-for="idx, landmark in enumerate(landmarks)">
+  <group :local.position="landmark['position']">
     <mesh
       :geometry="sphere_geometry"
       :material="selected_sphere_material if idx == selected else sphere_material"
-      :local.position="landmark['position']"
       @click="lambda ev: click_landmark(idx)"
     />
     <text
-      :local.position="label_position(landmark['position'])"
+      anchor="bottom-center"
       :font_size="14"
+      :local.position="(0, 0.75, 0)"
       :material="selected_label_material if idx == selected else label_material"
       screen_space
-      anchor="bottom-center"
     >
       {{landmark['name']}}
-      #{{idx}}
+        #{{idx}}
     </text>
   </group>
 </group>
@@ -30,6 +29,7 @@ import random
 
 import collagraph as cg
 import pygfx as gfx
+
 
 sphere_geometry = gfx.sphere_geometry(radius=0.35)
 sphere_material = gfx.MeshPhongMaterial(color=[0.2, 0.8, 1.0], pick_write=True)
@@ -75,13 +75,10 @@ class Landmarks(cg.Component):
             for idx in range(count)
         ]
 
-    def label_position(self, position):
-        x, y, z = position
-        return (x, y + 0.75, z)
-
     def click_landmark(self, idx):
         landmark = self.state["landmarks"][idx]
         landmark["clicks"] += 1
         landmark["name"] = f"{landmark['base_name']} ({landmark['clicks']})"
         self.state["selected"] = idx
 </script>
+
