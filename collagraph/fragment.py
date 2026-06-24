@@ -317,10 +317,13 @@ class Fragment:
             return
 
         # Create the element
-        self.element = self.renderer.create_element(self.tag)
+        if self.tag == "TEXT_ELEMENT":
+            self.element = self.renderer.create_text_element()
+        else:
+            self.element = self.renderer.create_element(self.tag)
         # Set all static attributes
         for attr, value in self._attributes.items():
-            self.renderer.set_attribute(self.element, attr, value)
+            self._set_attr(attr, value)
 
         # Add all event handlers
         # TODO: check what happens within v-for constructs?
@@ -385,14 +388,20 @@ class Fragment:
 
     def _set_attr(self, attr, value):
         if self.element:
-            self.renderer.set_attribute(self.element, attr, value)
+            if self.tag == "TEXT_ELEMENT" and attr == "content":
+                self.renderer.set_element_text(self.element, value)
+            else:
+                self.renderer.set_attribute(self.element, attr, value)
             if self._mounted:
                 if component := self._component_parent():
                     component.updated()
 
     def _rem_attr(self, attr):
         if self.element:
-            self.renderer.remove_attribute(self.element, attr, None)
+            if self.tag == "TEXT_ELEMENT" and attr == "content":
+                self.renderer.set_element_text(self.element, "")
+            else:
+                self.renderer.remove_attribute(self.element, attr, None)
             if self._mounted:
                 if component := self._component_parent():
                     component.updated()
