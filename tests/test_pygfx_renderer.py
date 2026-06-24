@@ -32,15 +32,19 @@ def test_pygfx_create_element():
         renderer.create_element("Foo")
 
 
-def test_pygfx_text_element_not_supported():
+def test_pygfx_text_element_support():
     renderer = PygfxRenderer()
-    obj = renderer.create_element("scene")
+    parent = gfx.Text()
+    proxy = renderer.create_text_element()
 
-    with pytest.raises(NotImplementedError):
-        renderer.create_text_element()
+    renderer.set_element_text(proxy, "Hello")
+    renderer.insert(proxy, parent)
+    assert len(parent.children) == 1
+    assert parent.children[0] is proxy
+    assert len(parent._text_blocks) == 1
 
-    with pytest.raises(NotImplementedError):
-        renderer.set_element_text(obj, "Foo")
+    renderer.set_element_text(proxy, "Hello world")
+    assert len(parent._text_blocks) == 1
 
 
 def test_pygfx_insert_remove():
@@ -169,7 +173,7 @@ def test_pygfx_text_attributes_use_text_api(monkeypatch):
 def test_pygfx_create_text_element_returns_proxy():
     renderer = PygfxRenderer()
 
-    proxy = renderer.create_element("TEXT_ELEMENT")
+    proxy = renderer.create_text_element()
 
     assert isinstance(proxy, gfx.WorldObject)
     assert hasattr(proxy, "_cg_content")
@@ -178,7 +182,7 @@ def test_pygfx_create_text_element_returns_proxy():
 def test_pygfx_text_proxy_content_update_resyncs_parent_text(monkeypatch):
     renderer = PygfxRenderer()
     parent = gfx.Text()
-    proxy = renderer.create_element("TEXT_ELEMENT")
+    proxy = renderer.create_text_element()
 
     calls = []
 
@@ -187,13 +191,13 @@ def test_pygfx_text_proxy_content_update_resyncs_parent_text(monkeypatch):
 
     monkeypatch.setattr(parent, "set_text", set_text)
 
-    renderer.set_attribute(proxy, "content", "Hello")
+    renderer.set_element_text(proxy, "Hello")
     assert calls == []
 
     renderer.insert(proxy, parent)
     assert calls == ["Hello"]
 
-    renderer.set_attribute(proxy, "content", "Updated")
+    renderer.set_element_text(proxy, "Updated")
     assert calls == ["Hello", "Updated"]
 
 
@@ -208,13 +212,13 @@ def test_pygfx_text_multiple_proxies_concatenate_in_children_order(monkeypatch):
 
     monkeypatch.setattr(parent, "set_text", set_text)
 
-    a = renderer.create_element("TEXT_ELEMENT")
-    b = renderer.create_element("TEXT_ELEMENT")
-    c = renderer.create_element("TEXT_ELEMENT")
+    a = renderer.create_text_element()
+    b = renderer.create_text_element()
+    c = renderer.create_text_element()
 
-    renderer.set_attribute(a, "content", "A")
-    renderer.set_attribute(b, "content", "B")
-    renderer.set_attribute(c, "content", "C")
+    renderer.set_element_text(a, "A")
+    renderer.set_element_text(b, "B")
+    renderer.set_element_text(c, "C")
 
     renderer.insert(a, parent)
     renderer.insert(b, parent)
@@ -234,13 +238,13 @@ def test_pygfx_text_anchor_insert_updates_composition_order(monkeypatch):
 
     monkeypatch.setattr(parent, "set_text", set_text)
 
-    a = renderer.create_element("TEXT_ELEMENT")
-    b = renderer.create_element("TEXT_ELEMENT")
-    c = renderer.create_element("TEXT_ELEMENT")
+    a = renderer.create_text_element()
+    b = renderer.create_text_element()
+    c = renderer.create_text_element()
 
-    renderer.set_attribute(a, "content", "A")
-    renderer.set_attribute(b, "content", "B")
-    renderer.set_attribute(c, "content", "C")
+    renderer.set_element_text(a, "A")
+    renderer.set_element_text(b, "B")
+    renderer.set_element_text(c, "C")
 
     renderer.insert(a, parent)
     renderer.insert(c, parent)
@@ -260,13 +264,13 @@ def test_pygfx_text_remove_middle_proxy_recomputes_joined_text(monkeypatch):
 
     monkeypatch.setattr(parent, "set_text", set_text)
 
-    a = renderer.create_element("TEXT_ELEMENT")
-    b = renderer.create_element("TEXT_ELEMENT")
-    c = renderer.create_element("TEXT_ELEMENT")
+    a = renderer.create_text_element()
+    b = renderer.create_text_element()
+    c = renderer.create_text_element()
 
-    renderer.set_attribute(a, "content", "A")
-    renderer.set_attribute(b, "content", "B")
-    renderer.set_attribute(c, "content", "C")
+    renderer.set_element_text(a, "A")
+    renderer.set_element_text(b, "B")
+    renderer.set_element_text(c, "C")
 
     renderer.insert(a, parent)
     renderer.insert(b, parent)
@@ -279,7 +283,7 @@ def test_pygfx_text_remove_middle_proxy_recomputes_joined_text(monkeypatch):
 def test_pygfx_text_proxy_update_after_remove_does_not_resync(monkeypatch):
     renderer = PygfxRenderer()
     parent = gfx.Text()
-    proxy = renderer.create_element("TEXT_ELEMENT")
+    proxy = renderer.create_text_element()
 
     calls = []
 
@@ -288,12 +292,12 @@ def test_pygfx_text_proxy_update_after_remove_does_not_resync(monkeypatch):
 
     monkeypatch.setattr(parent, "set_text", set_text)
 
-    renderer.set_attribute(proxy, "content", "A")
+    renderer.set_element_text(proxy, "A")
     renderer.insert(proxy, parent)
     renderer.remove(proxy, parent)
 
     call_count = len(calls)
-    renderer.set_attribute(proxy, "content", "B")
+    renderer.set_element_text(proxy, "B")
 
     assert len(calls) == call_count
 
@@ -309,12 +313,12 @@ def test_pygfx_text_sync_ignores_non_proxy_children(monkeypatch):
 
     monkeypatch.setattr(parent, "set_text", set_text)
 
-    proxy_a = renderer.create_element("TEXT_ELEMENT")
-    proxy_b = renderer.create_element("TEXT_ELEMENT")
+    proxy_a = renderer.create_text_element()
+    proxy_b = renderer.create_text_element()
     non_proxy = gfx.WorldObject()
 
-    renderer.set_attribute(proxy_a, "content", "A")
-    renderer.set_attribute(proxy_b, "content", "B")
+    renderer.set_element_text(proxy_a, "A")
+    renderer.set_element_text(proxy_b, "B")
 
     renderer.insert(proxy_a, parent)
     renderer.insert(non_proxy, parent)

@@ -55,9 +55,6 @@ class PygfxRenderer(Renderer):
     def create_element(self, type: str) -> gfx.WorldObject:
         """Create pygfx element for the given type"""
         type = type.lower().replace("-", "").replace("_", "")
-        if type == "textelement":
-            self._trigger()
-            return _TextElementProxy()
 
         if element_type := ELEMENT_TYPE_CACHE.get(type):
             self._trigger()
@@ -74,7 +71,8 @@ class PygfxRenderer(Renderer):
         raise ValueError(f"Can't create element of type: {type}")
 
     def create_text_element(self):
-        raise NotImplementedError
+        self._trigger()
+        return _TextElementProxy()
 
     def insert(
         self,
@@ -108,13 +106,9 @@ class PygfxRenderer(Renderer):
         self._trigger()
 
     def set_element_text(self, el, value: str):
-        if isinstance(el, _TextElementProxy):
-            el._cg_content = value
-            if parent := el._cg_parent_text:
-                self._sync_text_from_proxy_children(parent)
-            return
-
-        raise NotImplementedError
+        el._cg_content = value
+        if parent := el._cg_parent_text:
+            self._sync_text_from_proxy_children(parent)
 
     def _sync_text_from_proxy_children(self, parent: gfx.Text):
         content = "".join(
@@ -133,10 +127,6 @@ class PygfxRenderer(Renderer):
         *attrs, attr = attr.split(".")
         for attribute in attrs:
             el = getattr(el, attribute)
-
-        if isinstance(el, _TextElementProxy) and attr == "content":
-            self.set_element_text(el, value)
-            return
 
         if isinstance(el, gfx.Text):
             if attr == "text":
