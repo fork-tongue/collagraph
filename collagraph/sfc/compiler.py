@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import logging
+import re
 import sys
 import textwrap
 from collections import defaultdict
@@ -425,6 +426,12 @@ def parse_text_interpolations(text: str) -> list[tuple[bool, str]]:
     return result
 
 
+def normalize_multiline_text(text: str) -> str:
+    if "\n" not in text and "\r" not in text:
+        return text
+    return re.sub(r"(\r?\n)[ \t]+", r"\1", text)
+
+
 def ast_set_text_bind(
     el: str,
     parts: list[tuple[bool, str]],
@@ -683,7 +690,7 @@ def create_collagraph_render_function(
                 )
 
                 # Parse the text content for interpolations
-                text_content = child.content
+                text_content = normalize_multiline_text(child.content)
                 has_interpolation = "{{" in text_content and "}}" in text_content
 
                 if has_interpolation:
