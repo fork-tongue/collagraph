@@ -196,14 +196,8 @@ def ast_set_slot_name(el: str, name: str) -> ast.Assign:
     )
 
 
-def ast_register_with_parent(el: str, parent: str) -> ast.Expr:
+def ast_register_with_parent(el: str, parent: str) -> list[ast.Expr | ast.Assign]:
     """Generate: el._parent = weakref.ref(parent); parent.register_child(el)"""
-    # el._parent = ref(parent)
-    # parent.register_child(el)
-    # We need a statement that does both, but AST single expressions are limited.
-    # Let's use a simple expression that sets parent and calls register_child:
-    # (el.__setattr__('_parent', ref(parent)), parent.register_child(el))
-    # Actually, let's just generate two statements and wrap in a list
     return [
         ast.Assign(
             targets=[
