@@ -1,5 +1,6 @@
 import warnings
 from typing import Any, Callable
+from weakref import ref
 
 import pygfx as gfx
 
@@ -7,6 +8,22 @@ from . import Renderer
 
 ELEMENT_TYPE_CACHE = {}
 DEFAULT_ATTR_CACHE = {}
+
+
+class _TextElementProxy(gfx.WorldObject):
+    def __init__(self):
+        super().__init__()
+        self._cg_content = ""
+        self._cg_parent_text_ref = None
+
+    @property
+    def _cg_parent_text(self) -> gfx.Text | None:
+        if self._cg_parent_text_ref is None:
+            return None
+        return self._cg_parent_text_ref()
+
+    def _cg_set_parent_text(self, parent: gfx.Text | None):
+        self._cg_parent_text_ref = ref(parent) if parent else None
 
 
 class PygfxRenderer(Renderer):
@@ -37,7 +54,8 @@ class PygfxRenderer(Renderer):
 
     def create_element(self, type: str) -> gfx.WorldObject:
         """Create pygfx element for the given type"""
-        type = type.lower().replace("-", "")
+        type = type.lower().replace("-", "").replace("_", "")
+
         if element_type := ELEMENT_TYPE_CACHE.get(type):
             self._trigger()
             return element_type()
@@ -53,7 +71,8 @@ class PygfxRenderer(Renderer):
         raise ValueError(f"Can't create element of type: {type}")
 
     def create_text_element(self):
-        raise NotImplementedError
+        self._trigger()
+        return _TextElementProxy()
 
     def insert(
         self,
@@ -61,19 +80,44 @@ class PygfxRenderer(Renderer):
         parent: gfx.WorldObject,
         anchor: gfx.WorldObject | None = None,
     ):
+        is_text_proxy = isinstance(el, _TextElementProxy)
         try:
             parent.add(el, before=anchor)
         except ValueError:
             warnings.warn(f"Could not find anchor in {parent}")
             parent.add(el)
+
+        if is_text_proxy and isinstance(parent, gfx.Text):
+            el._cg_set_parent_text(parent)
+            self._sync_text_from_proxy_children(parent)
+            return
+
         self._trigger()
 
     def remove(self, el: gfx.WorldObject, parent: gfx.WorldObject):
         parent.remove(el)
+
+        if isinstance(el, _TextElementProxy):
+            if isinstance(parent, gfx.Text):
+                self._sync_text_from_proxy_children(parent)
+            el._cg_set_parent_text(None)
+            return
+
         self._trigger()
 
     def set_element_text(self, el, value: str):
-        raise NotImplementedError
+        el._cg_content = value
+        if parent := el._cg_parent_text:
+            self._sync_text_from_proxy_children(parent)
+
+    def _sync_text_from_proxy_children(self, parent: gfx.Text):
+        content = "".join(
+            child._cg_content
+            for child in parent.children
+            if isinstance(child, _TextElementProxy)
+        )
+        parent.set_text(content)
+        self._trigger()
 
     def set_attribute(self, el: gfx.WorldObject, attr: str, value: Any):
         key = f"{type(el).__name__}.{attr}"
@@ -83,6 +127,16 @@ class PygfxRenderer(Renderer):
         *attrs, attr = attr.split(".")
         for attribute in attrs:
             el = getattr(el, attribute)
+
+        if isinstance(el, gfx.Text):
+            if attr == "text":
+                el.set_text(value)
+                self._trigger()
+                return
+            if attr == "markdown":
+                el.set_markdown(value)
+                self._trigger()
+                return
 
         if key not in DEFAULT_ATTR_CACHE:
             if hasattr(el, attr):
