@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import logging
+import re
 import sys
 import textwrap
 from collections import defaultdict
@@ -39,7 +40,7 @@ def construct_ast(path, template=None):
     class definition as `render` function.
     """
     if not template:
-        template = Path(path).read_text()
+        template = Path(path).read_text(encoding="utf-8")
 
     # Parse the file component into a tree of Elements
     parser = CGXParser()
@@ -408,6 +409,118 @@ def ast_create_list_fragment(name: str, parent: str | None) -> ast.Assign:
     )
 
 
+def parse_text_interpolations(text: str) -> list[tuple[bool, str]]:
+    """
+    Parse text with {{expression}} interpolations.
+
+    Returns a list of tuples where:
+    - (False, str) represents static text
+    - (True, str) represents an expression to be evaluated
+
+    Examples:
+        "Hello {{name}}" -> [(False, "Hello "), (True, "name")]
+        "Static text" -> [(False, "Static text")]
+        "{{a}} and {{b}}" -> [(True, "a"), (False, " and "), (True, "b")]
+    """
+    result = []
+    i = 0
+    n = len(text)
+
+    while i < n:
+        # Look for start of interpolation
+        start = text.find("{{", i)
+        if start == -1:
+            # No more interpolations, add remaining text
+            if i < n:
+                result.append((False, text[i:]))
+            break
+
+        # Check for escape sequence \{{
+        if start > 0 and text[start - 1] == "\\":
+            # Escaped - include text up to and including the {{ as static
+            # but remove the backslash
+            if i < start - 1:
+                result.append((False, text[i : start - 1]))
+            result.append((False, "{{"))
+            i = start + 2
+            continue
+
+        # Add static text before the interpolation
+        if start > i:
+            result.append((False, text[i:start]))
+
+        # Find the end of the interpolation
+        end = text.find("}}", start + 2)
+        if end == -1:
+            # Unclosed interpolation - treat rest as static
+            result.append((False, text[start:]))
+            break
+
+        # Extract the expression
+        expr = text[start + 2 : end].strip()
+        if expr:
+            result.append((True, expr))
+
+        i = end + 2
+
+    return result
+
+
+def normalize_multiline_text(text: str) -> str:
+    if "\n" not in text and "\r" not in text:
+        return text
+    return re.sub(r"(\r?\n)[ \t]+", r"\1", text)
+
+
+def ast_set_text_bind(
+    el: str,
+    parts: list[tuple[bool, str]],
+    names: set[str],
+    list_names: list[dict[str, set[str]]],
+) -> ast.Expr:
+    joined_values: list[ast.Constant | ast.FormattedValue] = []
+    for is_expr, part in parts:
+        if is_expr:
+            expression_ast = ast.parse(part, mode="eval")
+            joined_values.append(
+                ast.FormattedValue(
+                    value=expression_ast.body,
+                    conversion=-1,
+                )
+            )
+        elif part:
+            joined_values.append(ast.Constant(value=part))
+
+    source = ast.Expression(
+        body=ast.Call(
+            func=ast.Attribute(
+                value=ast.Name(id=el, ctx=ast.Load()),
+                attr="set_bind",
+                ctx=ast.Load(),
+            ),
+            args=[
+                ast.Constant(value="content"),
+                ast.Lambda(
+                    args=ast.arguments(
+                        posonlyargs=[],
+                        args=[],
+                        kwonlyargs=[],
+                        kw_defaults=[],
+                        defaults=[],
+                    ),
+                    body=ast.JoinedStr(values=joined_values),
+                ),
+            ],
+            keywords=[],
+        )
+    )
+    return ast_named_lambda(
+        source,
+        {"renderer", "new", el, "watch"} | names,
+        list_names,
+    )
+
+
 def safe_tag(tag):
     return tag.replace("-", "_").replace(".", "_")
 
@@ -597,9 +710,57 @@ def create_collagraph_render_function(
                 # Ignore comments
                 continue
             if isinstance(child, TextElement):
-                # children_args.extend(args_for_text_element(child, names=names))
-                # continue
-                raise NotImplementedError()
+                # Create a text element fragment
+                text_el = f"text{counter['text']}"
+                counter["text"] += 1
+
+                # Create the TEXT_ELEMENT fragment
+                result.append(
+                    ast.Assign(
+                        targets=[ast.Name(id=text_el, ctx=ast.Store())],
+                        value=ast.Call(
+                            func=ast.Name(id="Fragment", ctx=ast.Load()),
+                            args=[ast.Name(id="renderer", ctx=ast.Load())],
+                            keywords=[
+                                ast.keyword(
+                                    arg="tag", value=ast.Constant(value="TEXT_ELEMENT")
+                                ),
+                                ast.keyword(
+                                    arg="parent",
+                                    value=ast.Name(id=target, ctx=ast.Load())
+                                    if target
+                                    else ast.Constant(value=None),
+                                ),
+                            ],
+                        ),
+                    )
+                )
+
+                # Parse the text content for interpolations
+                text_content = normalize_multiline_text(child.content)
+                has_interpolation = "{{" in text_content and "}}" in text_content
+
+                if has_interpolation:
+                    parts = parse_text_interpolations(text_content)
+                    if any(is_expr for is_expr, _ in parts):
+                        result.append(
+                            ast_set_text_bind(
+                                text_el,
+                                parts,
+                                names,
+                                list_names,
+                            )
+                        )
+                    else:
+                        # Only escaped/unclosed interpolation-like text was found.
+                        result.append(
+                            ast_set_attribute(text_el, "content", text_content)
+                        )
+                else:
+                    # Static text - set attribute directly
+                    result.append(ast_set_attribute(text_el, "content", text_content))
+
+                continue
 
             # Create element name
             tag = safe_tag(child.tag)

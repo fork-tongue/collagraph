@@ -1,11 +1,24 @@
-import pytest
 from observ import reactive
 
 from collagraph import Collagraph, DictRenderer, EventLoopType
 from collagraph.renderers.dict_renderer import format_dict
 
 
-@pytest.mark.xfail
+class TrackingDictRenderer(DictRenderer):
+    def __init__(self):
+        super().__init__()
+        self.created_text_elements = 0
+        self.set_text_calls = 0
+
+    def create_text_element(self):
+        self.created_text_elements += 1
+        return super().create_text_element()
+
+    def set_element_text(self, el: dict, value: str):
+        self.set_text_calls += 1
+        super().set_element_text(el, value)
+
+
 def test_text_elements():
     from tests.data.text.expressions import Example
 
@@ -19,41 +32,119 @@ def test_text_elements():
 
     assert result["type"] == "div"
 
-    static_p, dynamic_p, multiple_p, split_p = result["children"]
+    (
+        static_p,
+        dynamic_p,
+        multiple_p,
+        quoted_p,
+        multiline_p,
+        static_multiline_p,
+        complex_multiline_p,
+        split_p,
+    ) = result["children"]
 
     assert static_p["type"] == "p"
     assert dynamic_p["type"] == "p"
     assert multiple_p["type"] == "p"
+    assert quoted_p["type"] == "p"
+    assert multiline_p["type"] == "p"
+    assert static_multiline_p["type"] == "p"
+    assert complex_multiline_p["type"] == "p"
     assert split_p["type"] == "p"
 
     assert (
-        "children" in static_p and "children" in dynamic_p and "children" in multiple_p
+        "children" in static_p
+        and "children" in dynamic_p
+        and "children" in multiple_p
+        and "children" in quoted_p
+        and "children" in multiline_p
+        and "children" in static_multiline_p
+        and "children" in complex_multiline_p
     ), format_dict(container)
 
     assert (
         len(static_p["children"])
         == len(dynamic_p["children"])
         == len(multiple_p["children"])
+        == len(quoted_p["children"])
+        == len(multiline_p["children"])
+        == len(static_multiline_p["children"])
+        == len(complex_multiline_p["children"])
         == 1
     ), format_dict(container)
 
-    static, dynamic, multiple = (
+    (
+        static,
+        dynamic,
+        multiple,
+        quoted,
+        multiline,
+        static_multiline,
+        complex_multiline,
+    ) = (
         static_p["children"][0],
         dynamic_p["children"][0],
         multiple_p["children"][0],
+        quoted_p["children"][0],
+        multiline_p["children"][0],
+        static_multiline_p["children"][0],
+        complex_multiline_p["children"][0],
     )
     assert static["type"] == "TEXT_ELEMENT"
     assert dynamic["type"] == "TEXT_ELEMENT"
     assert multiple["type"] == "TEXT_ELEMENT"
-    assert static["attrs"]["content"] == "Static content"
-    assert dynamic["attrs"]["content"] == "Dynamic foo"
-    assert multiple["attrs"]["content"] == r"Even bar dyna{}mic\{} foo"
+    assert quoted["type"] == "TEXT_ELEMENT"
+    assert multiline["type"] == "TEXT_ELEMENT"
+    assert static_multiline["type"] == "TEXT_ELEMENT"
+    assert complex_multiline["type"] == "TEXT_ELEMENT"
+    assert static["text"] == "Static content"
+    assert dynamic["text"] == "Dynamic foo"
+    assert multiple["text"] == r"Even bar dyna{}mic\{} foo"
+    assert quoted["text"] == 'Quote "foo" and slash \\\\ bar'
+    assert multiline["text"] == 'Line "foo"\nnext bar'
+    assert static_multiline["text"] == "First line\nsecond line"
+    assert (
+        complex_multiline["text"]
+        == 'Complex "foo"\nmiddle {{literal}} bar\ntail foo/bar'
+    )
 
     assert len(split_p["children"]) == 4
     assert split_p["children"][0]["type"] == "TEXT_ELEMENT"
     assert split_p["children"][1]["type"] == "TEXT_ELEMENT"
     assert split_p["children"][2]["type"] == "span"
     assert split_p["children"][3]["type"] == "TEXT_ELEMENT"
-    assert split_p["children"][0]["attrs"]["content"] == "Split"
-    assert split_p["children"][1]["attrs"]["content"] == " and split by "
-    assert split_p["children"][3]["attrs"]["content"] == " element"
+    assert split_p["children"][0]["text"] == "Split"
+    assert split_p["children"][1]["text"] == " and split by "
+    assert split_p["children"][3]["text"] == " element"
+
+
+def test_text_elements_use_text_renderer_api(parse_source):
+    App, _ = parse_source(
+        """
+        <item>
+          Text content here
+        </item>
+
+        <script>
+        import collagraph as cg
+
+        class App(cg.Component):
+            pass
+        </script>
+        """
+    )
+
+    renderer = TrackingDictRenderer()
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=renderer,
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container)
+
+    assert container["children"][0]["type"] == "item"
+    assert container["children"][0]["children"][0]["type"] == "TEXT_ELEMENT"
+    assert container["children"][0]["children"][0]["text"] == "\nText content here\n"
+
+    assert renderer.created_text_elements == 1
+    assert renderer.set_text_calls == 1

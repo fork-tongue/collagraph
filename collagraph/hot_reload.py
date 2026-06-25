@@ -80,7 +80,9 @@ class SharedFileWatcher:
             return
         self._initialized = True
         self._observer = None
-        self._handlers: dict[int, Callable[[Path], None]] = {}  # id -> callback
+        # Store callbacks weakly when possible so dead HotReloader instances
+        # don't stay alive via the watcher.
+        self._handlers: dict[int, object] = {}  # id -> callback or weakref
         self._watched_paths: dict[int, set[Path]] = {}  # id -> paths
         self._watched_dirs: set[Path] = set()
         self._handler_lock = threading.Lock()
@@ -89,8 +91,14 @@ class SharedFileWatcher:
         self, handler_id: int, paths: set[Path], callback: Callable[[Path], None]
     ) -> None:
         """Register a callback for a set of paths."""
+        # Avoid keeping HotReloader instances alive via a bound-method callback.
+        stored: object
+        if getattr(callback, "__self__", None) is not None:
+            stored = weakref.WeakMethod(callback)
+        else:
+            stored = callback
         with self._handler_lock:
-            self._handlers[handler_id] = callback
+            self._handlers[handler_id] = stored
             self._watched_paths[handler_id] = {p.resolve() for p in paths}
             self._update_observer()
 
@@ -149,13 +157,34 @@ class SharedFileWatcher:
                 except OSError:
                     return
 
+                callbacks: list[Callable[[Path], None]] = []
+                dead_ids: list[int] = []
                 with watcher._handler_lock:
                     for handler_id, paths in watcher._watched_paths.items():
-                        if resolved in paths:
-                            callback = watcher._handlers.get(handler_id)
-                            if callback:
-                                logger.debug("Path matched: %s", resolved)
-                                callback(resolved)
+                        if resolved not in paths:
+                            continue
+
+                        stored = watcher._handlers.get(handler_id)
+                        if stored is None:
+                            continue
+
+                        if isinstance(stored, weakref.ReferenceType):
+                            callback = stored()
+                            if callback is None:
+                                dead_ids.append(handler_id)
+                                continue
+                        else:
+                            callback = stored
+
+                        callbacks.append(callback)
+
+                for handler_id in dead_ids:
+                    watcher.unregister(handler_id)
+
+                if callbacks:
+                    logger.debug("Path matched: %s", resolved)
+                    for callback in callbacks:
+                        callback(resolved)
 
             def on_modified(self, event) -> None:
                 if not event.is_directory:
@@ -263,9 +292,12 @@ class HotReloader:
         gui = self._gui_ref()
         if gui is None or gui.fragment is None:
             logger.warning("Cannot reload: GUI or fragment is None")
+            if gui is None:
+                self.stop()
             return False
 
         logger.info("Reloading%s...", " (preserving state)" if preserve_state else "")
+        gui._in_hot_reload = True
 
         # Collect component state before unmounting
         preserved_state = None
@@ -325,6 +357,9 @@ class HotReloader:
         except Exception:
             logger.exception("Error during re-render")
             return False
+
+        finally:
+            gui._in_hot_reload = False
 
     def _collect_cgx_modules(self) -> None:
         """Collect CGX modules that are actually used in this Collagraph's tree.
@@ -437,6 +472,9 @@ class HotReloader:
         gui = self._gui_ref()
         if gui is None:
             logger.warning("GUI reference is None, cannot reload")
+            # This can happen if a nested/temporary Collagraph instance gets
+            # garbage collected without explicitly stopping its hot reloader.
+            self.stop()
             return
 
         # Schedule the reload on the main event loop
