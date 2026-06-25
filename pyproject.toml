@@ -34,6 +34,9 @@ dev = [
     "twine",
     "watchdog>=3.0.0",
 ]
+docs = [
+    "mkdocs-material",
+]
 # When PySide6 is not installed, then pytest-qt will break the test suite.
 # But pytest-qt can't be marked as an optional dev dependency. So instead
 # it is now part of a group which can be installed as follows:

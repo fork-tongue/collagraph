@@ -1,0 +1,62 @@
+site_name: Collagraph
+site_description: Reactive user interfaces in Python
+site_url: https://fork-tongue.github.io/collagraph
+repo_url: https://github.com/fork-tongue/collagraph
+repo_name: fork-tongue/collagraph
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - First Component: getting-started/first-component.md
+      - CLI: getting-started/cli.md
+  - Guide:
+      - Components: guide/components.md
+      - Template Syntax: guide/template-syntax.md
+      - Reactivity: guide/reactivity.md
+      - Events: guide/events.md
+      - Slots: guide/slots.md
+      - Provide / Inject: guide/provide-inject.md
+      - Hot Reload: guide/hot-reload.md
+  - Renderers:
+      - Overview: renderers/overview.md
+      - PySide6: renderers/pyside.md
+      - Pygfx: renderers/pygfx.md
+  - Reference:
+      - Directives: reference/directives.md
+      - Component API: reference/component-api.md
+      - Renderer API: reference/renderer-api.md
+  - Examples:
+      - PySide6 Examples: examples/pyside-examples.md
+      - Pygfx Examples: examples/pygfx-examples.md
