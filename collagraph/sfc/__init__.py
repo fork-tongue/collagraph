@@ -47,13 +47,22 @@ def load_from_string(template, path=None, namespace=None):
     # and reparse it so that debuggers can step through the generated
     # source with correct line numbers.
     filename = str(path)
-    if DEBUG:  # pragma: no cover
+    if DEBUG:
         debug_file, source = _write_debug_file(tree, path)
         if debug_file:
             import ast
+            import logging
 
-            filename = str(debug_file)
-            tree = ast.parse(source, filename=filename)
+            try:
+                debug_tree = ast.parse(source, filename=str(debug_file))
+            except SyntaxError as e:
+                logging.getLogger(__name__).warning(
+                    "Could not parse debug source, falling back to original tree",
+                    exc_info=e,
+                )
+            else:
+                filename = str(debug_file)
+                tree = debug_tree
 
     code = compile(tree, filename=filename, mode="exec")
     # Execute the code as module and pass a dictionary that will capture

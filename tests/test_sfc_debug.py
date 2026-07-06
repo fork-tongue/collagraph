@@ -1,6 +1,18 @@
 """Tests for the CGX_DEBUG support code paths."""
 
+import collagraph.sfc
 from collagraph.sfc.compiler import format_code
+
+SIMPLE_TEMPLATE = """
+<item />
+
+<script>
+import collagraph as cg
+
+class Item(cg.Component):
+    pass
+</script>
+"""
 
 
 def test_format_code_formats_valid_code():
@@ -13,3 +25,20 @@ def test_format_code_returns_input_when_ruff_fails():
     # instead of returning an empty string.
     broken = "def broken(:"
     assert format_code(broken) == broken
+
+
+def test_load_falls_back_when_debug_source_is_broken(monkeypatch, tmp_path):
+    # When the debug file somehow ends up with unparsable source,
+    # loading should fall back to the original tree instead of
+    # raising a SyntaxError.
+    broken = "def broken(:"
+    debug_file = tmp_path / "broken.py"
+    debug_file.write_text(broken, encoding="utf-8")
+
+    monkeypatch.setattr(collagraph.sfc, "DEBUG", True)
+    monkeypatch.setattr(
+        collagraph.sfc, "_write_debug_file", lambda tree, path: (debug_file, broken)
+    )
+
+    component, _ = collagraph.sfc.load_from_string(SIMPLE_TEMPLATE)
+    assert component.__name__ == "Item"
