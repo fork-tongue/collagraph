@@ -145,8 +145,12 @@ class Fragment:
         assert parent is not None
 
         # Check if this fragment is in parent's children
-        if self in parent.children:
+        try:
             idx = parent.children.index(self)
+        except ValueError:
+            idx = None
+
+        if idx is not None:
             length = len(parent.children) - 1
             while 0 <= idx < length:
                 idx += 1
@@ -154,13 +158,18 @@ class Fragment:
                     return element
         # Fragment might be slot content - check parent's slot_contents if it's
         # a ComponentFragment
-        elif isinstance(parent, ComponentFragment) and self in parent.slot_contents:
-            idx = parent.slot_contents.index(self)
-            length = len(parent.slot_contents) - 1
-            while 0 <= idx < length:
-                idx += 1
-                if element := parent.slot_contents[idx].first():
-                    return element
+        elif isinstance(parent, ComponentFragment):
+            try:
+                idx = parent.slot_contents.index(self)
+            except ValueError:
+                idx = None
+
+            if idx is not None:
+                length = len(parent.slot_contents) - 1
+                while 0 <= idx < length:
+                    idx += 1
+                    if element := parent.slot_contents[idx].first():
+                        return element
 
         # No sibling anchor found at this level. If the parent doesn't have
         # its own element (e.g., ComponentFragment, ControlFlowFragment), climb
@@ -706,11 +715,18 @@ class ListFragment(Fragment):
                     fragment.unmount()
                     self.values.pop(index)
 
+                # The anchor is loop-invariant: it is the first element
+                # *after* this ListFragment, and the loop below only
+                # appends items from the list's own subtree before it.
+                # Computed lazily so update-only runs don't pay for it.
+                anchor = _UNSET
                 for i, item in enumerate(items):
                     if i < len(self.children):
                         # Update the content for existing values
                         self.values[i]["context"] = item
                     else:
+                        if anchor is _UNSET:
+                            anchor = self.anchor()
                         # Create a new fragment + context
                         context = reactive({"context": item})
                         self.values.append(context)
@@ -719,15 +735,18 @@ class ListFragment(Fragment):
                         )
                         self.children.append(fragment)
                         fragment.parent = self
-                        fragment.mount(target, anchor=self.anchor())
+                        fragment.mount(target, anchor=anchor)
 
             # Then we add a watch_effect for the children
             # which adds/removes/updates all the child fragments
             self._watchers["list"] = watch_effect(update_children)
 
+        anchor = _UNSET
         for child in self.children:
             if not child.element:
-                child.mount(target, anchor=self.anchor())
+                if anchor is _UNSET:
+                    anchor = self.anchor()
+                child.mount(target, anchor=anchor)
 
         self._mounted = True
 
