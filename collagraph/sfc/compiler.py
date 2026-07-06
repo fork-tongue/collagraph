@@ -1011,13 +1011,26 @@ def format_code(code):
     """
     from subprocess import run
 
-    result = run(
-        ["ruff", "format", "-"],
-        input=code,
-        encoding="utf-8",
-        capture_output=True,
-    )
+    try:
+        result = run(
+            ["ruff", "format", "-"],
+            input=code,
+            encoding="utf-8",
+            capture_output=True,
+        )
+    except FileNotFoundError:
+        logger.warning("Could not format code: ruff not found")
+        return code
     if result.returncode != 0 or not result.stdout:
         logger.warning("Could not format code with ruff: %s", result.stderr)
         return code
     return result.stdout
+
+
+def generate_source(path, template=None):
+    """
+    Return the formatted Python source that is generated
+    for the .cgx file at the given path.
+    """
+    tree, _ = construct_ast(path=path, template=template)
+    return format_code(ast.unparse(tree))

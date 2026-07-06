@@ -83,7 +83,27 @@ def load_from_string(template, path=None, namespace=None):
     return component_class, namespace
 
 
-def _write_debug_file(tree, path):  # pragma: no cover
+def print_source(source, path, footer=None):
+    """Pretty print (Python) source with rich, when available,
+    falling back to plain print otherwise.
+    """
+    try:
+        from rich.console import Console
+        from rich.syntax import Syntax
+
+        console = Console()
+        console.print(f"#---{path}---")
+        console.print(Syntax(source, "python", line_numbers=True))
+        if footer:
+            console.print(f"[dim]{footer}[/dim]")
+    except ImportError:
+        print(f"#---{path}---")  # noqa: T201
+        print(source)  # noqa: T201
+        if footer:
+            print(footer)  # noqa: T201
+
+
+def _write_debug_file(tree, path):
     """Write the compiled AST to a temporary Python file for debugging.
 
     Returns a tuple of (path, formatted_source), or (None, None) if writing fails.
@@ -96,8 +116,7 @@ def _write_debug_file(tree, path):  # pragma: no cover
     logger = logging.getLogger(__name__)
 
     try:
-        plain_result = ast.unparse(tree)
-        formatted = format_code(plain_result)
+        formatted = format_code(ast.unparse(tree))
 
         # Create a meaningful filename based on the source .cgx file
         source_name = Path(path).stem if path else "template"
@@ -112,19 +131,7 @@ def _write_debug_file(tree, path):  # pragma: no cover
         debug_file = Path(fh.name)
         logger.debug("CGX debug file written to: %s", debug_file)
 
-        try:
-            from rich.console import Console
-            from rich.syntax import Syntax
-
-            console = Console()
-            syntax = Syntax(formatted, "python")
-            console.print(f"#---{path}---")
-            console.print(syntax)
-            console.print(f"[dim]Debug file: {debug_file}[/dim]")
-        except ImportError:
-            print(f"#---{path}---")  # noqa: T201
-            print(formatted)  # noqa: T201
-            print(f"Debug file: {debug_file}")  # noqa: T201
+        print_source(formatted, path, footer=f"Debug file: {debug_file}")
 
         return debug_file, formatted
     except Exception as e:
