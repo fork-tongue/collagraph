@@ -1,7 +1,10 @@
 """Tests for the CGX_DEBUG support code paths."""
 
+import tempfile
+
 import collagraph.sfc
-from collagraph.sfc.compiler import format_code
+from collagraph.sfc import _write_debug_file
+from collagraph.sfc.compiler import construct_ast, format_code
 
 SIMPLE_TEMPLATE = """
 <item />
@@ -42,3 +45,22 @@ def test_load_falls_back_when_debug_source_is_broken(monkeypatch, tmp_path):
 
     component, _ = collagraph.sfc.load_from_string(SIMPLE_TEMPLATE)
     assert component.__name__ == "Item"
+
+
+def test_write_debug_file_avoids_mktemp(monkeypatch):
+    # tempfile.mktemp is deprecated and racy (the file is created
+    # after the name is picked); the debug file should be created
+    # atomically instead.
+    def forbidden(*args, **kwargs):
+        raise AssertionError("tempfile.mktemp is deprecated and insecure")
+
+    monkeypatch.setattr(tempfile, "mktemp", forbidden)
+
+    tree, _ = construct_ast(path="example.cgx", template=SIMPLE_TEMPLATE)
+    debug_file, source = _write_debug_file(tree, "example.cgx")
+
+    assert debug_file is not None
+    assert debug_file.name.startswith("cgx_example_")
+    assert debug_file.suffix == ".py"
+    assert debug_file.read_text(encoding="utf-8") == source
+    debug_file.unlink()

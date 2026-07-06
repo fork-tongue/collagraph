@@ -101,8 +101,15 @@ def _write_debug_file(tree, path):  # pragma: no cover
 
         # Create a meaningful filename based on the source .cgx file
         source_name = Path(path).stem if path else "template"
-        debug_file = Path(tempfile.mktemp(prefix=f"cgx_{source_name}_", suffix=".py"))
-        debug_file.write_text(formatted, encoding="utf-8")
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            prefix=f"cgx_{source_name}_",
+            suffix=".py",
+            delete=False,
+        ) as fh:
+            fh.write(formatted)
+        debug_file = Path(fh.name)
         logger.debug("CGX debug file written to: %s", debug_file)
 
         try:
