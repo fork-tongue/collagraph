@@ -28,7 +28,9 @@ dev = [
     "colorlog",
     "pre-commit",
     "pytest",
+    "pytest-benchmark",
     "pytest-cov",
+    "pytest-timeout",
     "rich",
     "ruff",
     "twine",
@@ -51,6 +53,7 @@ pyside-dev = [
 # pygfx = { git = "https://github.com/pygfx/pygfx" }
 
 [tool.ruff.lint.per-file-ignores]
+"bench/*" = ["F821", "N806"]  # undefined-name, non-lowercase-variable-in-function
 "collagraph/__init__.py" = ["I001"]  # unsorted-imports
 "collagraph/__pyinstaller/*" = ["N999"]  # invalid-module-name
 "collagraph/renderers/**/__init__.py" = ["F401"]  # unused-import
@@ -75,6 +78,9 @@ select = [
     "T20", # flake8-print
     "RUF", # ruff
 ]
+
+[tool.pytest.ini_options]
+addopts = "--benchmark-columns='mean, stddev, rounds'"
 
 [build-system]
 requires = ["hatchling"]

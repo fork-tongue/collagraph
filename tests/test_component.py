@@ -169,3 +169,36 @@ def test_component_element(parse_source):
     assert Example.component is not None
     assert isinstance(Example.component, Example)
     assert Example.component.element is container["children"][0]
+
+
+def test_component_element_behind_control_flow_wrapper(parse_source):
+    """
+    A component whose render root is itself a wrapper (e.g. v-if) around a
+    single element should still resolve `component.element` to that nested
+    element (regression test for ComponentFragment.mount() using
+    `self.first()` instead of a manual BFS over `self.children`).
+    """
+    Example, _ = parse_source(
+        """
+        <el v-if="show" />
+
+        <script>
+        import collagraph as cg
+
+        class Example(cg.Component):
+            component = None
+
+            def mounted(self):
+                Example.component = self
+        </script>
+        """
+    )
+
+    gui = cg.Collagraph(cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)
+    container = {"type": "root"}
+    state = reactive({"show": True})
+    gui.render(Example, container, state=state)
+
+    assert Example.component is not None
+    assert isinstance(Example.component, Example)
+    assert Example.component.element is container["children"][0]

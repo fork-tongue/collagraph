@@ -984,6 +984,80 @@ def test_dynamic_component_with_slot(parse_source):
     assert root["children"][0]["type"] == "content"
 
 
+def test_dynamic_component_tag_switch_updates_correct_owner(parse_source):
+    """
+    Regression test for Fragment._component_parent() caching: when a
+    <component :is="tag"> switches between a plain element and a
+    Component class, the transferred slot content's `updated()`
+    notifications must go to the *new* owning component, not a stale
+    cached owner from before the switch.
+    """
+    Wrapper, _ = parse_source(
+        """
+        <wrapper>
+          <slot />
+        </wrapper>
+        <script>
+        from collagraph import Component
+        class Wrapper(Component):
+            updates = 0
+
+            def updated(self):
+                Wrapper.updates += 1
+        </script>
+        """
+    )
+
+    App, _ = parse_source(
+        """
+        <component :is="tag">
+          <content :text="text" />
+        </component>
+        <script>
+        from collagraph import Component
+        class App(Component):
+            updates = 0
+
+            def updated(self):
+                App.updates += 1
+        </script>
+        """,
+        namespace={"Wrapper": Wrapper},
+    )
+
+    state = reactive({"tag": "div", "text": "Hello"})
+    container = {"type": "root"}
+    gui = Collagraph(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    # Plain element: updates to "content" should be attributed to App
+    App.updates = 0
+    Wrapper.updates = 0
+    state["text"] = "World"
+    assert App.updates == 1
+    assert Wrapper.updates == 0
+
+    # Switch to a Component tag: updates to "content" should now be
+    # attributed to Wrapper, not the stale cached App
+    state["tag"] = Wrapper
+    App.updates = 0
+    Wrapper.updates = 0
+    state["text"] = "Wrapped"
+    assert Wrapper.updates == 1
+    assert App.updates == 0
+
+    # Switch back to a plain element: updates should flow to App again
+    state["tag"] = "section"
+    App.updates = 0
+    Wrapper.updates = 0
+    state["text"] = "Plain again"
+    assert App.updates == 1
+    assert Wrapper.updates == 0
+
+
 def test_dynamic_component_with_named_slots(parse_source):
     """Test dynamic component with Component class that has named slots"""
     Layout, _ = parse_source(
