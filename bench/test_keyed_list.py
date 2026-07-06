@@ -11,6 +11,7 @@ full reconciliation pass and dominate the measurement with unrelated
 per-mutation dependency-tracking cost.
 """
 
+import gc
 import random
 
 import pytest
@@ -42,7 +43,13 @@ def _apply(gui, state, items):
     # `gui` is unused but must be kept as a live argument: it holds the
     # only strong reference to the mounted fragment tree, so passing it
     # through keeps that tree alive for the duration of the timed call.
-    state["items"] = items
+    # GC is disabled during the timed call so that collection pauses
+    # (triggered by the allocation burst) don't dominate the variance.
+    gc.disable()
+    try:
+        state["items"] = items
+    finally:
+        gc.enable()
 
 
 @pytest.mark.timeout(timeout=0)
