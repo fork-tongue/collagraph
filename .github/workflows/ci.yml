@@ -61,7 +61,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-groups
       - name: Test
-        run: uv run pytest -v --cov=collagraph --cov-report=term-missing
+        run: uv run pytest tests -v --cov=collagraph --cov-report=term-missing
         env:
           QT_QPA_PLATFORM: offscreen
 
