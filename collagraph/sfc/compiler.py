@@ -1003,9 +1003,11 @@ def check_parsed_tree(node: Element):
         )
 
 
-def format_code(code):  # pragma: no cover
+def format_code(code):
     """
     Format the given code string with ruff
+
+    Returns the code unchanged when formatting fails.
     """
     from subprocess import run
 
@@ -1015,4 +1017,7 @@ def format_code(code):  # pragma: no cover
         encoding="utf-8",
         capture_output=True,
     )
+    if result.returncode != 0 or not result.stdout:
+        logger.warning("Could not format code with ruff: %s", result.stderr)
+        return code
     return result.stdout
