@@ -13,9 +13,9 @@ Inspired by Vue and React. Check out the [documentation](https://fork-tongue.git
 
 ## Features
 
-Write your Python interfaces in a declarative manner with plain render functions, component classes or even single-file components using Vue-like syntax, but with Python!
+Write your Python interfaces in a declarative manner as single-file components with Vue-like syntax (`.cgx` files), but with Python!
 
-* Reactivity (made possible by leveraging [observ](https://github.com/fork-tongue/observ))
+* Fine-grained reactivity (made possible by leveraging [observ](https://github.com/fork-tongue/observ))
 * Class components with local state and life-cycle methods/hooks
 * Single-file components with Vue-like template syntax (`.cgx` files)
 * Custom renderers
