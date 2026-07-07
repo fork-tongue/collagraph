@@ -1,0 +1,84 @@
+<!--
+Run this example as follows:
+    uv run collagraph --renderer pygfx --state '{"count": 25}' examples/pygfx/landmarks.cgx
+-->
+<ambient-light />
+<point-light :local.position="(12, 18, 10)" />
+<group v-for="idx, landmark in enumerate(landmarks)">
+  <group :local.position="landmark['position']">
+    <mesh
+      :geometry="sphere_geometry"
+      :material="selected_sphere_material if idx == selected else sphere_material"
+      @click="lambda ev: click_landmark(idx)"
+    />
+    <text
+      anchor="bottom-center"
+      :font_size="14"
+      :local.position="(0, 0.75, 0)"
+      :material="selected_label_material if idx == selected else label_material"
+      screen_space
+    >
+      {{landmark['name']}}
+        #{{idx}}
+    </text>
+  </group>
+</group>
+
+<script>
+import random
+
+import collagraph as cg
+import pygfx as gfx
+
+
+sphere_geometry = gfx.sphere_geometry(radius=0.35)
+sphere_material = gfx.MeshPhongMaterial(color=[0.2, 0.8, 1.0], pick_write=True)
+selected_sphere_material = gfx.MeshPhongMaterial(color=[1.0, 0.4, 0.2], pick_write=True)
+
+label_material = gfx.TextMaterial(color="#D6F4FF")
+selected_label_material = gfx.TextMaterial(color="#FFE066")
+
+LANDMARK_NAMES = [
+    "Harbor",
+    "Bridge",
+    "Museum",
+    "Library",
+    "Station",
+    "Observatory",
+    "Garden",
+    "Square",
+    "Market",
+    "Beacon",
+]
+
+
+def rand_position():
+    return (
+        round(random.uniform(-12.0, 12.0), 2),
+        round(random.uniform(-8.0, 8.0), 2),
+        round(random.uniform(-12.0, 12.0), 2),
+    )
+
+
+class Landmarks(cg.Component):
+    def init(self):
+        random.seed(42)
+        count = int(self.props.get("count", 20))
+        self.state["selected"] = -1
+        self.state["landmarks"] = [
+            {
+                "base_name": LANDMARK_NAMES[idx % len(LANDMARK_NAMES)],
+                "name": LANDMARK_NAMES[idx % len(LANDMARK_NAMES)],
+                "position": rand_position(),
+                "clicks": 0,
+            }
+            for idx in range(count)
+        ]
+
+    def click_landmark(self, idx):
+        landmark = self.state["landmarks"][idx]
+        landmark["clicks"] += 1
+        landmark["name"] = f"{landmark['base_name']} ({landmark['clicks']})"
+        self.state["selected"] = idx
+</script>
+

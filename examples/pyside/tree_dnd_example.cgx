@@ -1,0 +1,290 @@
+<!--
+  Drag-and-drop tree-widget example.
+
+  Run as:
+    uv run collagraph examples/pyside/tree_dnd_example.cgx
+
+  Demonstrates:
+   * one big reactive (nested) dict state managed by ``tree_dnd_model``
+   * a custom QTreeWidget that turns drops into state mutations
+   * selection, expansion and labels are all driven from state
+   * double-click an item to rename it
+   * add / remove / regroup-selection actions on the side
+-->
+
+<window
+  :size="[520, 560]"
+  title="Tree DnD Example"
+>
+  <widget :layout="{'type': 'Box', 'direction': 'TopToBottom'}">
+    <label text="Drag to reorganise · double-click to rename · multi-select then Group" />
+    <dnd-treewidget
+      :column-count="1"
+      :header-labels="['Label']"
+      object-name="tree"
+      @item-changed="on_item_changed"
+      @item-collapsed="on_item_collapsed"
+      @item-double-clicked="on_item_double_clicked"
+      @item-dropped="on_drop"
+      @item-expanded="on_item_expanded"
+      @item-selection-changed="on_selection_changed"
+    >
+      <TreeNodeItem
+        v-for="node in tree"
+        :expanded_ids="expanded_ids"
+        :key="node['id']"
+        :node="node"
+        :selected_ids="selected_ids"
+      />
+    </dnd-treewidget>
+    <widget :layout="{'type': 'Box', 'direction': 'LeftToRight'}">
+      <button
+        text="Add root"
+        @clicked="add_root"
+      />
+      <button
+        :enabled="len(selected_paths) == 1"
+        text="Add child"
+        @clicked="add_child"
+      />
+      <button
+        :enabled="bool(selected_paths)"
+        text="Remove"
+        @clicked="remove_selected"
+      />
+      <button
+        :enabled="len(selected_paths) >= 2"
+        text="Group"
+        @clicked="group_selected"
+      />
+    </widget>
+    <label :text="status_text()" />
+  </widget>
+</window>
+
+<script>
+from examples.pyside.tree_dnd_item import TreeNodeItem
+from PySide6 import QtCore, QtWidgets
+
+import collagraph as cg
+
+# Importing for the side effect of registering the custom element.
+import examples.pyside.tree_dnd_widget  # noqa: F401
+from examples.pyside.tree_dnd_model import (
+    add_item,
+    find_path_by_id,
+    get_node,
+    make_node,
+    move_items,
+    regroup_selection,
+    remove_items,
+    rename_item,
+)
+
+
+class TreeDndExample(cg.Component):
+    def init(self):
+        # The whole tree lives in one nested reactive structure.
+        self.state["tree"] = [
+            make_node(
+                "Fruit",
+                children=[
+                    make_node("Apple"),
+                    make_node("Banana"),
+                    make_node(
+                        "Berries",
+                        children=[
+                            make_node("Strawberry"),
+                            make_node("Blueberry"),
+                        ],
+                    ),
+                ],
+            ),
+            make_node(
+                "Vegetables",
+                children=[
+                    make_node("Carrot"),
+                    make_node("Potato"),
+                ],
+            ),
+            make_node("Bread"),
+        ]
+        # Paths of currently selected items (list of int-lists).
+        self.state["selected_paths"] = []
+        # Ids of the currently selected items - cheap membership test
+        # for the per-item ``:selected`` binding.
+        self.state["selected_ids"] = []
+        # Ids of the currently expanded items. Same pattern as
+        # ``selected_ids`` - per-item UI state lives next to the tree
+        # rather than inside each node. Seed: every parent open.
+        self.state["expanded_ids"] = self._collect_parent_ids(self.state["tree"])
+
+    @staticmethod
+    def _collect_parent_ids(tree):
+        ids: list[int] = []
+
+        def walk(items):
+            for node in items:
+                if node["children"]:
+                    ids.append(node["id"])
+                    walk(node["children"])
+
+        walk(tree)
+        return ids
+
+    # ----------------------------------------------------- helpers
+
+    def _tree_widget(self):
+        return self.element.findChild(QtWidgets.QTreeWidget, "tree")
+
+    def _path_for_item(self, item):
+        tree_widget = self._tree_widget()
+        if tree_widget is None or item is None:
+            return None
+        path = []
+        cursor = item
+        while cursor is not None:
+            parent = cursor.parent()
+            if parent is None:
+                path.append(tree_widget.indexOfTopLevelItem(cursor))
+                break
+            path.append(parent.indexOfChild(cursor))
+            cursor = parent
+        path.reverse()
+        return path
+
+    # ----------------------------------------------------- selection sync
+
+    def on_selection_changed(self):
+        tree_widget = self._tree_widget()
+        if tree_widget is None:
+            return
+        paths = [self._path_for_item(it) for it in tree_widget.selectedItems()]
+        self.state["selected_paths"] = paths
+        self.state["selected_ids"] = [
+            get_node(self.state["tree"], p)["id"] for p in paths
+        ]
+
+    # --------------------------------------------------- expansion sync
+
+    def on_item_expanded(self, item):
+        path = self._path_for_item(item)
+        if not path:
+            return
+        node_id = get_node(self.state["tree"], path)["id"]
+        if node_id not in self.state["expanded_ids"]:
+            self.state["expanded_ids"].append(node_id)
+
+    def on_item_collapsed(self, item):
+        path = self._path_for_item(item)
+        if not path:
+            return
+        node_id = get_node(self.state["tree"], path)["id"]
+        if node_id in self.state["expanded_ids"]:
+            self.state["expanded_ids"].remove(node_id)
+
+    # ---------------------------------------------------------- rename
+
+    def on_item_double_clicked(self, item, column):
+        if column != 0:
+            return
+        tree_widget = self._tree_widget()
+        if tree_widget is None:
+            return
+        # ``setFlags`` itself emits ``itemChanged``; block signals so the
+        # editable bit doesn't ping-pong through our rename handler.
+        tree_widget.blockSignals(True)
+        try:
+            item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
+        finally:
+            tree_widget.blockSignals(False)
+        tree_widget.editItem(item, column)
+
+    def on_item_changed(self, item, column):
+        if column != 0:
+            return
+        path = self._path_for_item(item)
+        if path is None:
+            return
+        new_label = item.text(column)
+        rename_item(self.state["tree"], path, new_label)
+        # Clear the editable bit so a single click no longer puts the
+        # item into edit mode. ``setFlags`` also emits ``itemChanged``,
+        # so block signals to avoid recursion.
+        tree_widget = self._tree_widget()
+        if tree_widget is not None:
+            tree_widget.blockSignals(True)
+            try:
+                item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
+            finally:
+                tree_widget.blockSignals(False)
+
+    # --------------------------------------------------- button handlers
+
+    def add_root(self):
+        node = add_item(self.state["tree"], [], "New item")
+        self.state["selected_paths"] = [[len(self.state["tree"]) - 1]]
+        self.state["selected_ids"] = [node["id"]]
+
+    def add_child(self):
+        parent_path = self.state["selected_paths"][0]
+        node = add_item(self.state["tree"], parent_path, "New child")
+        # Make sure the parent is expanded so the new child is visible.
+        parent_id = get_node(self.state["tree"], parent_path)["id"]
+        if parent_id not in self.state["expanded_ids"]:
+            self.state["expanded_ids"].append(parent_id)
+        self.state["selected_ids"] = [node["id"]]
+
+    def remove_selected(self):
+        paths = [list(p) for p in self.state["selected_paths"]]
+        remove_items(self.state["tree"], paths)
+        self.state["selected_paths"] = []
+        self.state["selected_ids"] = []
+
+    def group_selected(self):
+        paths = [list(p) for p in self.state["selected_paths"]]
+        new_group = regroup_selection(self.state["tree"], paths, label="Group")
+        self.state["selected_paths"] = []
+        if new_group is None:
+            self.state["selected_ids"] = []
+        else:
+            self.state["selected_ids"] = [new_group["id"]]
+            # Open the new group so the just-bundled items stay visible.
+            self.state["expanded_ids"].append(new_group["id"])
+
+    # ---------------------------------------------------- drag-drop sink
+
+    def on_drop(self, source_paths, target_path, position):
+        target = list(target_path) if target_path else None
+        # Capture the target id before the move shifts paths around so
+        # we can expand it afterwards when the drop lands "on" it.
+        target_id = None
+        if position == "on" and target is not None:
+            target_id = get_node(self.state["tree"], target)["id"]
+        move_items(
+            self.state["tree"],
+            [list(p) for p in source_paths],
+            target,
+            position,
+        )
+        if target_id is not None and target_id not in self.state["expanded_ids"]:
+            self.state["expanded_ids"].append(target_id)
+        # Selection rides along with the move. ``selected_ids`` already
+        # tracks the moved nodes (their ids are stable); just recompute
+        # ``selected_paths`` against the new tree layout.
+        self.state["selected_paths"] = [
+            find_path_by_id(self.state["tree"], nid)
+            for nid in self.state["selected_ids"]
+            if find_path_by_id(self.state["tree"], nid) is not None
+        ]
+
+    # -------------------------------------------------------- status bar
+
+    def status_text(self):
+        count = len(self.state["selected_paths"])
+        if count == 0:
+            return "No selection."
+        if count == 1:
+            return "1 item selected."
+        return f"{count} items selected."
+</script>
