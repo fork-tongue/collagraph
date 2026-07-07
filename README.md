@@ -18,7 +18,7 @@ Write your Python interfaces in a declarative manner as single-file components w
 * Fine-grained reactivity (made possible by leveraging [observ](https://github.com/fork-tongue/observ))
 * Class components with local state and life-cycle methods/hooks
 * Single-file components with Vue-like template syntax (`.cgx` files)
-* Custom renderers
+* Renderers for PySide6 and [Pygfx](https://github.com/pygfx/pygfx), with support for custom renderers
 
 Here is an example that shows a counter, made with a component with Vue-like syntax:
 
