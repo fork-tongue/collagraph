@@ -7,4 +7,5 @@ build
 *.spec
 uv.lock
 .venv
+site
 .benchmarks
