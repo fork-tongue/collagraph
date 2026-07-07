@@ -809,20 +809,7 @@ class ComponentFragment(Fragment):
                 child.mount(target, anchor)
 
         if self.component:
-            from collections import deque
-
-            # Use fifo data structure (double-ended queue)
-            lookup = deque(self.children)
-            try:
-                while True:
-                    child = lookup.popleft()
-                    if element := child.element:
-                        self.component._element = element
-                        lookup.clear()
-                        break
-                    lookup.extend(child.children)
-            except IndexError:
-                pass
+            self.component._element = self.first()
 
             # Register static component ref after component is mounted
             # (dynamic refs are handled by the watcher created in create())

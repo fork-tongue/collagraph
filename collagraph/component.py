@@ -136,8 +136,9 @@ class Component:
     def emit(self, event, *args, **kwargs):
         """Call event handlers for the given event. Any args and kwargs will be passed
         on to the registered handlers."""
-        for handler in self._event_handlers[event].copy():
-            handler(*args, **kwargs)
+        if handlers := self._event_handlers.get(event):
+            for handler in tuple(handlers):
+                handler(*args, **kwargs)
 
     def add_event_handler(self, event, handler):
         """Adds an event handler for the given event."""
