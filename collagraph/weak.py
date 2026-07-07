@@ -1,5 +1,4 @@
 from functools import wraps
-from inspect import signature
 from weakref import ref
 
 
@@ -29,11 +28,7 @@ def weak(obj):
     weak_obj = ref(obj)
 
     def wrapper(method):
-        sig = signature(method)
-        non_default_parameters = [
-            par for par in sig.parameters.values() if par.default is par.empty
-        ]
-        nr_arguments = len(non_default_parameters)
+        nr_arguments = method.__code__.co_argcount - len(method.__defaults__ or ())
 
         if nr_arguments == 0:
             raise TypeError(

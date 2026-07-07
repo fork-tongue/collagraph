@@ -75,6 +75,12 @@ Instead of using a python file as an entry point to run components, you can run 
 uv run collagraph examples/pyside/counter.cgx
 ```
 
+To inspect the Python code that is compiled for a component, use the `--show-code` flag:
+
+```sh
+uv run collagraph --show-code examples/pyside/counter.cgx
+```
+
 For more examples, please take a look at the [examples folder](examples).
 
 Currently there are two renderers:

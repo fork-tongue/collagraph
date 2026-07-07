@@ -11,6 +11,9 @@ from .component import Component
 from .renderers import Renderer
 from .weak import weak
 
+# Sentinel for an unpopulated Fragment._component_parent_cache
+_UNSET = object()
+
 
 class Fragment:
     """
@@ -60,6 +63,10 @@ class Fragment:
         # Weak ref to render parent (for anchor lookups when mounted as slot content)
         # When set, anchor() uses this instead of _parent
         self._render_parent: ref[Fragment] | None = None
+        # Cache for _component_parent(), invalidated whenever this fragment
+        # is reparented to a different owner (see the `parent` setter and
+        # DynamicFragment._create_fragment_for_tag)
+        self._component_parent_cache: Component | None = _UNSET
         # Static attributes for the DOM element
         self._attributes: dict[str, str] = {}
         # Events for the DOM element
@@ -111,20 +118,30 @@ class Fragment:
         """
         Returns the component of the first parent ComponentFragment that
         has a component property. Or None, if not there.
+
+        Cached, since parenthood is stable once a fragment is mounted. The
+        cache is invalidated whenever a fragment is reparented to a
+        different owner (see the `parent` setter and
+        DynamicFragment._create_fragment_for_tag, the only place a live,
+        already-mounted fragment's parent is reassigned directly).
         """
-        # TODO: would be nice if we could cache the _component_parent in a clever way
+        if self._component_parent_cache is not _UNSET:
+            return self._component_parent_cache
+
         parent = self.parent
         while parent and (
             not isinstance(parent, ComponentFragment) or not parent.component
         ):
             parent = parent.parent
 
-        if parent:
-            return parent.component
+        result = parent.component if parent else None
+        self._component_parent_cache = result
+        return result
 
     @parent.setter
     def parent(self, parent: Fragment | None):
         self._parent = ref(parent) if parent else None
+        self._component_parent_cache = _UNSET
 
     def register_child(self, child: Fragment) -> None:
         """Register a child fragment in the template tree."""
@@ -179,11 +196,12 @@ class Fragment:
         siblings = list(parent.render_children())
         try:
             idx = siblings.index(self)
+        except ValueError:
+            pass  # Not in render children
+        else:
             for sibling in siblings[idx + 1 :]:
                 if element := sibling.first():
                     return element
-        except ValueError:
-            pass  # Not in render children
 
         # No sibling anchor found at this level. If the parent doesn't have
         # its own element (e.g., ComponentFragment, ControlFlowFragment), climb
@@ -487,6 +505,7 @@ class Fragment:
             self.tag = None
             self._ref_name = None
             self._ref_is_dynamic = False
+            self._component_parent_cache = _UNSET
         else:
             self.element = None
             # Disable the fn and callback of the watcher to disable
@@ -754,11 +773,18 @@ class ListFragment(Fragment):
                     fragment.unmount()
                     self.values.pop(index)
 
+                # The anchor is loop-invariant: it is the first element
+                # *after* this ListFragment, and the loop below only
+                # appends items from the list's own subtree before it.
+                # Computed lazily so update-only runs don't pay for it.
+                anchor = _UNSET
                 for i, item in enumerate(items):
                     if i < len(self._generated_fragments):
                         # Update the content for existing values
                         self.values[i]["context"] = item
                     else:
+                        if anchor is _UNSET:
+                            anchor = self.anchor()
                         # Create a new fragment + context
                         context = reactive({"context": item})
                         self.values.append(context)
@@ -767,15 +793,18 @@ class ListFragment(Fragment):
                         )
                         self._generated_fragments.append(fragment)
                         fragment.parent = self
-                        fragment.mount(target, anchor=self.anchor())
+                        fragment.mount(target, anchor=anchor)
 
             # Then we add a watch_effect for the children
             # which adds/removes/updates all the child fragments
             self._watchers["list"] = watch_effect(update_children)
 
+        anchor = _UNSET
         for child in self._generated_fragments:
             if not child.element:
-                child.mount(target, anchor=self.anchor())
+                if anchor is _UNSET:
+                    anchor = self.anchor()
+                child.mount(target, anchor=anchor)
 
         self._mounted = True
 
@@ -921,20 +950,7 @@ class ComponentFragment(Fragment):
                 child.mount(target, anchor)
 
         if self.component:
-            from collections import deque
-
-            # Find the first element in the render tree
-            lookup = deque(self.render_children())
-            try:
-                while True:
-                    child = lookup.popleft()
-                    if element := child.element:
-                        self.component._element = element
-                        lookup.clear()
-                        break
-                    lookup.extend(child.render_children())
-            except IndexError:
-                pass
+            self.component._element = self.first()
 
             # Register static component ref after component is mounted
             # (dynamic refs are handled by the watcher created in create())
@@ -1212,6 +1228,13 @@ class DynamicFragment(Fragment):
         # Create the fragment
         self._active_fragment.create()
 
+        # `existing_children` (and their descendants) may have been mounted
+        # under a different owning component before this tag switch (e.g.
+        # transferred out of a previous ComponentFragment's slot_content).
+        # Their cached _component_parent() result would now be stale, since
+        # their effective parent chain just changed.
+        _invalidate_component_parent_cache(self._active_fragment)
+
     def mount(self, target: Any, anchor: Any | None = None):
         if self._mounted:
             return
@@ -1275,6 +1298,29 @@ class DynamicFragment(Fragment):
     def _remove(self):
         if self._active_fragment:
             self._active_fragment._remove()
+
+
+def _invalidate_component_parent_cache(fragment: Fragment | None) -> None:
+    """
+    Recursively reset the cached _component_parent() result for `fragment`
+    and its descendants.
+
+    Needed after a live, already-mounted fragment is reparented to a
+    different owner without going through the `parent` property setter
+    (currently only DynamicFragment._create_fragment_for_tag does this,
+    when transferring existing children to a newly created active
+    fragment on a `<component :is=...>` tag switch).
+    """
+    if fragment is None:
+        return
+
+    fragment._component_parent_cache = _UNSET
+
+    # iter_all_children() covers template children as well as
+    # runtime-generated fragments (rendered_fragment, slot content,
+    # generated list items and the active dynamic fragment)
+    for child in fragment.iter_all_children():
+        _invalidate_component_parent_cache(child)
 
 
 def move_fragment_dom(

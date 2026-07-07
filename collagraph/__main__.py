@@ -81,6 +81,14 @@ def init_collagraph(
         breakpoint()  # noqa: T100
 
 
+def show_code(component_path: Path):
+    """Pretty print the Python code that is compiled for a component."""
+    from collagraph.sfc import print_source
+    from collagraph.sfc.compiler import generate_source
+
+    print_source(generate_source(component_path), component_path)
+
+
 def existing_component_file(value):
     path = Path(value)
     if not path.exists():
@@ -134,7 +142,16 @@ def run():
         action="store_true",
         help="Enable hot reloading (reload on file changes)",
     )
+    parser.add_argument(
+        "--show-code",
+        action="store_true",
+        help="Pretty print the compiled Python code for the component and exit",
+    )
     args = parser.parse_args()
+
+    if args.show_code:
+        show_code(args.component)
+        return
 
     init_collagraph(args.renderer, args.component, args.state, args.hot_reload)
 

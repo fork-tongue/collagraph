@@ -675,3 +675,50 @@ def test_for_context_and_naming(parse_source):
     first_item, second_item = container["children"]
     assert first_item["attrs"]["value"] == "a"
     assert second_item["attrs"]["value"] == "b"
+
+
+def test_for_unkeyed_grow_insert_order(parse_source):
+    """
+    Growing an unkeyed v-for in one reactive update must insert the new
+    elements in order, each anchored before the element that follows the
+    list (regression test for hoisting the loop-invariant anchor out of
+    the append loop).
+    """
+    from tests.conftest import CustomElement, TrackingRenderer
+
+    App, _ = parse_source(
+        """
+        <template>
+          <node v-for="item in items" :content="item" />
+          <footer content="footer" />
+        </template>
+        <script>
+        import collagraph as cg
+        class App(cg.Component):
+            pass
+        </script>
+        """
+    )
+
+    renderer = TrackingRenderer()
+    gui = Collagraph(renderer, event_loop_type=EventLoopType.SYNC)
+    container = CustomElement(type="root")
+    state = reactive({"items": []})
+    gui.render(App, container, state)
+
+    renderer.reset_counters()
+    state["items"] = ["a", "b", "c"]
+
+    inserts = [op for op in renderer.operations if op[0] == "insert"]
+    assert inserts == [
+        ("insert", "a", "before footer"),
+        ("insert", "b", "before footer"),
+        ("insert", "c", "before footer"),
+    ]
+    assert [child.type for child in container.children] == [
+        "node",
+        "node",
+        "node",
+        "footer",
+    ]
+    assert [child.content for child in container.children[:3]] == ["a", "b", "c"]

@@ -95,11 +95,6 @@ def construct_ast(path, template=None):
     # method to fix any `lineno` and `col_offset` attributes of the nodes
     ast.fix_missing_locations(script_tree)
 
-    if DEBUG:  # pragma: no cover
-        try:
-            _print_ast_tree_as_code(script_tree, path)
-        except Exception as e:
-            logger.warning("Could not unparse AST", exc_info=e)
     return script_tree, component_def.name
 
 
@@ -1249,29 +1244,34 @@ def check_parsed_tree(node: Element):
         )
 
 
-def _print_ast_tree_as_code(tree, path):  # pragma: no cover
-    """Handy function for debugging an ast tree"""
-    from rich.console import Console
-    from rich.syntax import Syntax
-
-    plain_result = ast.unparse(tree)
-    formatted = format_code(plain_result)
-    console = Console()
-    syntax = Syntax(formatted, "python")
-    console.print(f"#---{path}---")
-    console.print(syntax)
-
-
-def format_code(code):  # pragma: no cover
+def format_code(code):
     """
     Format the given code string with ruff
+
+    Returns the code unchanged when formatting fails.
     """
     from subprocess import run
 
-    result = run(
-        ["ruff", "format", "-"],
-        input=code,
-        encoding="utf-8",
-        capture_output=True,
-    )
+    try:
+        result = run(
+            ["ruff", "format", "-"],
+            input=code,
+            encoding="utf-8",
+            capture_output=True,
+        )
+    except FileNotFoundError:
+        logger.warning("Could not format code: ruff not found")
+        return code
+    if result.returncode != 0 or not result.stdout:
+        logger.warning("Could not format code with ruff: %s", result.stderr)
+        return code
     return result.stdout
+
+
+def generate_source(path, template=None):
+    """
+    Return the formatted Python source that is generated
+    for the .cgx file at the given path.
+    """
+    tree, _ = construct_ast(path=path, template=template)
+    return format_code(ast.unparse(tree))
