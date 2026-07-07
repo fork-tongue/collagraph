@@ -3,13 +3,8 @@
   uv run collagraph examples/pyside/counter.cgx
  -->
 <widget>
-  <label
-    :text="f'Count: {count}'"
-  />
-  <button
-    text="bump"
-    @clicked="bump"
-  />
+  <label>Count: {{ count }}</label>
+  <button @clicked="bump">bump</button>
 </widget>
 
 <script>
