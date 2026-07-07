@@ -130,7 +130,9 @@ def test_nested_components_with_complex_hierarchy(parse_source):
 
     # Get component references
     app_fragment = gui.fragment
-    card_fragments = app_fragment.children[0].children[0].children
+    app_element = app_fragment.template_children[0]  # <app>
+    list_fragment = app_element.template_children[0]
+    card_fragments = list_fragment._generated_fragments
     card_comp_a = card_fragments[0].component
     card_comp_b = card_fragments[1].component
     card_comp_c = card_fragments[2].component
@@ -153,7 +155,7 @@ def test_nested_components_with_complex_hierarchy(parse_source):
     ]
 
     # Verify components maintained their state
-    card_fragments = app_fragment.children[0].children[0].children
+    card_fragments = list_fragment._generated_fragments
     assert card_fragments[0].component is card_comp_c
     assert card_fragments[1].component is card_comp_a
     assert card_fragments[2].component is card_comp_b
