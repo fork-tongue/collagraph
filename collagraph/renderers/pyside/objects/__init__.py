@@ -13,6 +13,7 @@ from . import (
     standarditem,
     statusbar,
     tab,
+    textelement,
     toolbar,
     treewidget,
     treewidgetitem,
