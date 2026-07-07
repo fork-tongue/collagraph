@@ -104,6 +104,35 @@ class PointCloud(collagraph.Component):
 </script>
 ```
 
+## Landmarks with Text Labels
+
+Random 3D landmarks with labels rendered as text content inside `<text>` elements, using `{{ }}` interpolation. Click a landmark sphere to increment and rename its label:
+
+```sh
+uv run collagraph --renderer pygfx --state '{"count": 25}' examples/pygfx/landmarks.cgx
+```
+
+```html title="landmarks.cgx (excerpt)"
+<group v-for="idx, landmark in enumerate(landmarks)">
+  <group :local.position="landmark['position']">
+    <mesh
+      :geometry="sphere_geometry"
+      :material="selected_sphere_material if idx == selected else sphere_material"
+      @click="lambda ev: click_landmark(idx)"
+    />
+    <text
+      anchor="bottom-center"
+      :font_size="14"
+      :local.position="(0, 0.75, 0)"
+      :material="selected_label_material if idx == selected else label_material"
+      screen_space
+    >
+      {{landmark['name']}}
+    </text>
+  </group>
+</group>
+```
+
 ## Combined PySide + Pygfx
 
 You can embed a Pygfx canvas inside a PySide6 application. See [`examples/pygfx/combined-example.py`](https://github.com/fork-tongue/collagraph/tree/master/examples/pygfx/combined-example.py) for a full example of rendering 3D content within a Qt widget layout.

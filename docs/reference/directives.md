@@ -38,6 +38,8 @@ Render a list of elements.
 !!! warning "Always provide `:key`"
     The `:key` attribute helps collagraph identify which items changed, were added, or removed. Use a unique, stable value.
 
+    With keys, existing elements are reused and moved into place instead of being destroyed and recreated (using a longest-increasing-subsequence algorithm to minimize moves). This also preserves widget state — such as selection and expansion in Qt tree views — across reorders.
+
 See [Vue v-for](https://vuejs.org/guide/essentials/list.html).
 
 ## Attribute Binding (`:`)

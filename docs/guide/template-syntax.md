@@ -42,15 +42,22 @@ class Multi(cg.Component):
 
 ## Text Interpolation
 
-Use double curly braces for text content:
+Elements can contain text content, with double curly braces for dynamic expressions:
 
 ```html
-<label text="Static text" />
-<label :text="f'Hello, {name}'" />
+<text>Hello, {{ name }}!</text>
+<text>{{ count }} items remaining</text>
 ```
 
-!!! note
-    Since collagraph targets widget toolkits (not HTML), text is typically set via the `text` attribute rather than as element content.
+Expressions inside `{{ }}` are evaluated as Python. Static and dynamic parts can be mixed freely, and multiline text is normalized (leading indentation after line breaks is stripped). To render literal braces, escape them with a backslash: `\{{`.
+
+!!! note "Renderer support"
+    Text content requires the renderer to support text elements. The Pygfx renderer supports it (inside `<text>` elements); the PySide6 renderer does not — with Qt widgets, set text via the `text` attribute instead:
+
+    ```html
+    <label text="Static text" />
+    <label :text="f'Hello, {name}'" />
+    ```
 
 ## Attribute Binding
 

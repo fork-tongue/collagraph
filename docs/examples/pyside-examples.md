@@ -118,6 +118,8 @@ See the [`examples/pyside/`](https://github.com/fork-tongue/collagraph/tree/mast
 - `combobox_example.cgx` -- Dropdown menus
 - `tabs_example.cgx` -- Tab widgets
 - `tree_widget_example.cgx` -- Tree views
+- `keyed_tree_demo.cgx` -- Keyed reorders that preserve tree selection/expansion
+- `tree_dnd_example.cgx` -- Drag and drop in a tree widget, driven by reactive state
 - `dialog_example.cgx` -- Dialogs
 - `template_refs.cgx` -- Using template refs
 - `big_list.cgx` -- Performance with large lists

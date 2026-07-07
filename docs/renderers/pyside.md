@@ -121,6 +121,13 @@ Events map to Qt signals. Use the signal name in snake_case:
 <combobox @current_index_changed="handle_index" />
 ```
 
+## Tree Views
+
+Tree views and tree widgets work well with reactive state:
+
+- **Keyed reorders preserve UI state.** When items in a `v-for` with `:key` are reordered (reversed, shuffled, sorted), the selection and expansion state of tree items moves along with them. See [`examples/pyside/keyed_tree_demo.cgx`](https://github.com/fork-tongue/collagraph/tree/master/examples/pyside/keyed_tree_demo.cgx).
+- **Drag and drop is supported.** Drops can be turned into state mutations, with selection and expansion state preserved across the resulting re-render. See [`examples/pyside/tree_dnd_example.cgx`](https://github.com/fork-tongue/collagraph/tree/master/examples/pyside/tree_dnd_example.cgx) for a complete example with a custom drop-aware `QTreeWidget`.
+
 ## Registering Custom Elements
 
 You can register additional Qt classes:

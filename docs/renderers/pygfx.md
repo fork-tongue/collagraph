@@ -56,7 +56,7 @@ Tags map to Pygfx classes (case-insensitive, hyphens removed):
 <point-light />       <!-- gfx.PointLight -->
 ```
 
-Any class in the `pygfx` module can be used as a tag. The tag name is matched case-insensitively with hyphens stripped.
+Any class in the `pygfx` module can be used as a tag. The tag name is matched case-insensitively with hyphens and underscores stripped.
 
 ## Attributes
 
@@ -76,6 +76,29 @@ Use dot notation to set nested properties:
 ```
 
 This traverses the object hierarchy: `mesh.local.position = (1, 2, 3)`.
+
+## Text
+
+`<text>` elements (`gfx.Text`) support text content directly, including `{{ }}` interpolation:
+
+```html
+<text
+  :font_size="14"
+  :material="label_material"
+  screen_space
+>
+  {{ landmark['name'] }}
+</text>
+```
+
+Alternatively, set the `text` or `markdown` attribute, which call `set_text()` / `set_markdown()` on the `gfx.Text` object:
+
+```html
+<text :text="label" :font_size="14" />
+<text :markdown="'**bold** label'" :font_size="14" />
+```
+
+See [`examples/pygfx/landmarks.cgx`](https://github.com/fork-tongue/collagraph/tree/master/examples/pygfx/landmarks.cgx) for an interactive example with text labels.
 
 ## Events
 
