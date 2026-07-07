@@ -19,6 +19,18 @@ def _cleanup_generated_files():
 atexit.register(_cleanup_generated_files)
 
 
+def qualified_module_name(path):
+    """Return the fully qualified module name for the given file
+    by walking up the directory tree for as long as the directories
+    are packages (contain an __init__.py file)."""
+    parts = [path.stem]
+    directory = path.parent
+    while (directory / "__init__.py").exists():
+        parts.insert(0, directory.name)
+        directory = directory.parent
+    return ".".join(parts)
+
+
 def hook(hook_api):
     collagraph_uses = hook_api.analysis.graph.get_code_using("collagraph")
 
@@ -37,7 +49,7 @@ def hook(hook_api):
         # removing the need to bundle .cgx files and compile them
         # at runtime
         for cgx_path in cgx_files:
-            module_name = cgx_path.stem
+            module_name = qualified_module_name(cgx_path)
             tree, _name = construct_ast(cgx_path)
             python_source = ast.unparse(tree)
 
@@ -104,8 +116,10 @@ def collect_hidden_imports(cgx_files):
         # Get the AST from the script tag
         script_tree = get_script_ast(parser, path)
 
-        # Find a list of imported module names
-        imported_names = ImportsCollector()
+        # Find a list of imported module names, resolving relative
+        # imports against the package that contains the CGX file
+        package, _, _ = qualified_module_name(path).rpartition(".")
+        imported_names = ImportsCollector(package)
         imported_names.visit(script_tree)
 
         hidden_imports |= imported_names.names
@@ -114,12 +128,26 @@ def collect_hidden_imports(cgx_files):
 
 
 class ImportsCollector(ast.NodeVisitor):
-    def __init__(self):
+    def __init__(self, package=""):
+        self.package = package
         self.names = set()
 
     def visit_ImportFrom(self, node):
+        if node.level == 0:
+            if node.module:
+                self.names.add(node.module)
+            return
+
+        # Resolve relative import against the containing package
+        parts = self.package.split(".") if self.package else []
+        if node.level - 1 > len(parts):
+            return
+        base = parts[: len(parts) - (node.level - 1)]
         if node.module:
-            self.names.add(node.module)
+            self.names.add(".".join([*base, node.module]))
+        else:
+            for alias in node.names:
+                self.names.add(".".join([*base, alias.name]))
 
     def visit_Import(self, node):
         for alias in node.names:
