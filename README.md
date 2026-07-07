@@ -25,13 +25,8 @@ Here is an example that shows a counter, made with a component with Vue-like syn
 Contents of `counter.cgx`:
 ```html
 <widget>
-  <label
-    :text="f'Count: {count}'"
-  />
-  <button
-    text="bump"
-    @clicked="bump"
-  />
+  <label>Count: {{ count }}</label>
+  <button @clicked="bump">bump</button>
 </widget>
 
 <script>
