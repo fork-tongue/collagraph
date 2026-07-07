@@ -1,5 +1,6 @@
 [![PyPI version](https://badge.fury.io/py/collagraph.svg)](https://badge.fury.io/py/collagraph)
 [![CI status](https://github.com/fork-tongue/collagraph/workflows/CI/badge.svg)](https://github.com/fork-tongue/collagraph/actions)
+[![Docs](https://github.com/fork-tongue/collagraph/workflows/Docs/badge.svg)](https://fork-tongue.github.io/collagraph/)
 
 # Collagraph 📓
 
@@ -7,7 +8,7 @@ Reactive user interfaces.
 
 > The word [Collagraphy](https://en.wikipedia.org/wiki/Collagraphy) is derived from the Greek word _koll_ or _kolla_, meaning glue, and graph, meaning the activity of drawing.
 
-Inspired by Vue and React.
+Inspired by Vue and React. Check out the [documentation](https://fork-tongue.github.io/collagraph/) to get started.
 
 
 ## Features
@@ -81,7 +82,7 @@ To inspect the Python code that is compiled for a component, use the `--show-cod
 uv run collagraph --show-code examples/pyside/counter.cgx
 ```
 
-For more examples, please take a look at the [examples folder](examples).
+For more examples, please take a look at the [examples folder](examples). For guides and API reference, visit the [documentation](https://fork-tongue.github.io/collagraph/).
 
 Currently there are two renderers:
 
