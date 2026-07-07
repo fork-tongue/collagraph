@@ -1,0 +1,57 @@
+name: Benchmarks
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  benchmark:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install dependencies
+        run: uv sync
+
+      # On PRs: run benchmarks twice (PR code vs master code) and compare
+      - name: Run benchmarks
+        run: |
+          # Checkout master version of collagraph directory
+          git fetch origin master
+          git checkout origin/master -- collagraph/
+
+          # Run benchmarks with master code as baseline
+          uv run --no-sync pytest bench \
+              --benchmark-only \
+              --benchmark-save=master \
+              --benchmark-sort=mean || true
+
+          # Restore PR code
+          git checkout HEAD -- collagraph/
+
+          # Run benchmarks on PR code and compare
+          uv run --no-sync pytest bench \
+              --benchmark-only \
+              --benchmark-compare \
+              --benchmark-compare-fail=mean:5% \
+              --benchmark-save=branch \
+              --benchmark-sort=mean
+
+      - name: Upload benchmarks
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Benchmarks
+          path: .benchmarks/
+          include-hidden-files: true
