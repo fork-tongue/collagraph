@@ -9,7 +9,7 @@
 
 <script>
 import collagraph as cg
-from todo_item import TodoItem
+from components.todo_item import TodoItem
 
 
 class TodoList(cg.Component):
