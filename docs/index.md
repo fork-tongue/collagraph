@@ -8,8 +8,8 @@ Collagraph lets you build declarative UIs using class-based components with a Vu
 
 ```html title="counter.cgx"
 <widget>
-  <label :text="f'Count: {count}'" />
-  <button text="bump" @clicked="bump" />
+  <label>Count: {{ count }}</label>
+  <button @clicked="bump">bump</button>
 </widget>
 
 <script>

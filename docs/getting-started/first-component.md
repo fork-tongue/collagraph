@@ -8,8 +8,8 @@ Create a file `counter.cgx`:
 
 ```html
 <widget>
-  <label :text="f'Count: {count}'" />
-  <button text="bump" @clicked="bump" />
+  <label>Count: {{ count }}</label>
+  <button @clicked="bump">bump</button>
 </widget>
 
 <script>
@@ -38,7 +38,7 @@ uv run collagraph counter.cgx
 The template defines what gets rendered. Each tag corresponds to a widget or element in the target renderer.
 
 - `<widget>` -- a plain QWidget container (PySide6 renderer)
-- `:text="f'Count: {count}'"` -- a dynamic binding (note the `:` prefix). The expression is a Python f-string.
+- `Count: {{ count }}` -- text content with interpolation. The expression inside `{{ }}` is evaluated as Python and updates automatically when state changes.
 - `@clicked="bump"` -- an event handler. Calls the `bump` method when the button is clicked.
 
 ### Script

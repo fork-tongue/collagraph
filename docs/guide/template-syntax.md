@@ -52,11 +52,17 @@ Elements can contain text content, with double curly braces for dynamic expressi
 Expressions inside `{{ }}` are evaluated as Python. Static and dynamic parts can be mixed freely, and multiline text is normalized (leading indentation after line breaks is stripped). To render literal braces, escape them with a backslash: `\{{`.
 
 !!! note "Renderer support"
-    Text content requires the renderer to support text elements. The Pygfx renderer supports it (inside `<text>` elements); the PySide6 renderer does not — with Qt widgets, set text via the `text` attribute instead:
+    Text content requires the renderer to support text elements. The Pygfx renderer supports it inside `<text>` elements. The PySide6 renderer supports it inside widgets that display text, such as `<label>` and `<button>` (see [PySide6 Renderer](../renderers/pyside.md#text-content)):
 
     ```html
-    <label text="Static text" />
-    <label :text="f'Hello, {name}'" />
+    <label>Hello, {{ name }}!</label>
+    <button @clicked="bump">bump</button>
+    ```
+
+    For other Qt widgets, set text via the `text` attribute instead:
+
+    ```html
+    <lineedit :text="f'Hello, {name}'" />
     ```
 
 ## Attribute Binding

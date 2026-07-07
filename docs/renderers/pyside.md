@@ -84,6 +84,29 @@ Dynamic attributes use Python expressions:
 <slider :value="self.state['position']" />
 ```
 
+## Text Content
+
+Widgets that display text can take their text as element content, including `{{ }}` interpolation:
+
+```html
+<label>Count: {{ count }}</label>
+<button @clicked="bump">bump</button>
+```
+
+This is supported for `QLabel` and all `QAbstractButton` subclasses (`<button>`, `<checkbox>`, `<radiobutton>`, ...). The joined content of all text children is displayed through the widget's `setText()` method, so text can be mixed with directives:
+
+```html
+<label>
+  Hello<template v-if="name">, {{ name }}</template>!
+</label>
+```
+
+For other widgets, set text via the `text` attribute instead:
+
+```html
+<lineedit :text="initial_value" />
+```
+
 ## Layouts
 
 Child widgets are laid out using layout elements:
