@@ -3,6 +3,7 @@ from collections import defaultdict
 from functools import lru_cache, partial
 from typing import Any, Callable
 from warnings import warn
+from weakref import ref
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
@@ -94,6 +95,36 @@ class EventFilter(QtCore.QObject):
                 handler(event)
 
         return super().eventFilter(obj, event)
+
+
+class TextElementProxy:
+    """
+    Proxy object for text elements.
+
+    Widgets that support text elements as children keep an ordered
+    list of these proxies and display the joined content of all of
+    them through their `setText` method.
+    See pyside/objects/textelement.py for which widget types support
+    text elements and how insert/remove is implemented for them.
+    """
+
+    def __init__(self):
+        self.content = ""
+        self._parent_ref = None
+
+    def set_parent(self, parent):
+        self._parent_ref = ref(parent) if parent is not None else None
+
+    def sync(self):
+        """Set the joined content of all the parent's text element
+        proxies as the text of the parent widget."""
+        parent = self._parent_ref() if self._parent_ref is not None else None
+        if parent is None:
+            return
+        parent.setText("".join(proxy.content for proxy in parent._cg_text_proxies))
+
+    def __repr__(self):
+        return f"<TextElementProxy({self.content!r})>"
 
 
 class PySideRenderer(Renderer):
@@ -302,7 +333,7 @@ class PySideRenderer(Renderer):
         return create_instance(WRAPPED_TYPES[type_name])
 
     def create_text_element(self):
-        raise NotImplementedError
+        return TextElementProxy()
 
     def insert(self, el: Any, parent: Any, anchor: Any = None):
         """
@@ -352,7 +383,9 @@ class PySideRenderer(Renderer):
             logger.exception(f"Error removing {el} from {parent}")
 
     def set_element_text(self, el: Any, value: str):
-        raise NotImplementedError
+        """Set the text of a text element (proxy)."""
+        el.content = value
+        el.sync()
 
     def set_attribute(self, el: Any, attr: str, value: Any):
         """Set the attribute `attr` of the element `el` to the value `value`."""
