@@ -5,14 +5,22 @@ Collagraph includes a CLI to run components directly without writing a Python en
 ## Usage
 
 ```sh
-collagraph [OPTIONS] <component.cgx>
+collagraph [OPTIONS] <component>
 ```
 
 Or with uv:
 
 ```sh
-uv run collagraph [OPTIONS] <component.cgx>
+uv run collagraph [OPTIONS] <component>
 ```
+
+The component can be a `.cgx` file or a `.py` module containing a [Python view](../guide/python-views.md) component. When a `.py` module defines multiple view components, select one by appending the class name:
+
+```sh
+uv run collagraph examples/pyside/todo_view.py:TodoApp
+```
+
+Alternatively, a module can mark its root component by assigning `__component_class = MyComponent` at module level.
 
 ## Options
 
@@ -21,13 +29,16 @@ uv run collagraph [OPTIONS] <component.cgx>
 | `--renderer {pyside,pygfx,dict}` | `pyside` | Renderer to use |
 | `--state <json>` | - | Initial state as JSON string or path to JSON file |
 | `--hot-reload`, `-H` | off | Enable hot reload (auto-update on file changes) |
-| `--show-code` | off | Pretty print the compiled Python code for the component and exit |
+| `--show-code` | off | Pretty print the compiled Python code for the component and exit (`.cgx` only) |
 
 ## Examples
 
 ```sh
 # Run a PySide component
 uv run collagraph examples/pyside/counter.cgx
+
+# Run a Python view component
+uv run collagraph examples/pyside/counter_view.py
 
 # Run a Pygfx component
 uv run collagraph --renderer pygfx examples/pygfx/pygfx-component.cgx

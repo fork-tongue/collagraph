@@ -117,6 +117,10 @@ The counter and todo examples are also available written with the pure-Python [v
 ```sh
 uv run python examples/pyside/counter_view.py
 uv run python examples/pyside/todo_view.py
+
+# or through the CLI (e.g. with hot reload):
+uv run collagraph -H examples/pyside/counter_view.py
+uv run collagraph -H examples/pyside/todo_view.py:TodoApp
 ```
 
 ## More Examples

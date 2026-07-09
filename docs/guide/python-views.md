@@ -266,3 +266,10 @@ Runnable examples using Python views can be found in the repository:
 uv run python examples/pyside/counter_view.py
 uv run python examples/pyside/todo_view.py
 ```
+
+They can also be run through the [CLI](../getting-started/cli.md), just like `.cgx` files (append `:ClassName` when a module defines multiple view components):
+
+```sh
+uv run collagraph -H examples/pyside/counter_view.py
+uv run collagraph -H examples/pyside/todo_view.py:TodoApp
+```
