@@ -110,6 +110,15 @@ Collagraph supports all standard Qt layouts:
 </window>
 ```
 
+## Python Views
+
+The counter and todo examples are also available written with the pure-Python [view API](../guide/python-views.md), without `.cgx` templates:
+
+```sh
+uv run python examples/pyside/counter_view.py
+uv run python examples/pyside/todo_view.py
+```
+
 ## More Examples
 
 See the [`examples/pyside/`](https://github.com/fork-tongue/collagraph/tree/master/examples/pyside) directory for:

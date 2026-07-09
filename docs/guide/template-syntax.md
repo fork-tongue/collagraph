@@ -4,6 +4,9 @@ Collagraph uses a Vue-inspired template syntax. If you know Vue, you already kno
 
 For full Vue template syntax documentation, see: [Vue Template Syntax](https://vuejs.org/guide/essentials/template-syntax.html)
 
+!!! tip "Prefer plain Python?"
+    Everything on this page can also be expressed in pure Python, without a `.cgx` file. See [Python Views](python-views.md).
+
 ## File Format
 
 A `.cgx` file has a template section and a `<script>` section:

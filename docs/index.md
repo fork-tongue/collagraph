@@ -34,6 +34,7 @@ uv run collagraph counter.cgx
 
 - **Reactive state** -- powered by [observ](https://github.com/fork-tongue/observ), changes to state automatically update the UI
 - **Single-file components** -- Vue-like `.cgx` files with template + script
+- **Pure-Python views** -- prefer no templates? Describe the same UI in plain Python with the [view API](guide/python-views.md)
 - **Multiple renderers** -- PySide6 for desktop, Pygfx for 3D scenes
 - **Hot reload** -- edit components and see changes without restarting
 - **Familiar syntax** -- if you know Vue, you already know most of the template syntax
