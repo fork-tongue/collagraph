@@ -33,7 +33,7 @@ class Counter(cg.Component):
 Demonstrates list management, text input, events, and child components:
 
 ```html title="todo_example.cgx"
-<window title="My First TODO app">
+<window window_title="My First TODO app">
   <widget name="main-content">
     <label text="What do you want to do?" />
     <lineedit :text="text" @text_edited="handle_change" />
