@@ -227,6 +227,20 @@ will not update. Wrap the expression in a lambda to make it reactive.
 
 The same applies inside `each` item functions: `h.label(text=item())` is an eager read, `h.label(text=lambda: item())` (or simply `h.label(text=item)`) is a live binding.
 
+## Hot reload
+
+[Hot reload](hot-reload.md) works for view components just like for `.cgx` files. Pass `hot_reload=True` when constructing the `Collagraph` instance:
+
+```python
+if __name__ == "__main__":
+    app = QtWidgets.QApplication()
+    gui = cg.Collagraph(renderer=cg.PySideRenderer(), hot_reload=True)
+    gui.render(Counter, app)
+    app.exec()
+```
+
+Then edit and save any module that defines a view component used in the tree — including the script you ran directly — and the running application updates in place, with component state preserved.
+
 ## Template to Python cheat sheet
 
 | Template | Python view |

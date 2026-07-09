@@ -7,6 +7,7 @@ Provides file watching and module reloading for .cgx single-file components.
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import logging
 import sys
 import threading
@@ -18,6 +19,8 @@ import colorlog
 from observ import to_raw
 
 if TYPE_CHECKING:
+    from types import ModuleType
+
     from collagraph import Collagraph
     from collagraph.fragment import Fragment
 
@@ -223,6 +226,10 @@ class HotReloader:
         self._gui_ref = weakref.ref(gui)
         self._watched_modules: dict[Path, str] = {}  # path -> module_name
         self._root_module_name: str | None = None
+        self._root_class_name: str | None = None
+        # Modules that were loaded as a script (``__main__``) and are
+        # re-executed from file under a substitute name: name -> path
+        self._script_modules: dict[str, Path] = {}
         self._target: Any = None
         self._state: dict | None = None
         self._watcher_id: int = id(self)  # Unique ID for SharedFileWatcher
@@ -252,8 +259,16 @@ class HotReloader:
         self._target = target
         self._state = state
 
-        # Collect all imported .cgx modules
-        self._collect_cgx_modules()
+        # Remember the root component's class name so the class can be
+        # looked up after reload of modules that don't set __component_class
+        # (plain Python modules with view components)
+        gui = self._gui_ref()
+        root_component = getattr(gui.fragment, "component", None) if gui else None
+        if root_component is not None:
+            self._root_class_name = type(root_component).__name__
+
+        # Collect all watched modules (.cgx files and view component modules)
+        self._collect_watched_modules()
 
         # Register with shared file watcher (unless disabled for testing)
         if self._watched_modules and self._use_watchdog:
@@ -314,9 +329,10 @@ class HotReloader:
         # Phase 1: Try to reimport modules (validate before unmounting)
         try:
             self._invalidate_modules()
-            module = importlib.import_module(self._root_module_name)
-            importlib.reload(module)
-            component_class = getattr(module, "__component_class")
+            module = self._reload_module(self._root_module_name)
+            # Script modules get reloaded under a substitute name
+            self._root_module_name = module.__name__
+            component_class = self._get_root_component_class(module)
         except Exception:
             logger.exception("Error during reload, keeping old UI")
             return False
@@ -344,7 +360,7 @@ class HotReloader:
             if element_state and new_root_element is not None:
                 gui.renderer.restore_element_state(new_root_element, element_state)
 
-            self._collect_cgx_modules()
+            self._collect_watched_modules()
 
             if self._use_watchdog:
                 SharedFileWatcher().update_paths(
@@ -361,17 +377,21 @@ class HotReloader:
         finally:
             gui._in_hot_reload = False
 
-    def _collect_cgx_modules(self) -> None:
-        """Collect CGX modules that are actually used in this Collagraph's tree.
+    def _collect_watched_modules(self) -> None:
+        """Collect the modules that are actually used in this Collagraph's tree.
 
         This includes:
         1. Modules whose components are currently rendered in the fragment tree
-        2. CGX modules imported by those modules (for dynamic :is="..." components)
+        2. Component modules imported by those modules (for dynamic :is="..."
+           components)
 
         The second case handles scenarios like:
         - parent.cgx imports child_a.cgx and child_b.cgx
         - parent.cgx uses :is="type_map(obj_type)" to dynamically select which to render
         - Even if child_a is not currently rendered, it should still be watched
+
+        Watched modules are .cgx files plus plain Python modules that define
+        view components (Component subclasses that override ``view``).
         """
         from collagraph.sfc.importer import get_loaded_cgx_modules
 
@@ -385,23 +405,28 @@ class HotReloader:
         # Find which modules are actually used in our fragment tree
         used_modules = self._collect_used_modules(gui.fragment)
 
-        # Expand to include CGX modules imported by used modules
+        # Expand to include component modules imported by used modules
         # This catches dynamically loaded components (via :is directive)
-        expanded_modules = self._expand_cgx_imports(used_modules, all_cgx)
+        expanded_modules = self._expand_component_imports(used_modules, all_cgx)
 
-        # Watch all expanded modules
-        self._watched_modules = {
-            path: name for name, path in all_cgx.items() if name in expanded_modules
-        }
+        # Watch all expanded modules that map to a file
+        watched: dict[Path, str] = {}
+        for name in expanded_modules:
+            if name in all_cgx:
+                watched[all_cgx[name]] = name
+            elif path := self._view_module_path(name):
+                watched[path] = name
+        self._watched_modules = watched
 
-    def _expand_cgx_imports(
+    def _expand_component_imports(
         self, used_modules: set[str], all_cgx: dict[str, Path]
     ) -> set[str]:
-        """Expand the set of used modules to include any CGX modules they import.
+        """Expand the set of used modules to include component modules they import.
 
-        This recursively finds all CGX modules that are imported (directly or
-        indirectly) by the currently used modules. This ensures that dynamically
-        loaded components (via :is directive) are also watched for hot reload.
+        This recursively finds all component modules (CGX files or view
+        component modules) that are imported (directly or indirectly) by the
+        currently used modules. This ensures that dynamically loaded components
+        (via :is directive) are also watched for hot reload.
 
         Args:
             used_modules: Module names currently used in the fragment tree
@@ -409,7 +434,7 @@ class HotReloader:
                 loaded CGX modules
 
         Returns:
-            Expanded set of module names including imported CGX dependencies
+            Expanded set of module names including imported component modules
         """
         from collagraph.component import Component
 
@@ -429,7 +454,7 @@ class HotReloader:
                 continue
 
             # Look through the module's namespace for Component subclasses
-            # that come from CGX modules
+            # that come from component modules
             for attr_name in dir(module):
                 try:
                     attr = getattr(module, attr_name)
@@ -442,13 +467,55 @@ class HotReloader:
                     and issubclass(attr, Component)
                     and attr is not Component
                 ):
-                    # Check if this component comes from a CGX module
+                    # Check if this component comes from a watchable module
                     component_module = attr.__module__
-                    if component_module in all_cgx and component_module not in expanded:
+                    if component_module in expanded:
+                        continue
+                    if (
+                        component_module in all_cgx
+                        or self._view_module_path(component_module) is not None
+                    ):
                         expanded.add(component_module)
                         to_check.append(component_module)
 
         return expanded
+
+    def _view_module_path(self, module_name: str) -> Path | None:
+        """Return the file path for a plain Python module with view components.
+
+        Returns None when the module is not backed by a .py file or does not
+        define any Component subclass that overrides ``view``.
+        """
+        from collagraph.component import Component
+
+        module = sys.modules.get(module_name)
+        if module is None:
+            return None
+        path = self._module_file(module)
+        if path is None:
+            return None
+
+        for attr in list(vars(module).values()):
+            if (
+                isinstance(attr, type)
+                and issubclass(attr, Component)
+                and attr is not Component
+                and attr.__module__ == module.__name__
+                and attr.view is not Component.view
+            ):
+                return path
+        return None
+
+    @staticmethod
+    def _module_file(module: ModuleType) -> Path | None:
+        """Return the resolved .py path backing a module, if any."""
+        file = getattr(module, "__file__", None)
+        if not file:
+            return None
+        path = Path(file)
+        if path.suffix != ".py" or not path.is_file():
+            return None
+        return path.resolve()
 
     def _on_file_changed(self, path: Path) -> None:
         """Handle a file change event (called from watchdog thread)."""
@@ -509,15 +576,111 @@ class HotReloader:
         self.reload()
 
     def _invalidate_modules(self) -> None:
-        """Remove tracked CGX modules from sys.modules."""
+        """Remove tracked modules from sys.modules."""
         from collagraph.sfc.importer import clear_cgx_module
 
         for module_name in list(self._watched_modules.values()):
+            # Script modules can't be reimported through the import machinery;
+            # they are re-executed from file by _reload_module instead
+            if module_name == "__main__" or module_name in self._script_modules:
+                continue
             # Remove from sys.modules to force reimport
             if module_name in sys.modules:
                 del sys.modules[module_name]
             # Clear from CGX loader registry
             clear_cgx_module(module_name)
+
+    def _reload_module(self, module_name: str) -> ModuleType:
+        """Reimport a single watched module and return the new module.
+
+        Modules that were loaded as a script (``__main__``) can't go through
+        the import machinery again: re-executing them under the ``__main__``
+        name would trigger their ``if __name__ == "__main__"`` block. Those
+        are re-executed from file under a substitute name instead.
+        """
+        from collagraph.sfc.importer import clear_cgx_module
+
+        if module_name == "__main__" or module_name in self._script_modules:
+            return self._reload_script_module(module_name)
+
+        if module_name in sys.modules:
+            del sys.modules[module_name]
+        clear_cgx_module(module_name)
+        for path, name in self._watched_modules.items():
+            if name == module_name:
+                self._clear_bytecode_cache(path)
+                break
+        return importlib.import_module(module_name)
+
+    @staticmethod
+    def _clear_bytecode_cache(path: Path) -> None:
+        """Remove compiled bytecode for a source file before reimporting it.
+
+        A rewrite can leave the source with the same size and mtime (in
+        seconds), which makes the import machinery consider the cached .pyc
+        fresh and reimport stale code.
+        """
+        if path.suffix != ".py":
+            return
+        try:
+            cached = Path(importlib.util.cache_from_source(str(path)))
+            cached.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    def _reload_script_module(self, module_name: str) -> ModuleType:
+        """Re-execute a script module from file under a substitute name."""
+        if module_name in self._script_modules:
+            path = self._script_modules[module_name]
+        else:
+            path = Path(sys.modules[module_name].__file__).resolve()
+
+        self._clear_bytecode_cache(path)
+        new_name = self._script_module_name(path)
+        spec = importlib.util.spec_from_file_location(new_name, path)
+        module = importlib.util.module_from_spec(spec)
+        # Register before exec so imports within the module can resolve it
+        previous = sys.modules.get(new_name)
+        sys.modules[new_name] = module
+        try:
+            spec.loader.exec_module(module)
+        except Exception:
+            # Restore the previous (working) version of the module
+            if previous is not None:
+                sys.modules[new_name] = previous
+            else:
+                sys.modules.pop(new_name, None)
+            raise
+
+        self._script_modules[new_name] = path
+        # Point the watcher entry for this file at the substitute name so
+        # subsequent changes map to the module that is now in use
+        if path in self._watched_modules:
+            self._watched_modules[path] = new_name
+        return module
+
+    def _script_module_name(self, path: Path) -> str:
+        """Pick a stable, importable substitute name for a script module."""
+        name = path.stem
+        if not name.isidentifier():
+            name = "_cg_script"
+        existing = sys.modules.get(name)
+        if existing is not None and self._module_file(existing) != path:
+            name = f"_cg_main_{name}"
+        return name
+
+    def _get_root_component_class(self, module: ModuleType) -> type:
+        """Find the root component class in a freshly reloaded root module."""
+        # CGX modules mark their component class explicitly
+        component_class = getattr(module, "__component_class", None)
+        if component_class is None and self._root_class_name:
+            # Plain Python modules: look up the class by its original name
+            component_class = getattr(module, self._root_class_name, None)
+        if component_class is None:
+            raise RuntimeError(
+                f"Could not find root component class in module {module.__name__!r}"
+            )
+        return component_class
 
     def _reload_changed_files(
         self, changed_paths: set[Path], preserve_state: bool = True
@@ -527,8 +690,6 @@ class HotReloader:
 
         Returns True if fine-grained reload succeeded, False if full reload needed.
         """
-        from collagraph.sfc.importer import clear_cgx_module
-
         gui = self._gui_ref()
         if gui is None or gui.fragment is None:
             return False
@@ -561,15 +722,12 @@ class HotReloader:
         )
 
         # Phase 1: Try to reload the changed modules (validate before unmounting)
+        # Keep track of the new module per (old) module name, since script
+        # modules get reloaded under a substitute name
+        reloaded_modules: dict[str, ModuleType] = {}
         try:
             for module_name in changed_modules:
-                # Clear from sys.modules and CGX registry
-                if module_name in sys.modules:
-                    del sys.modules[module_name]
-                clear_cgx_module(module_name)
-
-                # Reimport to validate
-                importlib.import_module(module_name)
+                reloaded_modules[module_name] = self._reload_module(module_name)
         except Exception:
             logger.exception("Error reloading module, keeping old UI")
             return False
@@ -580,7 +738,7 @@ class HotReloader:
         # Phase 2: Remount affected fragments
         try:
             for fragment in affected:
-                self._remount_fragment(fragment, preserve_state)
+                self._remount_fragment(fragment, preserve_state, reloaded_modules)
 
             logger.info("Fine-grained reload complete")
             return True
@@ -627,7 +785,12 @@ class HotReloader:
 
         return False
 
-    def _remount_fragment(self, fragment: Fragment, preserve_state: bool) -> None:
+    def _remount_fragment(
+        self,
+        fragment: Fragment,
+        preserve_state: bool,
+        reloaded_modules: dict[str, ModuleType] | None = None,
+    ) -> None:
         """Remount a single ComponentFragment with updated component class.
 
         Handles fragments in various locations:
@@ -684,7 +847,9 @@ class HotReloader:
         fragment.unmount(destroy=True)
 
         # Get the new component class from the reloaded module
-        module = sys.modules.get(module_name)
+        module = (reloaded_modules or {}).get(module_name)
+        if module is None:
+            module = sys.modules.get(module_name)
         if module is None:
             module = importlib.import_module(module_name)
 
