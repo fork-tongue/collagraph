@@ -97,7 +97,7 @@ def test_conditional_chain():
                 h.label(text="before")
                 with cg.when(lambda: self.props["status"] == "loading"):
                     h.label(text="Loading…")
-                with cg.elif_(lambda: self.props["status"] == "error"):
+                with cg.or_when(lambda: self.props["status"] == "error"):
                     h.label(text="Error!")
                     h.label(text="Please retry")
                 with cg.otherwise():
@@ -143,7 +143,7 @@ def test_two_independent_conditions():
     widget = container["children"][0]
     assert [child["attrs"]["text"] for child in widget["children"]] == ["a", "b"]
 
-    # Both conditions operate independently (no when/elif_ chain)
+    # Both conditions operate independently (no when/or_when chain)
     state["a"] = False
 
     assert [child["attrs"]["text"] for child in widget["children"]] == ["b"]
@@ -442,10 +442,10 @@ def test_eager_read_warning_in_each():
         render(App, state=state)
 
 
-def test_elif_without_when_raises():
+def test_or_when_without_when_raises():
     class App(cg.Component):
         def view(self):
-            with cg.elif_(lambda: True):
+            with cg.or_when(lambda: True):
                 h.label(text="nope")
 
     with pytest.raises(RuntimeError, match="must directly follow"):

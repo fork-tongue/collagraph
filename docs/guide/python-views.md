@@ -115,18 +115,18 @@ h.button("bump", on_clicked=self.bump)
 
 ## Conditional rendering
 
-`when`, `elif_` and `otherwise` are the equivalents of `v-if`, `v-else-if` and `v-else`. Content built inside the block is only rendered while the condition holds:
+`when`, `or_when` and `otherwise` are the equivalents of `v-if`, `v-else-if` and `v-else`. Content built inside the block is only rendered while the condition holds:
 
 ```python
 with cg.when(lambda: self.props["status"] == "loading"):
     h.label(text="Loading…")
-with cg.elif_(lambda: self.props["status"] == "error"):
+with cg.or_when(lambda: self.props["status"] == "error"):
     h.label(text="Error!")
 with cg.otherwise():
     h.label(text="Ready")
 ```
 
-Like `v-else-if`/`v-else` in templates, `elif_` and `otherwise` must directly follow the block they belong to. A branch may contain any number of elements.
+Like `v-else-if`/`v-else` in templates, `or_when` and `otherwise` must directly follow the block they belong to. A branch may contain any number of elements.
 
 !!! warning "Don't use a plain `if`"
     A regular Python `if` statement in `view` runs only once, when the view is built — the UI would never react to changes. Any condition that depends on state or props belongs in a `when`.
@@ -252,7 +252,7 @@ Then edit and save any module that defines a view component used in the tree —
 | `v-bind="attrs"` | `h.label(bind=lambda: attrs)` |
 | `@clicked="handler"` | `h.button(on_clicked=handler)` |
 | `<label>{{ expr }}</label>` | `h.label(lambda: expr)` |
-| `v-if` / `v-else-if` / `v-else` | `with cg.when(...)` / `cg.elif_(...)` / `cg.otherwise()` |
+| `v-if` / `v-else-if` / `v-else` | `with cg.when(...)` / `cg.or_when(...)` / `cg.otherwise()` |
 | `v-for="item in items"` + `:key` | `@cg.each(lambda: items, key=...)` |
 | `<MyComponent :prop="expr" />` | `h(MyComponent, prop=lambda: expr)` |
 | `<slot name="x">fallback</slot>` | `with cg.slot("x"): ...` |

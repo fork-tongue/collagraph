@@ -38,7 +38,7 @@ Positional arguments to an element become text children: plain strings are
 static text, callables are live text (the equivalent of ``{{ expression }}``).
 
 Control flow (``v-if``/``v-else-if``/``v-else``) is expressed with ``when``,
-``elif_`` and ``otherwise``; list rendering (``v-for``) with the ``each``
+``or_when`` and ``otherwise``; list rendering (``v-for``) with the ``each``
 decorator. Slots are declared with ``slot`` and filled with ``fill``. Dynamic
 components (``<component :is="...">``) are created with ``dynamic``.
 """
@@ -78,7 +78,7 @@ class _Frame:
 
     def __init__(self, fragment: Fragment):
         self.fragment = fragment
-        # The 'open' ControlFlowFragment that a subsequent elif_/otherwise
+        # The 'open' ControlFlowFragment that a subsequent or_when/otherwise
         # at this nesting level would attach to. Reset whenever a regular
         # sibling element is added (mirrors how adjacency of v-if/v-else-if/
         # v-else works in templates).
@@ -214,7 +214,7 @@ def _element(
         fragment = Fragment(builder.renderer, tag=tag)
     _apply_props(fragment, props)
     _attach(builder, fragment)
-    # A regular sibling breaks any open when/elif_ chain
+    # A regular sibling breaks any open when/or_when chain
     builder.frame.control_flow = None
     _add_text_children(builder, fragment, children)
     return _Node(fragment, builder)
@@ -282,14 +282,14 @@ def when(condition: Callable[[], Any]) -> _Node:
     return _branch(builder, control_flow, condition)
 
 
-def elif_(condition: Callable[[], Any]) -> _Node:
+def or_when(condition: Callable[[], Any]) -> _Node:
     """Add an else-if branch (``v-else-if``) to the directly preceding
     `when` block."""
-    assert callable(condition), "elif_() takes a callable, e.g. lambda: state['x']"
+    assert callable(condition), "or_when() takes a callable, e.g. lambda: state['x']"
     builder = _current_builder()
     control_flow = builder.frame.control_flow
     if control_flow is None:
-        raise RuntimeError("elif_() must directly follow a when() or elif_() block")
+        raise RuntimeError("or_when() must directly follow a when() or or_when() block")
     return _branch(builder, control_flow, condition)
 
 
@@ -299,7 +299,9 @@ def otherwise() -> _Node:
     builder = _current_builder()
     control_flow = builder.frame.control_flow
     if control_flow is None:
-        raise RuntimeError("otherwise() must directly follow a when() or elif_() block")
+        raise RuntimeError(
+            "otherwise() must directly follow a when() or or_when() block"
+        )
     # The chain is complete: nothing can attach to it anymore
     builder.frame.control_flow = None
     return _branch(builder, control_flow, None)
