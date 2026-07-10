@@ -73,7 +73,9 @@ h.button(
 )
 ```
 
-Attribute names with dashes are written with underscores (`maximum_size` instead of `maximum-size`); the PySide renderer treats them the same.
+In templates an attribute name may be written with either dashes or underscores (`maximum-size` or `maximum_size`). In a Python view the name is a keyword argument, so it must be a valid identifier — always use underscores (`maximum_size`).
+
+Which attribute names are accepted, and how they map to the underlying object, is up to the renderer. See the attribute sections for the [PySide renderer](../renderers/pyside.md#attributes) and the [Pygfx renderer](../renderers/pygfx.md#attributes).
 
 To bind a whole dict of attributes at once (`v-bind="attrs"`), use the `bind` keyword:
 
