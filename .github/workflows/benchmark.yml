@@ -5,6 +5,11 @@ on:
     branches:
       - master
 
+# Cancel in-flight runs when newer commits are pushed to the same PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   benchmark:
     name: Benchmarks
@@ -24,29 +29,58 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      # On PRs: run benchmarks twice (PR code vs master code) and compare
+      # On PRs: run benchmarks alternating between master code and PR
+      # code (3 runs each), then check that the PR is not *consistently*
+      # slower than master. Single runs are far too noisy to gate on:
+      # process-level effects (hash randomization, memory layout, runner
+      # load) shift individual results by 20-40% on identical code.
+      # Interleaving the runs and comparing the fastest PR run against
+      # the slowest master run makes the guard robust against that noise
+      # (see bench/compare_runs.py).
       - name: Run benchmarks
+        env:
+          # Fixed hash seed: hash randomization moves dict/set benchmark
+          # timings between processes, which would make the master and
+          # PR runs incomparable.
+          PYTHONHASHSEED: "0"
         run: |
-          # Checkout master version of collagraph directory
           git fetch origin master
-          git checkout origin/master -- collagraph/
 
-          # Run benchmarks with master code as baseline
-          uv run --no-sync pytest bench \
-              --benchmark-only \
-              --benchmark-save=master \
-              --benchmark-sort=mean || true
+          for i in 1 2 3; do
+            # Run benchmarks with master code as baseline. Tolerate
+            # failures: the PR's benchmarks may exercise APIs that don't
+            # exist on master yet.
+            git checkout origin/master -- collagraph/
+            uv run --no-sync pytest bench \
+                --benchmark-only \
+                --benchmark-save=master$i \
+                --benchmark-sort=mean || true
 
-          # Restore PR code
-          git checkout HEAD -- collagraph/
+            # Run benchmarks on PR code
+            git checkout HEAD -- collagraph/
+            uv run --no-sync pytest bench \
+                --benchmark-only \
+                --benchmark-save=branch$i \
+                --benchmark-sort=mean
+          done
 
-          # Run benchmarks on PR code and compare
-          uv run --no-sync pytest bench \
-              --benchmark-only \
-              --benchmark-compare \
-              --benchmark-compare-fail=mean:5% \
-              --benchmark-save=branch \
-              --benchmark-sort=mean
+      # The 25% threshold makes this guard a tripwire for gross
+      # accidental regressions (an accidental copy in a hot path, an
+      # algorithmic slip), not a precision instrument. Even with the
+      # interleaved fastest-vs-slowest gate above, whole runs of
+      # identical code on hosted runners have been observed to differ
+      # by 10-30% (the same commit went fail/fail/pass across three
+      # attempts at a 10% threshold, flagging code paths its diff never
+      # touched). Gating below that noise floor just breeds re-run
+      # rituals. Regressions too small to trip this guard should be
+      # measured deliberately instead: repeated local runs of the bench
+      # suite on an idle machine.
+      - name: Compare benchmarks
+        run: |
+          uv run --no-sync python bench/compare_runs.py \
+              --baseline '.benchmarks/*/*_master?.json' \
+              --branch '.benchmarks/*/*_branch?.json' \
+              --threshold 0.25
 
       - name: Upload benchmarks
         if: always()
