@@ -77,6 +77,16 @@ Attributes map to setter methods on the Qt widget. The attribute name is convert
 <button enabled="false" />    <!-- calls setEnabled(False) -->
 ```
 
+Multi-word attribute names may be written with either dashes or underscores; both map to the same camel-cased setter:
+
+```html
+<widget maximum-size="(200, 100)" />   <!-- calls setMaximumSize((200, 100)) -->
+<widget maximum_size="(200, 100)" />   <!-- same setter -->
+<widget window_title="My App" />       <!-- calls setWindowTitle("My App") -->
+```
+
+In [Python views](../guide/python-views.md), attribute names are keyword arguments, so only the underscore form works (`maximum_size=(200, 100)`).
+
 Dynamic attributes use Python expressions:
 
 ```html

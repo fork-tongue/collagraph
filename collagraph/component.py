@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from abc import abstractmethod
 from collections import defaultdict
 from typing import TYPE_CHECKING, ClassVar
 from weakref import ref
@@ -117,8 +116,30 @@ class Component:
         """
         pass
 
-    @abstractmethod
-    def render(self, renderer: Renderer) -> ComponentFragment:  # pragma: no cover
+    def render(self, renderer: Renderer) -> ComponentFragment:
+        """Build the fragment tree for this component.
+
+        Components defined in a .cgx file get a compiled implementation of
+        this method injected. Pure-Python components implement `view`
+        instead, which is picked up here.
+        """
+        if type(self).view is not Component.view:
+            from .dsl import build_view
+
+            return build_view(self, renderer)
+        raise NotImplementedError(
+            f"{type(self).__name__} defines neither a template (.cgx) "
+            "nor a `view` method"
+        )
+
+    def view(self) -> None:
+        """Describe the UI of this component with the pure-Python view API.
+
+        Runs once, when the component is created. Build the element tree
+        with `collagraph.h` and the control flow helpers (`when`, `each`,
+        ...); pass callables for any value that should update reactively.
+        See `collagraph.dsl` for the full API.
+        """
         raise NotImplementedError
 
     def provide(self, key: str, value):

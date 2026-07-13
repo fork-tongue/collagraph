@@ -33,7 +33,7 @@ class Counter(cg.Component):
 Demonstrates list management, text input, events, and child components:
 
 ```html title="todo_example.cgx"
-<window title="My First TODO app">
+<window window_title="My First TODO app">
   <widget name="main-content">
     <label text="What do you want to do?" />
     <lineedit :text="text" @text_edited="handle_change" />
@@ -108,6 +108,19 @@ Collagraph supports all standard Qt layouts:
     <!-- content -->
   </widget>
 </window>
+```
+
+## Python Views
+
+The counter and todo examples are also available written with the pure-Python [view API](../guide/python-views.md), without `.cgx` templates:
+
+```sh
+uv run python examples/pyside/counter_view.py
+uv run python examples/pyside/todo_view.py
+
+# or through the CLI (e.g. with hot reload):
+uv run collagraph -H examples/pyside/counter_view.py
+uv run collagraph -H examples/pyside/todo_view.py:TodoApp
 ```
 
 ## More Examples

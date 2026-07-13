@@ -7,8 +7,8 @@
     If you just want to build UIs, the [Guide](../guide/components.md) has
     everything you need.
 
-Collagraph turns a declarative template into a live UI and keeps that UI in
-sync with your reactive state. Under the hood there are four cooperating
+Collagraph turns a declarative UI description into a live UI and keeps that UI
+in sync with your reactive state. Under the hood there are four cooperating
 pieces:
 
 - **The compiler** ([`collagraph.sfc`](https://github.com/fork-tongue/collagraph/tree/main/collagraph/sfc)) —
@@ -26,6 +26,16 @@ pieces:
   Every dynamic part of the template is wrapped in an observ `watch`/`computed`
   so that a change to state re-runs *only* the affected piece of the UI.
 
+The compiler is not the only way to build that Fragment tree. A component can
+also describe its UI in **plain Python** by implementing a `view` method
+instead of a `.cgx` template. The pure-Python
+[view API](../guide/python-views.md) (`h`, `when`, `each`, …) builds the *same*
+Fragment tree directly, with no compile step — so `.cgx` and `view`-based
+components can be mixed freely. Everything below the Fragment tree — the
+Fragments, renderers and observ — is shared by both front-ends. This page uses
+`.cgx` examples throughout, but every mechanism it describes applies unchanged
+to a `view`-based component.
+
 At a glance, the whole system looks like this:
 
 ```mermaid
@@ -33,9 +43,11 @@ flowchart TD
     subgraph authoring [Authoring time]
         CGX[".cgx single-file component"]
         Compiler["SFC compiler<br/>(collagraph/sfc)"]
+        View["view() method<br/>(pure-Python view API)"]
         Render["Component.render()<br/>builds a Fragment tree"]
         CGX -->|compiles to| Compiler
         Compiler -->|injects| Render
+        View -->|build_view() runs it| Render
     end
 
     subgraph runtime [Runtime]
@@ -253,6 +265,29 @@ flowchart TD
     B --> T1
 ```
 
+### The same tree from Python
+
+A `view` method reaches the very same Fragment tree without a compile step. The
+counter above, written with the [view API](../guide/python-views.md):
+
+```python title="counter.py"
+def view(self):
+    with h.widget():
+        h.label(lambda: f"Count: {self.state['count']}")
+        h.button("bump", on_clicked=self.bump)
+```
+
+`build_view()` — called by the default `Component.render` when a component
+defines `view` instead of a template — runs this method once while an element
+builder records each `h(...)` call as a `Fragment` and each keyword/positional
+argument as a `set_bind`, `set_event` or `set_attribute`. The result is exactly
+the `ComponentFragment` → `widget` → `label`/`button` tree shown above. Where
+the `.cgx` compiler *generates* that wiring as `render()` source, the view API
+*performs* the equivalent calls directly at runtime; the one rule "a plain value
+is static, a callable is live" is just the runtime counterpart of the compiler's
+`text="x"` vs `:text="expr"` distinction. From `mount()` onward the two are
+indistinguishable.
+
 Control flow gets its own fragment type. `v-for` compiles to a `ListFragment`
 plus a **factory function** that builds one subtree per item:
 
@@ -422,8 +457,9 @@ suite). See the [Renderers Overview](../renderers/overview.md) for details.
 
 ```mermaid
 flowchart TD
-    subgraph compile ["1. Compile"]
+    subgraph compile ["1. Build the tree"]
         CGX[".cgx"] --> RENDER["render() builds<br/>Fragment tree"]
+        VIEW["view()"] --> RENDER
     end
     subgraph mount ["2. Mount"]
         RENDER --> FT["Fragment tree"]
@@ -438,7 +474,8 @@ flowchart TD
     end
 ```
 
-- The **compiler** decides *what* fragments exist (static structure).
+- The **compiler** (or a hand-written `view` method) decides *what* fragments
+  exist (static structure).
 - **Fragments** decide *when* elements exist and *how* they update (reactive
   structure).
 - The **renderer** decides *how* elements are actually made and mutated
@@ -446,6 +483,7 @@ flowchart TD
 - **observ** decides *why* an update happens and *when* it runs (reactivity +
   scheduling).
 
-That separation is the whole architecture: a static description compiled once,
-a reactive layer that mounts and surgically updates it, and a pluggable renderer
-that makes it real on whatever toolkit you point it at.
+That separation is the whole architecture: a static description built once
+(compiled from a `.cgx` template or assembled by a `view` method), a reactive
+layer that mounts and surgically updates it, and a pluggable renderer that makes
+it real on whatever toolkit you point it at.

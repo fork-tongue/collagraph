@@ -48,6 +48,7 @@ nav:
   - Guide:
       - Components: guide/components.md
       - Template Syntax: guide/template-syntax.md
+      - Python Views: guide/python-views.md
       - Reactivity: guide/reactivity.md
       - Events: guide/events.md
       - Slots: guide/slots.md
