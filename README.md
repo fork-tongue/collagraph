@@ -101,7 +101,7 @@ uv run python examples/pyside/layout-example.py
 # Run test suite:
 uv run pytest
 # Install git pre-commit hooks to make sure tests/linting passes before committing
-uv run pre-commit install
+uv run prek install
 ```
 
 
