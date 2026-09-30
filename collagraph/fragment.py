@@ -640,6 +640,8 @@ class ListFragment(Fragment):
             # Key-based reconciliation
             # Track fragments by their keys
             self.key_to_fragment: dict[str, Fragment] = {}
+            # And the reactive context that holds the item for each key
+            self.key_to_context: dict[str, Any] = {}
 
             @weak(self)
             def update_children_keyed(self):
@@ -672,6 +674,7 @@ class ListFragment(Fragment):
                 removed_fragments = set()
                 for key in removed_keys:
                     fragment = self.key_to_fragment.pop(key)
+                    del self.key_to_context[key]
                     # Remove from generated fragments list
                     self._generated_fragments.remove(fragment)
                     fragment.unmount()
@@ -696,7 +699,9 @@ class ListFragment(Fragment):
                     if key in self.key_to_fragment:
                         # Reuse existing fragment
                         fragment = self.key_to_fragment[key]
-                        # Update the context with new item value
+                        # Update the context with the new item value: the
+                        # item for this key might be a new object
+                        self.key_to_context[key]["context"] = item
                         new_fragments.append(fragment)
                     else:
                         # Create new fragment for new key
@@ -704,6 +709,7 @@ class ListFragment(Fragment):
                         fragment = self.create_fragment(lambda c=context: c["context"])
                         fragment.parent = self
                         self.key_to_fragment[key] = fragment
+                        self.key_to_context[key] = context
                         new_fragments.append(fragment)
 
                 # Map reused fragments to their old positions, skip new ones

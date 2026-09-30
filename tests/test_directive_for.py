@@ -722,3 +722,39 @@ def test_for_unkeyed_grow_insert_order(parse_source):
         "footer",
     ]
     assert [child.content for child in container.children[:3]] == ["a", "b", "c"]
+
+
+def test_for_unkeyed_tracks_replaced_equal_item(parse_source):
+    """
+    An unkeyed v-for tracks the new item object at each index, even when
+    that object is an equal copy of the old one. Requires observ to
+    notify when a container is replaced by an equal copy.
+    """
+    from tests.conftest import CustomElement, CustomElementRenderer
+
+    App, _ = parse_source(
+        """
+        <items>
+          <node v-for="item in items" :text="item['text']" />
+        </items>
+        <script>
+        import collagraph as cg
+        class App(cg.Component):
+            pass
+        </script>
+        """
+    )
+
+    gui = Collagraph(CustomElementRenderer(), event_loop_type=EventLoopType.SYNC)
+    container = CustomElement(type="root")
+    state = reactive({"items": [{"text": "A"}, {"text": "B"}]})
+    gui.render(App, container, state)
+    items_el = container.children[0]
+
+    state["items"] = [{"text": "A"}, {"text": "B"}]
+    state["items"][0]["text"] = "A2"
+    assert [child.text for child in items_el.children] == ["A2", "B"]
+
+    state["items"][1] = {"text": "B"}
+    state["items"][1]["text"] = "B2"
+    assert [child.text for child in items_el.children] == ["A2", "B2"]

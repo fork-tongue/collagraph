@@ -1030,3 +1030,156 @@ def test_complex_reconciliation_scenario(parse_source):
 
     # Should have created 2 new elements (F and G)
     assert renderer.create_count == 2
+
+
+def render_keyed_texts(parse_source, items):
+    Items, _ = parse_source(
+        """
+        <items>
+          <node v-for="item in items" :key="item['id']" :text="item['text']" />
+        </items>
+
+        <script>
+        import collagraph as cg
+
+        class Items(cg.Component):
+            pass
+        </script>
+        """
+    )
+    renderer = TrackingRenderer()
+    container = CustomElement(type="root")
+    state = reactive({"items": items})
+    gui = Collagraph(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+    gui.render(Items, container, state)
+    # Callers must hold on to gui: its watchers die with it
+    return gui, renderer, state, container.children[0]
+
+
+def test_reused_fragment_gets_replaced_item(parse_source):
+    """A reused fragment renders the new item object for its key."""
+    _gui, renderer, state, items_el = render_keyed_texts(
+        parse_source, [{"id": 1, "text": "A"}, {"id": 2, "text": "B"}]
+    )
+    elements = list(items_el.children)
+    renderer.reset_counters()
+
+    state["items"] = [{"id": 2, "text": "B2"}, {"id": 1, "text": "A2"}]
+    assert [child.text for child in items_el.children] == ["B2", "A2"]
+
+    # Changes to the new items are picked up
+    state["items"][0]["text"] = "B3"
+    assert [child.text for child in items_el.children] == ["B3", "A2"]
+
+    # The elements are reused, only moved
+    assert items_el.children == [elements[1], elements[0]]
+    assert renderer.create_count == 0
+
+
+def test_reused_fragment_gets_replaced_item_in_place(parse_source):
+    """Replacing a single item in place (same key) renders the new item."""
+    _gui, _renderer, state, items_el = render_keyed_texts(
+        parse_source, [{"id": 1, "text": "A"}, {"id": 2, "text": "B"}]
+    )
+
+    state["items"][0] = {"id": 1, "text": "X"}
+    assert [child.text for child in items_el.children] == ["X", "B"]
+
+    state["items"][0]["text"] = "Y"
+    assert [child.text for child in items_el.children] == ["Y", "B"]
+
+
+def test_reused_fragment_tracks_replaced_equal_item(parse_source):
+    """
+    A reused fragment tracks the new item object for its key, even when
+    that object is an equal copy of the old one. Requires observ to
+    notify when a container is replaced by an equal copy.
+    """
+    _gui, _renderer, state, items_el = render_keyed_texts(
+        parse_source, [{"id": 1, "text": "A"}, {"id": 2, "text": "B"}]
+    )
+
+    # Reorder using equal copies of the items
+    state["items"] = [{"id": 2, "text": "B"}, {"id": 1, "text": "A"}]
+    assert [child.text for child in items_el.children] == ["B", "A"]
+
+    state["items"][0]["text"] = "B2"
+    state["items"][1]["text"] = "A2"
+    assert [child.text for child in items_el.children] == ["B2", "A2"]
+
+    # Same order, equal copies
+    state["items"] = [{"id": 2, "text": "B2"}, {"id": 1, "text": "A2"}]
+    state["items"][1]["text"] = "A3"
+    assert [child.text for child in items_el.children] == ["B2", "A3"]
+
+
+def test_removed_keys_release_their_item(parse_source):
+    """Removed keys don't keep their (last) item alive."""
+    _gui, _renderer, state, _items_el = render_keyed_texts(
+        parse_source, [{"id": 1, "text": "A"}, {"id": 2, "text": "B"}]
+    )
+
+    class Item(dict):
+        pass
+
+    item = Item(id=3, text="C")
+    item_ref = ref(item)
+    state["items"] = [{"id": 1, "text": "A"}, item]
+    del item
+    state["items"] = [{"id": 1, "text": "A"}]
+    gc.collect()
+
+    assert item_ref() is None
+
+
+def test_reused_component_tracks_replaced_item(parse_source):
+    """A reused component in a keyed list gets the props of the new item."""
+    Label, _ = parse_source(
+        """
+        <label :text="props['text']" />
+
+        <script>
+        import collagraph as cg
+
+        class Label(cg.Component):
+            pass
+        </script>
+        """
+    )
+    App, module = parse_source(
+        """
+        <app>
+          <Label v-for="item in items" :key="item['id']" v-bind="item" />
+        </app>
+
+        <script>
+        import collagraph as cg
+
+        try:
+            import Label
+        except ImportError:
+            pass
+
+        class App(cg.Component):
+            pass
+        </script>
+        """
+    )
+    module["Label"] = Label
+
+    container = CustomElement(type="root")
+    state = reactive({"items": [{"id": 1, "text": "A"}, {"id": 2, "text": "B"}]})
+    gui = Collagraph(renderer=TrackingRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui.render(App, container, state=state)
+    app_el = container.children[0]
+    list_fragment = gui.fragment.template_children[0].template_children[0]
+    components = [fragment.component for fragment in list_fragment._generated_fragments]
+
+    state["items"] = [{"id": 2, "text": "B2"}, {"id": 1, "text": "A2"}]
+    assert [child.text for child in app_el.children] == ["B2", "A2"]
+    assert [
+        fragment.component for fragment in list_fragment._generated_fragments
+    ] == components[::-1]
+
+    state["items"][0]["text"] = "B3"
+    assert [child.text for child in app_el.children] == ["B3", "A2"]
