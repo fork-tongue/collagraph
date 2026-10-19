@@ -14,13 +14,13 @@ repos:
         name: lint
         entry: uv run ruff check
         language: system
-        types: [python]
+        types: [python,markdown]
         require_serial: true
       - id: format
         name: format
         entry: uv run ruff format --check
         language: system
-        types: [python]
+        types: [python,markdown]
         require_serial: true
       - id: test
         name: pytest
