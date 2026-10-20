@@ -32,8 +32,8 @@ That works through one rule:
     **A plain value is static, a zero-argument callable is live.**
 
     ```python
-    h.label(text="never changes")                           # static
-    h.label(text=lambda: f"Count: {self.state['count']}")   # updates reactively
+    h.label(text="never changes")  # static
+    h.label(text=lambda: f"Count: {self.state['count']}")  # updates reactively
     ```
 
 Everything dynamic — attribute values, text, conditions, list expressions — is passed as a callable (usually a `lambda`). Collagraph watches each callable and updates exactly the thing it is bound to when its value changes, comparable to how [Solid](https://www.solidjs.com) works in the JavaScript world.
@@ -45,9 +45,9 @@ Unlike in templates, there is no name resolution magic: expressions are ordinary
 `h` creates elements. Use attribute access for regular elements and pass component classes directly:
 
 ```python
-h.label(text="plain element")     # equivalent to h("label", ...)
-h("flow-layout")                  # tags that aren't valid identifiers
-h(TodoList, items=lambda: ...)    # child component
+h.label(text="plain element")  # equivalent to h("label", ...)
+h("flow-layout")  # tags that aren't valid identifiers
+h(TodoList, items=lambda: ...)  # child component
 ```
 
 Nest elements with `with`:
@@ -68,7 +68,7 @@ Keyword arguments become attributes, following the one rule:
 
 ```python
 h.button(
-    text="Add",                                # static (like text="Add")
+    text="Add",  # static (like text="Add")
     enabled=lambda: len(self.state["items"]),  # bound (like :enabled="...")
 )
 ```
@@ -162,9 +162,9 @@ Pass a component class to `h`, with props and event handlers as keyword argument
 ```python
 h(
     TodoList,
-    items=lambda: self.state["items"],   # bound prop (:items="items")
-    title="To do",                       # static prop
-    on_clicked=self.handle_complete,     # event handler (@clicked="...")
+    items=lambda: self.state["items"],  # bound prop (:items="items")
+    title="To do",  # static prop
+    on_clicked=self.handle_complete,  # event handler (@clicked="...")
 )
 ```
 

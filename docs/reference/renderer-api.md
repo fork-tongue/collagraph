@@ -73,6 +73,7 @@ Restore state saved by `save_element_state` after hot reload.
 ```python
 from collagraph.renderers import Renderer
 
+
 class MyRenderer(Renderer):
     def create_element(self, type):
         return {"type": type, "children": [], "attrs": {}}

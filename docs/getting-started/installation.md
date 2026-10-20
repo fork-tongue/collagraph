@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Python 3.10 or later
+- Python 3.13 or later
 - At least one renderer backend (PySide6 or Pygfx)
 
 ## Install with pip

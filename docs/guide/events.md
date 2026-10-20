@@ -41,6 +41,7 @@ Events can pass any number of arguments:
 # Emitting
 self.emit("resize", width, height)
 
+
 # Handling
 def handle_resize(self, width, height):
     self.state["size"] = (width, height)

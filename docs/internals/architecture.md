@@ -232,14 +232,16 @@ the compiler produces (roughly) this `render()` method:
 ```python
 def render(self, renderer):
     component = ComponentFragment(renderer)
-    widget0 = Fragment(renderer, tag='widget', parent=component)
-    label0 = Fragment(renderer, tag='label', parent=widget0)
-    text0 = Fragment(renderer, tag='TEXT_ELEMENT', parent=label0)
-    text0.set_bind('content', lambda: f"Count: {self._lookup('count', globals())}")
-    button0 = Fragment(renderer, tag='button', parent=widget0)
-    button0.set_event('clicked', lambda *a, **kw: self._lookup('bump', globals())(*a, **kw))
-    text1 = Fragment(renderer, tag='TEXT_ELEMENT', parent=button0)
-    text1.set_attribute('content', 'bump')
+    widget0 = Fragment(renderer, tag="widget", parent=component)
+    label0 = Fragment(renderer, tag="label", parent=widget0)
+    text0 = Fragment(renderer, tag="TEXT_ELEMENT", parent=label0)
+    text0.set_bind("content", lambda: f"Count: {self._lookup('count', globals())}")
+    button0 = Fragment(renderer, tag="button", parent=widget0)
+    button0.set_event(
+        "clicked", lambda *a, **kw: self._lookup("bump", globals())(*a, **kw)
+    )
+    text1 = Fragment(renderer, tag="TEXT_ELEMENT", parent=button0)
+    text1.set_attribute("content", "bump")
     return component
 ```
 
@@ -294,14 +296,16 @@ plus a **factory function** that builds one subtree per item:
 ```python
 list0 = ListFragment(renderer, parent=widget0)
 
+
 def create_widget2(context):
-    widget2 = Fragment(renderer, tag='widget')
-    label0 = Fragment(renderer, tag='label', parent=widget2)
-    label0.set_bind('text', lambda: unpacked0()['item'])
+    widget2 = Fragment(renderer, tag="widget")
+    label0 = Fragment(renderer, tag="label", parent=widget2)
+    label0.set_bind("text", lambda: unpacked0()["item"])
     return widget2
 
+
 list0.set_create_fragment(create_widget2, is_keyed=False, key_extractor=None)
-list0.set_expression(lambda: self._lookup('items', globals()))
+list0.set_expression(lambda: self._lookup("items", globals()))
 ```
 
 The `ListFragment` calls `create_widget2` once per list item at mount time and

@@ -35,8 +35,10 @@ renderer.add_on_change_handler(lambda: canvas.request_draw(animate))
 gui = cg.Collagraph(renderer=renderer)
 gui.render(MyScene, scene)
 
+
 def animate():
     wgpu_renderer.render(scene, camera)
+
 
 loop.run()
 ```
