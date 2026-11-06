@@ -91,6 +91,13 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
 from .dict_renderer import DictRenderer
 
 try:
+    import blenderui
+except ImportError:  # pragma: no cover
+    pass
+else:
+    from .bui_renderer import BuiRenderer
+
+try:
     import pygfx
 except ImportError:  # pragma: no cover
     pass
