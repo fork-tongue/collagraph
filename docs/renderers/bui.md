@@ -6,6 +6,9 @@ standalone library. Every element is a node of BUI's C kit, so layout, input
 handling and drawing all follow Blender's look and interaction rules (drag
 number fields to scrub them, type `2*pi` into a number field, Ctrl+Z, ...).
 
+![The properties example rendered with BUI](images/bui-properties-dark.png){ width="360" }
+![The same example in Blender's light theme, with the Mode menu open](images/bui-properties-menu-light.png){ width="360" }
+
 !!! note
     BUI (the `blenderui` package) is licensed under GPL-2.0-or-later.
 
