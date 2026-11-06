@@ -21,6 +21,11 @@ pip install collagraph[bui]
 pip install collagraph[pyside,pygfx]
 ```
 
+!!! note
+    BUI is licensed under the GPL: applications that you distribute with the
+    BUI renderer have to be distributed under the terms of the GPL as well.
+    See the [BUI renderer](../renderers/bui.md) page for details.
+
 ## Install with uv
 
 ```sh

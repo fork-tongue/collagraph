@@ -9,8 +9,18 @@ number fields to scrub them, type `2*pi` into a number field, Ctrl+Z, ...).
 ![The properties example rendered with BUI](images/bui-properties-dark.png){ width="360" }
 ![The same example in Blender's light theme, with the Mode menu open](images/bui-properties-menu-light.png){ width="360" }
 
-!!! note
-    BUI (the `blenderui` package) is licensed under GPL-2.0-or-later.
+!!! warning "License"
+    BUI (the `blenderui` package) is licensed under
+    [GPL-2.0-or-later](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html),
+    because it is built from Blender's source code. Collagraph itself stays
+    MIT licensed, and `blenderui` is only installed with the `bui` extra.
+
+    The GPL matters when you distribute an application that uses this
+    renderer, including bundles made with PyInstaller: the application as a
+    whole has to be distributed under the terms of the GPL, which includes
+    making its source code available. This is different from PySide6, which is
+    licensed under the LGPL and can be used in closed-source applications. To
+    ship a closed-source application, use the PySide6 renderer instead.
 
 ## Setup
 
