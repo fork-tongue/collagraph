@@ -1,0 +1,82 @@
+<!--
+  Run this example as follows:
+  uv run collagraph --renderer bui examples/bui/properties.cgx
+ -->
+<window title="Object Properties" :size="(360, 480)">
+  <panel title="Transform">
+    <number-field
+      v-for="axis, value in zip('XYZ', location)"
+      :key="axis"
+      :label="'Location ' + axis"
+      :value="value"
+      @change="lambda v, axis=axis: set_location(axis, v)"
+    />
+    <number-slider label="Scale" :value="scale" :min="0" :max="10" @change="set_scale" />
+  </panel>
+  <panel title="Shading">
+    <checkbox :value="smooth" @change="set_smooth">Smooth</checkbox>
+    <dropdown label="Mode" :items="modes" :value="mode" @change="set_mode" />
+    <color-swatch label="Color" :value="color" />
+  </panel>
+  <label>{{ summary }}</label>
+  <row>
+    <button @click="reset">Reset</button>
+    <button @click="apply" :enabled="dirty">Apply</button>
+  </row>
+</window>
+
+<script>
+import collagraph as cg
+
+DEFAULTS = {
+    "location": [0.0, 1.25, 0.0],
+    "scale": 1.0,
+    "smooth": True,
+    "mode": "Object",
+}
+
+
+class Properties(cg.Component):
+    def init(self):
+        self.state.update(
+            {
+                **{key: list(v) if isinstance(v, list) else v for key, v in DEFAULTS.items()},
+                "modes": ["Object", "Edit", "Sculpt"],
+                "color": (0.8, 0.3, 0.1, 1.0),
+                "dirty": False,
+            }
+        )
+
+    @property
+    def summary(self):
+        x, y, z = self.state["location"]
+        return (
+            f"{self.state['mode']} at ({x:.2f}, {y:.2f}, {z:.2f}), "
+            f"scale {self.state['scale']:.2f}"
+        )
+
+    def set_location(self, axis, value):
+        self.state["location"]["XYZ".index(axis)] = value
+        self.state["dirty"] = True
+
+    def set_scale(self, value):
+        self.state["scale"] = value
+        self.state["dirty"] = True
+
+    def set_smooth(self, value):
+        self.state["smooth"] = value
+        self.state["dirty"] = True
+
+    def set_mode(self, value):
+        self.state["mode"] = value
+        self.state["dirty"] = True
+
+    def reset(self):
+        for key, value in DEFAULTS.items():
+            self.state[key] = list(value) if isinstance(value, list) else value
+        self.state["dirty"] = False
+
+    def apply(self):
+        print("Apply:", self.summary)  # noqa: T201
+        self.state["dirty"] = False
+</script>

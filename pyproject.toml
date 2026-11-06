@@ -20,6 +20,7 @@ collagraph = "collagraph.__main__:run"
 hook-dirs = "collagraph.__pyinstaller:get_hook_dirs"
 
 [project.optional-dependencies]
+bui = ["blenderui>=0.2.0"]
 pygfx = ["pygfx>=0.13.0"]
 pyside = ["PySide6>=6.6.2,!=6.8.3,!=6.9.0 ; python_version < '3.15'"]
 
@@ -43,6 +44,7 @@ docs = [
 # But pytest-qt can't be marked as an optional dev dependency. So instead
 # it is now part of a group which can be installed as follows:
 #  > uv sync --group dev --group pyside-dev --extra pyside
+bui = ["blenderui"]
 pygfx = ["pygfx"]
 pyside = ["pyside6"]
 pyside-dev = [

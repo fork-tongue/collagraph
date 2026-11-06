@@ -18,7 +18,7 @@ Write your Python interfaces in a declarative manner as single-file components w
 * Fine-grained reactivity (made possible by leveraging [observ](https://github.com/fork-tongue/observ))
 * Class components with local state and life-cycle methods/hooks
 * Single-file components with Vue-like template syntax (`.cgx` files)
-* Renderers for PySide6 and [Pygfx](https://github.com/pygfx/pygfx), with support for custom renderers
+* Renderers for PySide6, [Pygfx](https://github.com/pygfx/pygfx) and [BUI](https://github.com/ppmpreetham/BUI), with support for custom renderers
 
 Here is an example that shows a counter, made with a component with Vue-like syntax:
 
@@ -83,6 +83,7 @@ Currently there are two renderers:
 
 * [PysideRenderer](collagraph/renderers/pyside_renderer.py): for rendering PySide6 applications
 * [PygfxRenderer](collagraph/renderers/pygfx_renderer.py): for rendering 3D graphic scenes with [Pygfx](https://github.com/pygfx/pygfx)
+* [BuiRenderer](collagraph/renderers/bui_renderer.py): for rendering desktop applications with [BUI](https://github.com/ppmpreetham/BUI) (Blender's user interface as a library)
 
 It is possible to create a custom Renderer using the [Renderer](collagraph/renderers/__init__.py) interface, to render to other UI frameworks, for instance wxPython.
 
