@@ -75,8 +75,7 @@ from blenderui import components as bc
 
 
 @cg.BuiRenderer.register_element("fancy-row")
-class FancyRow(bc.Row):
-    ...
+class FancyRow(bc.Row): ...
 ```
 
 ## Attributes
