@@ -142,8 +142,20 @@ assert label.text == "Count: 1"
 
 BUI runs its own event loop (a native window, or a Tk window). The renderer
 schedules the updates of collagraph on that loop, so multiple state changes
-are batched into a single update. Hot reloading is not supported with this
-renderer yet.
+are batched into a single update.
+
+## Hot Reload
+
+Hot reloading works with this renderer:
+
+```sh
+uv run collagraph --renderer bui -H examples/bui/counter.cgx
+```
+
+The file watcher runs on another thread, and BUI's timers can only be used
+from the main thread. So while hot reloading, the renderer polls a queue on
+the main thread (every 100 ms) for reloads to run. When the root component
+changes, its window is replaced by a new one with the same size and position.
 
 ## Examples
 

@@ -16,6 +16,8 @@ element is wrapped in a default window.
 from __future__ import annotations
 
 import inspect
+import logging
+import queue
 import warnings
 from functools import lru_cache
 from typing import Any, Callable
@@ -28,6 +30,12 @@ from observ import scheduler
 from collagraph.constants import EventLoopType
 
 from . import Renderer
+
+logger = logging.getLogger(__name__)
+
+# Interval (ms) at which callbacks scheduled from other threads are run
+# (only while hot reloading, see BuiRenderer.get_threadsafe_scheduler)
+THREADSAFE_POLL_INTERVAL = 100
 
 
 def normalize_name(name: str) -> str:
@@ -272,6 +280,9 @@ class BuiRenderer(Renderer):
         super().__init__()
         self.headless = headless
         self.windows: list[Window] = []
+        # Callbacks scheduled from other threads (see get_threadsafe_scheduler)
+        self._threadsafe_calls: queue.SimpleQueue | None = None
+        self._polling = False
 
     def preferred_event_loop_type(self):
         return EventLoopType.DEFAULT
@@ -291,6 +302,51 @@ class BuiRenderer(Renderer):
                 window.host.after(0, scheduler.flush)
                 return
         scheduler.flush()
+
+    def get_threadsafe_scheduler(self):
+        """Returns a function that schedules a callback on BUI's event loop.
+
+        The returned function can be called from any thread. BUI's timers
+        can only be used from the main thread, so the callbacks are put in a
+        queue that is polled on the main thread while windows are open.
+        Polling only starts once this method is called (by the hot reloader).
+
+        Returns None for headless renderers: there is no event loop to run
+        the callbacks on.
+        """
+        if self.headless:
+            return None
+        if self._threadsafe_calls is None:
+            self._threadsafe_calls = queue.SimpleQueue()
+        self._start_polling()
+        return self._threadsafe_calls.put
+
+    def _start_polling(self):
+        if self._polling or self._threadsafe_calls is None:
+            return
+        self._polling = self._schedule_poll()
+
+    def _schedule_poll(self) -> bool:
+        for window in self.windows:
+            if window.host is not None and window.host.is_open:
+                window.host.after(THREADSAFE_POLL_INTERVAL, self._poll)
+                return True
+        return False
+
+    def _poll(self):
+        while True:
+            try:
+                callback = self._threadsafe_calls.get_nowait()
+            except queue.Empty:
+                break
+            try:
+                callback()
+            except Exception:
+                logger.exception("Error in callback %r", callback)
+        # The callback (e.g. a hot reload) might have replaced the windows,
+        # so look for an open window again. Polling stops when all windows
+        # are closed and starts again when a new window opens.
+        self._polling = self._schedule_poll()
 
     def run(self):
         """Run BUI's event loop until all windows are closed."""
@@ -372,6 +428,7 @@ class BuiRenderer(Renderer):
             el._cg_window = window
         window.open(show=not self.headless)
         self.windows.append(window)
+        self._start_polling()
 
     def _insert_text(self, el: TextElement, parent: Any, anchor: Any = None):
         if not isinstance(parent, buipy.KitNode):

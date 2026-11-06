@@ -370,3 +370,75 @@ def test_window_render(renderer):
     raster = window.render(200, 100)
     assert isinstance(raster, buipy.Raster)
     assert raster.size == (200, 100)
+
+
+class FakeHost:
+    """Stands in for a bui.host.Window: collects the timers."""
+
+    def __init__(self):
+        self.is_open = True
+        self.timers = []
+
+    def after(self, ms, fn):
+        self.timers.append(fn)
+
+    def fire(self):
+        timers, self.timers = self.timers, []
+        for fn in timers:
+            fn()
+
+
+def test_threadsafe_scheduler_headless(renderer):
+    # There is no event loop to run callbacks on
+    assert renderer.get_threadsafe_scheduler() is None
+
+
+def test_threadsafe_scheduler():
+    import threading
+
+    renderer = cg.BuiRenderer()
+    window = Window()
+    window.host = FakeHost()
+    renderer.windows.append(window)
+
+    schedule = renderer.get_threadsafe_scheduler()
+    assert len(window.host.timers) == 1
+
+    calls = []
+    thread = threading.Thread(
+        target=schedule, args=(lambda: calls.append(threading.current_thread()),)
+    )
+    thread.start()
+    thread.join()
+    assert calls == []
+
+    # The poll timer runs the callback on the main thread and keeps polling
+    window.host.fire()
+    assert calls == [threading.main_thread()]
+    assert len(window.host.timers) == 1
+
+    # When the window is replaced (e.g. by a full hot reload), polling moves
+    # to the new window
+    new_window = Window()
+    new_window.host = FakeHost()
+
+    def replace_window():
+        window.host.is_open = False
+        renderer.windows.remove(window)
+        renderer.windows.append(new_window)
+
+    schedule(replace_window)
+    window.host.fire()
+    assert window.host.timers == []
+    assert len(new_window.host.timers) == 1
+
+    # Polling stops when all windows are closed...
+    new_window.host.is_open = False
+    new_window.host.fire()
+    assert new_window.host.timers == []
+
+    # ...and starts again when a window opens
+    third = renderer.create_element("window")
+    third.open = lambda show=True: setattr(third, "host", FakeHost())
+    renderer.insert(third, None)
+    assert len(third.host.timers) == 1

@@ -1569,3 +1569,39 @@ def test_remount_fragment_inside_slot_content():
                 if name in ("slot_parent", "slot_wrapper", "slot_child"):
                     del sys.modules[name]
             _loaded_cgx_modules.clear()
+
+
+def test_reload_scheduled_with_renderer_threadsafe_scheduler(temp_cgx_file):
+    """Renderers with their own event loop can provide a thread-safe scheduler
+    that the hot reloader uses to run reloads on the main thread."""
+    import temp_component
+
+    scheduled = []
+
+    class SchedulingRenderer(cg.DictRenderer):
+        def get_threadsafe_scheduler(self):
+            return scheduled.append
+
+    gui = cg.Collagraph(
+        renderer=SchedulingRenderer(),
+        event_loop_type=cg.EventLoopType.SYNC,
+        hot_reload=True,
+        hot_reload_watchdog=False,
+    )
+    container = {"type": "root"}
+    gui.render(temp_component.TempComponent, container)
+
+    reloader = gui._hot_reloader
+    reloader._pending_changed_paths.add(temp_cgx_file.resolve())
+    temp_cgx_file.write_text(
+        temp_cgx_file.read_text().replace(':text="label_text"', 'text="Scheduled"')
+    )
+
+    # Called from the watcher thread: the reload is only scheduled
+    reloader._trigger_reload()
+    assert scheduled == [reloader._reload]
+    assert container["children"][0]["attrs"]["text"] == "Initial"
+
+    # The renderer runs the callback on its event loop
+    scheduled.pop()()
+    assert container["children"][0]["attrs"]["text"] == "Scheduled"
