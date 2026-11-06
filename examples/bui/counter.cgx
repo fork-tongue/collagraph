@@ -1,0 +1,26 @@
+<!--
+  Run this example as follows:
+  uv run collagraph --renderer bui examples/bui/counter.cgx
+ -->
+<window title="Counter" :size="(300, 160)">
+  <label>Count: {{ count }}</label>
+  <row>
+    <button @click="bump">Bump</button>
+    <button @click="reset" :enabled="count > 0">Reset</button>
+  </row>
+</window>
+
+<script>
+import collagraph as cg
+
+
+class Counter(cg.Component):
+    def init(self):
+        self.state["count"] = 0
+
+    def bump(self):
+        self.state["count"] += 1
+
+    def reset(self):
+        self.state["count"] = 0
+</script>

@@ -16,6 +16,7 @@ def available_renderers():
     for renderer_type, name in {
         "PySideRenderer": "pyside",
         "PygfxRenderer": "pygfx",
+        "BuiRenderer": "bui",
         "DictRenderer": "dict",
     }.items():
         try:
@@ -128,6 +129,11 @@ def init_collagraph(
         gui = cg.Collagraph(renderer=cg.PySideRenderer(), hot_reload=hot_reload)
         gui.render(component_class, app, state=props)
         app.exec()
+    elif renderer_type == "bui":
+        renderer = cg.BuiRenderer()
+        gui = cg.Collagraph(renderer=renderer, hot_reload=hot_reload)
+        gui.render(component_class, None, state=props)
+        renderer.run()
     elif renderer_type == "dict":
         container = {"root": None}
         gui = cg.Collagraph(

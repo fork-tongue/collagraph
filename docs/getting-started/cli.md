@@ -26,7 +26,7 @@ Alternatively, a module can mark its root component by assigning `__component_cl
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--renderer {pyside,pygfx,dict}` | `pyside` | Renderer to use |
+| `--renderer {pyside,pygfx,bui,dict}` | `pyside` | Renderer to use |
 | `--state <json>` | - | Initial state as JSON string or path to JSON file |
 | `--hot-reload`, `-H` | off | Enable hot reload (auto-update on file changes) |
 | `--show-code` | off | Pretty print the compiled Python code for the component and exit (`.cgx` only) |
@@ -42,6 +42,9 @@ uv run collagraph examples/pyside/counter_view.py
 
 # Run a Pygfx component
 uv run collagraph --renderer pygfx examples/pygfx/pygfx-component.cgx
+
+# Run a BUI component
+uv run collagraph --renderer bui examples/bui/counter.cgx
 
 # Run with initial state
 uv run collagraph --state '{"name": "World"}' hello.cgx

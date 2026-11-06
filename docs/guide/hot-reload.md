@@ -42,7 +42,7 @@ This works even when the component is defined in the script you run directly (th
 During hot reload:
 
 - `self.state` is preserved across reloads
-- Window positions and sizes are maintained (PySide6)
+- Window positions and sizes are maintained (PySide6 and BUI)
 - The component tree is unmounted and remounted with the new template
 
 ## Limitations

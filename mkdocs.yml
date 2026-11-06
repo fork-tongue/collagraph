@@ -58,6 +58,7 @@ nav:
       - Overview: renderers/overview.md
       - PySide6: renderers/pyside.md
       - Pygfx: renderers/pygfx.md
+      - BUI: renderers/bui.md
   - Reference:
       - Directives: reference/directives.md
       - Component API: reference/component-api.md

@@ -237,6 +237,9 @@ class HotReloader:
         self._debounce_lock = threading.Lock()
         self._pending_changed_paths: set[Path] = set()
         self._qt_signal_helper = None
+        # Renderer-provided function that schedules a callback on the
+        # renderer's event loop, from any thread (see ``start``)
+        self._threadsafe_scheduler: Callable[[Callable], None] | None = None
         self._use_watchdog = use_watchdog
 
         # Set up Qt signal helper for thread-safe reloading
@@ -266,6 +269,11 @@ class HotReloader:
         root_component = getattr(gui.fragment, "component", None) if gui else None
         if root_component is not None:
             self._root_class_name = type(root_component).__name__
+
+        # Renderers that run their own event loop can provide a thread-safe
+        # way to schedule the reloads (this is called on the main thread)
+        if gui is not None:
+            self._threadsafe_scheduler = gui.renderer.get_threadsafe_scheduler()
 
         # Collect all watched modules (.cgx files and view component modules)
         self._collect_watched_modules()
@@ -545,7 +553,10 @@ class HotReloader:
             return
 
         # Schedule the reload on the main event loop
-        if self._qt_signal_helper is not None:
+        if self._threadsafe_scheduler is not None:
+            logger.debug("Scheduling reload with the renderer")
+            self._threadsafe_scheduler(self._reload)
+        elif self._qt_signal_helper is not None:
             # Use signal/slot for thread-safe Qt communication
             logger.debug("Emitting reload signal")
             self._qt_signal_helper.reload_signal.emit()
