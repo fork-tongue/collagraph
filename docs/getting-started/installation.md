@@ -3,13 +3,16 @@
 ## Requirements
 
 - Python 3.13 or later
-- At least one renderer backend (PySide6 or Pygfx)
+- At least one renderer backend (PySide6, GPUI or Pygfx)
 
 ## Install with pip
 
 ```sh
 # Desktop apps (PySide6)
 pip install collagraph[pyside]
+
+# GPU-accelerated desktop apps (GPUI, macOS and Windows)
+pip install collagraph[gpui]
 
 # 3D graphics (Pygfx)
 pip install collagraph[pygfx]

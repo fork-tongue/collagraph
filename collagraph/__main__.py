@@ -16,13 +16,12 @@ def available_renderers():
     for renderer_type, name in {
         "PySideRenderer": "pyside",
         "PygfxRenderer": "pygfx",
+        "GpuiRenderer": "gpui",
         "DictRenderer": "dict",
     }.items():
-        try:
-            importlib.import_module("collagraph", renderer_type)
+        # Renderers are only exported when their dependencies are installed
+        if hasattr(cg, renderer_type):
             result.add(name)
-        except ImportError:
-            continue
     return result
 
 
@@ -128,6 +127,19 @@ def init_collagraph(
         gui = cg.Collagraph(renderer=cg.PySideRenderer(), hot_reload=hot_reload)
         gui.render(component_class, app, state=props)
         app.exec()
+    elif renderer_type == "gpui":
+        import gpyui
+
+        gui = cg.Collagraph(renderer=cg.GpuiRenderer(), hot_reload=hot_reload)
+        # Render on gpyui's callback loop, which is where all
+        # (reactive) updates of the controls have to happen
+        app = gpyui.Application(
+            title=component_path.stem,
+            width=800,
+            height=600,
+            on_start=lambda: gui.render(component_class, app, state=props),
+        )
+        app.run()
     elif renderer_type == "dict":
         container = {"root": None}
         gui = cg.Collagraph(

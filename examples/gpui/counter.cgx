@@ -1,0 +1,73 @@
+<!--
+  Run this example as follows:
+  uv run collagraph --renderer gpui examples/gpui/counter.cgx
+ -->
+<window title="Counter" :theme="theme(dark)" width="440" height="520">
+  <column full-width full-height align="center" justify="center" padding="28">
+    <column width="340" background="popover" border radius="18" padding="28" gap="18" align="center">
+      <row full-width align="center" gap="8">
+        <icon name="mouse-pointer-click" />
+        <label bold flex="1">Click counter</label>
+        <row :background="'success' if count >= GOAL else 'accent'" radius="10" padding="6" gap="4" align="center">
+          <icon :name="'party-popper' if count >= GOAL else 'target'" />
+          <label font-size="12" bold>{{ "Goal reached" if count >= GOAL else f"Goal {GOAL}" }}</label>
+        </row>
+      </row>
+
+      <!-- Large text overflows its line box, so give it room -->
+      <column height="112" justify="center" align="center">
+        <label font-size="96" bold>{{ count }}</label>
+      </column>
+
+      <row gap="10">
+        <button icon="minus" @click="decrement" :disabled="count == 0">Less</button>
+        <button variant="primary" icon="plus" @click="increment">More</button>
+      </row>
+
+      <column full-width gap="6">
+        <progress :value="min(count, GOAL) / GOAL * 100" />
+        <row>
+          <label font-size="12" flex="1">Progress</label>
+          <label font-size="12">{{ min(count, GOAL) }} / {{ GOAL }}</label>
+        </row>
+      </column>
+
+      <column full-width height="1" background="border" />
+
+      <row full-width align="center">
+        <column flex="1">
+          <switch :value="dark" @change="set_dark" text="Dark mode" />
+        </column>
+        <button variant="ghost" icon="rotate-ccw" @click="reset" :disabled="count == 0">
+          Reset
+        </button>
+      </row>
+    </column>
+  </column>
+</window>
+
+<script>
+import collagraph as cg
+
+from examples.gpui.theme import theme
+
+GOAL = 10
+
+
+class Counter(cg.Component):
+    def init(self):
+        self.state["count"] = 0
+        self.state["dark"] = False
+
+    def increment(self):
+        self.state["count"] += 1
+
+    def decrement(self):
+        self.state["count"] = max(0, self.state["count"] - 1)
+
+    def reset(self):
+        self.state["count"] = 0
+
+    def set_dark(self, value):
+        self.state["dark"] = value
+</script>

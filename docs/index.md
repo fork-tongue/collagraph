@@ -2,7 +2,7 @@
 
 Reactive user interfaces in Python.
 
-Collagraph lets you build declarative UIs using class-based components with a Vue-like single-file component syntax (`.cgx` files). It supports desktop applications via PySide6 and 3D graphics via Pygfx.
+Collagraph lets you build declarative UIs using class-based components with a Vue-like single-file component syntax (`.cgx` files). It supports desktop applications via PySide6 or GPUI, and 3D graphics via Pygfx.
 
 ## Quick Example
 
@@ -35,7 +35,7 @@ uv run collagraph counter.cgx
 - **Reactive state** -- powered by [observ](https://github.com/fork-tongue/observ), changes to state automatically update the UI
 - **Single-file components** -- Vue-like `.cgx` files with template + script
 - **Pure-Python views** -- prefer no templates? Describe the same UI in plain Python with the [view API](guide/python-views.md)
-- **Multiple renderers** -- PySide6 for desktop, Pygfx for 3D scenes
+- **Multiple renderers** -- PySide6 or GPUI for desktop, Pygfx for 3D scenes
 - **Hot reload** -- edit components and see changes without restarting
 - **Familiar syntax** -- if you know Vue, you already know most of the template syntax
 

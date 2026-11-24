@@ -60,6 +60,10 @@ Return the preferred event loop type for this renderer, or `None` for the defaul
 
 Called when the collagraph instance sets up the asyncio event loop. Override for renderers that need custom event loop integration (e.g., Qt's asyncio policy).
 
+### `call_soon_threadsafe(callback) -> bool`
+
+Schedule `callback` on the thread that owns the UI elements, from any thread. Return `False` (the default) when the renderer has no such mechanism. Hot reload uses this to apply reloads on the right thread (e.g., the GPUI renderer schedules on gpyui's callback loop).
+
 ### `save_element_state(el) -> dict | None`
 
 Save renderer-specific element state for hot reload (e.g., window geometry). Return `None` if nothing to save.

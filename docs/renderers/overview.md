@@ -7,6 +7,7 @@ Collagraph uses a pluggable renderer system. The renderer is responsible for cre
 | Renderer | Use Case | Install |
 |----------|----------|---------|
 | `PySideRenderer` | Desktop applications with Qt widgets | `collagraph[pyside]` |
+| `GpuiRenderer` | GPU-accelerated desktop apps with [GPUI](gpui.md) (macOS, Windows) | `collagraph[gpui]` |
 | `PygfxRenderer` | 3D graphics scenes | `collagraph[pygfx]` |
 | `DictRenderer` | Testing (renders to Python dicts) | included |
 
@@ -17,6 +18,9 @@ import collagraph as cg
 
 # Desktop apps
 gui = cg.Collagraph(renderer=cg.PySideRenderer())
+
+# GPU-accelerated desktop apps (GPUI, from the Zed editor)
+gui = cg.Collagraph(renderer=cg.GpuiRenderer())
 
 # 3D scenes
 gui = cg.Collagraph(renderer=cg.PygfxRenderer())

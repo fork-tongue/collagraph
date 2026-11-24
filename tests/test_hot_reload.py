@@ -1569,3 +1569,22 @@ def test_remount_fragment_inside_slot_content():
                 if name in ("slot_parent", "slot_wrapper", "slot_child"):
                     del sys.modules[name]
             _loaded_cgx_modules.clear()
+
+
+def test_trigger_reload_uses_renderer_scheduling():
+    """Renderers that own a UI thread (e.g. GPUI) schedule the reload themselves."""
+    from collagraph import Collagraph, DictRenderer, EventLoopType
+    from collagraph.hot_reload import HotReloader
+
+    scheduled = []
+
+    class SchedulingRenderer(DictRenderer):
+        def call_soon_threadsafe(self, callback):
+            scheduled.append(callback)
+            return True
+
+    gui = Collagraph(renderer=SchedulingRenderer(), event_loop_type=EventLoopType.SYNC)
+    reloader = HotReloader(gui, use_watchdog=False)
+    reloader._trigger_reload()
+
+    assert scheduled == [reloader._reload]

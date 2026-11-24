@@ -1,0 +1,320 @@
+<!--
+  A live dashboard: data is streamed in from an asyncio task and
+  all charts, gauges and tables update reactively.
+
+  Run this example as follows:
+  uv run collagraph --renderer gpui examples/gpui/dashboard.cgx
+ -->
+<window title="Collagraph Ops" :theme="theme(dark)" width="1180" height="820">
+  <row full-width full-height min-height="0" align="stretch" gap="20">
+    <!-- Sidebar -->
+    <column width="256" gap="6" background="sidebar" border radius="18">
+      <row gap="10" align="center" padding="20">
+        <row background="primary" radius="10" padding="8">
+          <icon name="activity" />
+        </row>
+        <column gap="0">
+          <label bold>Collagraph Ops</label>
+          <label font-size="12">Production</label>
+        </column>
+      </row>
+
+      <sidebar :items="SECTIONS" :value="section" @change="set_section" height="140" />
+    </column>
+
+    <!-- Content -->
+    <scroll flex="1" min-height="0">
+      <column padding="8" gap="20">
+        <row gap="12" align="center">
+          <column flex="1" gap="4">
+            <column height="34" justify="center">
+              <label font-size="26" bold>{{ SECTIONS[section] }}</label>
+            </column>
+            <label font-size="13">{{ SUBTITLES[section] }}</label>
+          </column>
+          <row background="popover" border radius="12" padding="8" gap="10" align="center">
+            <spinner v-if="live" />
+            <row :background="'success' if live else 'muted'" radius="8" padding="5" gap="6" align="center">
+              <icon :name="'zap' if live else 'pause'" />
+              <label font-size="12" bold>{{ "Live" if live else "Paused" }}</label>
+            </row>
+            <switch :value="live" @change="set_live" />
+            <column width="1" height="22" background="border" />
+            <icon :name="'moon' if dark else 'sun'" />
+            <switch :value="dark" @change="set_dark" />
+          </row>
+        </row>
+
+        <!-- Overview -->
+        <template v-if="SECTIONS[section] == 'Overview'">
+          <row gap="14">
+            <column
+              v-for="stat in stats"
+              :key="stat['name']"
+              flex="1"
+              background="popover"
+              border
+              radius="14"
+              padding="16"
+              gap="8"
+            >
+              <row gap="8" align="center">
+                <icon :name="stat['icon']" />
+                <label font-size="13" flex="1">{{ stat['name'] }}</label>
+              </row>
+              <column height="38" justify="center">
+                <label font-size="30" bold>{{ stat['value'] }}</label>
+              </column>
+              <label font-size="12">{{ stat['note'] }}</label>
+            </column>
+          </row>
+
+          <column background="popover" border radius="14" padding="18" gap="12">
+            <row align="center" gap="8">
+              <icon name="trending-up" />
+              <label bold flex="1">Requests per second</label>
+              <label font-size="12">last {{ len(traffic) }} samples</label>
+            </row>
+            <column height="240">
+              <area-chart :data="traffic" />
+            </column>
+          </column>
+
+          <row gap="14" align="stretch">
+            <column flex="1" background="popover" border radius="14" padding="18" gap="12">
+              <row align="center" gap="8">
+                <icon name="bug" />
+                <label bold>Errors by service</label>
+              </row>
+              <column height="220">
+                <bar-chart :data="errors" />
+              </column>
+            </column>
+            <column flex="1" background="popover" border radius="14" padding="18" gap="12">
+              <row align="center" gap="8">
+                <icon name="globe" />
+                <label bold>Traffic by region</label>
+              </row>
+              <column gap="18" padding="4">
+                <column v-for="region in region_shares" :key="region['name']" gap="8">
+                  <row align="center" gap="8">
+                    <icon name="map-pin" />
+                    <label flex="1">{{ region['name'] }}</label>
+                    <label bold>{{ region['share'] }}%</label>
+                  </row>
+                  <progress :value="region['share']" />
+                </column>
+              </column>
+            </column>
+          </row>
+        </template>
+
+        <!-- Servers -->
+        <template v-else-if="SECTIONS[section] == 'Servers'">
+          <row gap="14">
+            <column
+              v-for="server in servers"
+              :key="server['name']"
+              flex="1"
+              background="popover"
+              border
+              radius="14"
+              padding="18"
+              gap="10"
+            >
+              <row gap="8" align="center">
+                <icon name="server" />
+                <label bold flex="1">{{ server['name'] }}</label>
+                <label font-size="12">{{ server['region'] }}</label>
+              </row>
+              <column height="38" justify="center">
+                <label font-size="30" bold>{{ server['cpu'] }}%</label>
+              </column>
+              <progress :value="server['cpu']" />
+              <label font-size="12">{{ server['requests'] }} requests served</label>
+            </column>
+          </row>
+          <column background="popover" border radius="14" padding="18" gap="12">
+            <row align="center" gap="8">
+              <icon name="table" />
+              <label bold>All servers</label>
+            </row>
+            <table
+              :columns="['Server', 'Region', 'CPU %', 'Requests']"
+              :rows="server_rows"
+              sortable
+              height="196"
+            />
+          </column>
+        </template>
+
+        <!-- Settings -->
+        <template v-else>
+          <column background="popover" border radius="14" padding="22" gap="16">
+            <form>
+              <field name="live" label="Live updates" help="Stream new data points into the dashboard">
+                <switch :value="live" @change="set_live" />
+              </field>
+              <field name="interval" label="Refresh interval" :help="f'Every {interval:.1f} seconds'">
+                <slider :value="interval" minimum="0.2" maximum="2" step="0.1" @change="set_interval" />
+              </field>
+              <field name="history" label="Data points" :help="f'Keep the last {history} points'">
+                <slider :value="history" minimum="5" maximum="60" step="1" @change="set_history" />
+              </field>
+            </form>
+          </column>
+          <alert
+            variant="info"
+            title="Reactive all the way down"
+            text="These settings live in component state. The streaming task reads them on every tick."
+          />
+        </template>
+      </column>
+    </scroll>
+  </row>
+</window>
+
+<script>
+import asyncio
+import random
+
+import collagraph as cg
+
+from examples.gpui.theme import theme
+
+SECTIONS = ["Overview", "Servers", "Settings"]
+SUBTITLES = [
+    "Live traffic, errors and regions",
+    "Load per machine, updated as it happens",
+    "Tune the data stream",
+]
+SERVICES = ["api", "auth", "search", "billing", "media"]
+REGIONS = ["eu-west", "us-east", "ap-south"]
+SERVER_NAMES = ["atlas", "boreas", "cronus", "dione"]
+
+
+class Dashboard(cg.Component):
+    def init(self):
+        self.state["dark"] = False
+        self.state["section"] = 0
+        self.state["live"] = True
+        self.state["interval"] = 0.5
+        self.state["history"] = 30
+        self.state["tick"] = 0
+        value = 420
+        traffic = []
+        for i in range(30):
+            value = max(80, value + random.randint(-45, 45))
+            traffic.append([str(i), value])
+        self.state["traffic"] = traffic
+        self.state["errors"] = [[name, random.randint(2, 20)] for name in SERVICES]
+        self.state["regions"] = [[name, random.randint(20, 60)] for name in REGIONS]
+        self.state["servers"] = [
+            {
+                "name": name,
+                "region": REGIONS[i % 3],
+                "cpu": random.randint(15, 70),
+                "requests": random.randint(1000, 5000),
+            }
+            for i, name in enumerate(SERVER_NAMES)
+        ]
+        self._task = None
+
+    def mounted(self):
+        # Rendering happens on gpyui's callback loop, so there is a running loop
+        self._task = asyncio.get_running_loop().create_task(self.stream())
+
+    def before_unmount(self):
+        if self._task:
+            self._task.cancel()
+
+    async def stream(self):
+        while True:
+            await asyncio.sleep(self.state["interval"])
+            if self.state["live"]:
+                self.update_data()
+
+    def update_data(self):
+        self.state["tick"] += 1
+        tick = self.state["tick"]
+        traffic = self.state["traffic"]
+        last = traffic[-1][1] if traffic else 420
+        traffic.append([str(tick + 30), max(80, last + random.randint(-45, 45))])
+        del traffic[: max(0, len(traffic) - self.state["history"])]
+
+        errors = self.state["errors"]
+        index = random.randrange(len(errors))
+        errors[index] = [errors[index][0], max(0, errors[index][1] + random.randint(-3, 4))]
+
+        regions = self.state["regions"]
+        index = random.randrange(len(regions))
+        regions[index] = [regions[index][0], max(5, regions[index][1] + random.randint(-5, 5))]
+
+        for server in self.state["servers"]:
+            server["cpu"] = min(100, max(0, server["cpu"] + random.randint(-8, 8)))
+            server["requests"] += random.randint(10, 100)
+
+    @property
+    def stats(self):
+        traffic = [value for _, value in self.state["traffic"]]
+        servers = self.state["servers"]
+        current, previous = traffic[-1], traffic[-2] if len(traffic) > 1 else traffic[-1]
+        delta = (current - previous) / previous * 100 if previous else 0
+        errors = sum(v for _, v in self.state["errors"])
+        return [
+            {
+                "name": "Requests / s",
+                "icon": "zap",
+                "value": f"{current:.0f}",
+                "note": f"{delta:+.1f}% since last sample",
+            },
+            {
+                "name": "Peak",
+                "icon": "mountain",
+                "value": f"{max(traffic):.0f}",
+                "note": f"over the last {len(traffic)} samples",
+            },
+            {
+                "name": "Errors",
+                "icon": "bug",
+                "value": str(errors),
+                "note": f"across {len(SERVICES)} services",
+            },
+            {
+                "name": "Avg CPU",
+                "icon": "cpu",
+                "value": f"{sum(s['cpu'] for s in servers) / len(servers):.0f}%",
+                "note": f"{len(servers)} servers online",
+            },
+        ]
+
+    @property
+    def region_shares(self):
+        total = sum(value for _, value in self.state["regions"]) or 1
+        return [
+            {"name": name, "share": round(value / total * 100)}
+            for name, value in self.state["regions"]
+        ]
+
+    @property
+    def server_rows(self):
+        return [
+            [s["name"], s["region"], str(s["cpu"]), str(s["requests"])]
+            for s in self.state["servers"]
+        ]
+
+    def set_dark(self, value):
+        self.state["dark"] = value
+
+    def set_section(self, index):
+        self.state["section"] = index
+
+    def set_live(self, value):
+        self.state["live"] = value
+
+    def set_interval(self, value):
+        self.state["interval"] = round(value, 1)
+
+    def set_history(self, value):
+        self.state["history"] = int(value)
+</script>
