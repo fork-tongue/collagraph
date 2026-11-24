@@ -90,8 +90,10 @@ The data comes from an asyncio task that starts in `mounted()`. The component is
 def mounted(self):
     self._task = asyncio.get_running_loop().create_task(self.stream())
 
+
 def before_unmount(self):
     self._task.cancel()
+
 
 async def stream(self):
     while True:
