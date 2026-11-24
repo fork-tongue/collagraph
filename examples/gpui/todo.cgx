@@ -1,0 +1,150 @@
+<!--
+  Run this example as follows:
+  uv run collagraph --renderer gpui examples/gpui/todo.cgx
+ -->
+<window title="Todo" :theme="theme(dark)" width="560" height="680">
+  <column full-width full-height padding="28" gap="16">
+    <!-- Header -->
+    <row gap="12" align="center">
+      <column flex="1" gap="2">
+        <column height="36" justify="center">
+          <label font-size="28" bold>Today</label>
+        </column>
+        <label font-size="13">{{ done_count }} of {{ len(todos) }} tasks done</label>
+      </column>
+      <icon :name="'moon' if dark else 'sun'" />
+      <switch :value="dark" @change="set_dark" />
+    </row>
+    <progress :value="done_count / len(todos) * 100 if todos else 0" />
+
+    <!-- New todo + filters -->
+    <column background="popover" border radius="16" padding="14" gap="12">
+      <row gap="8" align="center">
+        <column flex="1">
+          <text-input
+            :value="draft"
+            placeholder="What needs to be done?"
+            clearable
+            @change="set_draft"
+            @submit="add"
+          />
+        </column>
+        <button variant="primary" icon="plus" @click="add" :disabled="not draft.strip()">
+          Add
+        </button>
+      </row>
+      <tabs :items="FILTERS" :value="active_filter" @change="set_filter" />
+    </column>
+
+    <!-- The list -->
+    <scroll flex="1">
+      <column gap="8">
+        <row
+          v-for="todo in visible_todos"
+          :key="todo['id']"
+          :background="'muted' if todo['done'] else 'popover'"
+          border
+          radius="12"
+          padding="12"
+          gap="12"
+          align="center"
+        >
+          <checkbox :value="todo['done']" @change="lambda done: set_done(todo, done)" />
+          <column flex="1" gap="2">
+            <label :bold="not todo['done']">{{ todo['text'] }}</label>
+            <label font-size="12">{{ "Done" if todo['done'] else todo['tag'] }}</label>
+          </column>
+          <button variant="ghost" icon="trash-2" @click="lambda: remove(todo)">
+            Remove
+          </button>
+        </row>
+        <empty
+          v-if="not visible_todos"
+          :title="'All done!' if todos else 'Nothing to do'"
+          :description="'Enjoy your day' if todos else 'Add a task above to get started'"
+        />
+      </column>
+    </scroll>
+
+    <!-- Footer -->
+    <row align="center" gap="8">
+      <icon name="list-todo" />
+      <label flex="1" font-size="13">
+        {{ remaining }} {{ "task" if remaining == 1 else "tasks" }} left
+      </label>
+      <button variant="ghost" icon="check-check" @click="clear_done" :disabled="done_count == 0">
+        Clear done
+      </button>
+    </row>
+  </column>
+</window>
+
+<script>
+import itertools
+
+import collagraph as cg
+
+from examples.gpui.theme import theme
+
+FILTERS = ["All", "Active", "Done"]
+
+
+class Todo(cg.Component):
+    _ids = itertools.count()
+
+    def init(self):
+        self.state["dark"] = False
+        self.state["draft"] = ""
+        self.state["active_filter"] = 0
+        self.state["todos"] = [
+            self.new_todo("Try out GPUI", "Exploring", done=True),
+            self.new_todo("Render it with Collagraph", "Building"),
+            self.new_todo("Make the examples pretty", "Design"),
+            self.new_todo("Ship something cool", "Release"),
+        ]
+
+    def new_todo(self, text, tag="Task", done=False):
+        return {"id": next(self._ids), "text": text, "tag": tag, "done": done}
+
+    @property
+    def visible_todos(self):
+        todos = self.state["todos"]
+        if FILTERS[self.state["active_filter"]] == "Active":
+            return [todo for todo in todos if not todo["done"]]
+        if FILTERS[self.state["active_filter"]] == "Done":
+            return [todo for todo in todos if todo["done"]]
+        return list(todos)
+
+    @property
+    def done_count(self):
+        return sum(todo["done"] for todo in self.state["todos"])
+
+    @property
+    def remaining(self):
+        return len(self.state["todos"]) - self.done_count
+
+    def set_dark(self, value):
+        self.state["dark"] = value
+
+    def set_draft(self, text):
+        self.state["draft"] = text
+
+    def set_filter(self, index):
+        self.state["active_filter"] = index
+
+    def add(self, *args):
+        text = self.state["draft"].strip()
+        if not text:
+            return
+        self.state["todos"].append(self.new_todo(text))
+        self.state["draft"] = ""
+
+    def set_done(self, todo, done):
+        todo["done"] = done
+
+    def remove(self, todo):
+        self.state["todos"].remove(todo)
+
+    def clear_done(self):
+        self.state["todos"] = [todo for todo in self.state["todos"] if not todo["done"]]
+</script>

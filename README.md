@@ -18,7 +18,7 @@ Write your Python interfaces in a declarative manner as single-file components w
 * Fine-grained reactivity (made possible by leveraging [observ](https://github.com/fork-tongue/observ))
 * Class components with local state and life-cycle methods/hooks
 * Single-file components with Vue-like template syntax (`.cgx` files)
-* Renderers for PySide6 and [Pygfx](https://github.com/pygfx/pygfx), with support for custom renderers
+* Renderers for PySide6, [GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui) and [Pygfx](https://github.com/pygfx/pygfx), with support for custom renderers
 
 Here is an example that shows a counter, made with a component with Vue-like syntax:
 
@@ -79,9 +79,10 @@ uv run collagraph --show-code examples/pyside/counter.cgx
 
 For more examples, please take a look at the [examples folder](examples). For guides and API reference, visit the [documentation](https://fork-tongue.github.io/collagraph/).
 
-Currently there are two renderers:
+Currently there are three renderers:
 
 * [PysideRenderer](collagraph/renderers/pyside_renderer.py): for rendering PySide6 applications
+* [GpuiRenderer](collagraph/renderers/gpui_renderer.py): for rendering GPU-accelerated desktop applications with [GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui) (the UI framework of the Zed editor), through [gpyui](https://github.com/gtrefalt/gpyui). Available on macOS and Windows.
 * [PygfxRenderer](collagraph/renderers/pygfx_renderer.py): for rendering 3D graphic scenes with [Pygfx](https://github.com/pygfx/pygfx)
 
 It is possible to create a custom Renderer using the [Renderer](collagraph/renderers/__init__.py) interface, to render to other UI frameworks, for instance wxPython.

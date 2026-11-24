@@ -57,6 +57,7 @@ nav:
   - Renderers:
       - Overview: renderers/overview.md
       - PySide6: renderers/pyside.md
+      - GPUI: renderers/gpui.md
       - Pygfx: renderers/pygfx.md
   - Reference:
       - Directives: reference/directives.md
@@ -64,6 +65,7 @@ nav:
       - Renderer API: reference/renderer-api.md
   - Examples:
       - PySide6 Examples: examples/pyside-examples.md
+      - GPUI Examples: examples/gpui-examples.md
       - Pygfx Examples: examples/pygfx-examples.md
   - Internals:
       - Architecture: internals/architecture.md

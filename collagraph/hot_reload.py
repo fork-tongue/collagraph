@@ -545,7 +545,10 @@ class HotReloader:
             return
 
         # Schedule the reload on the main event loop
-        if self._qt_signal_helper is not None:
+        if gui.renderer.call_soon_threadsafe(self._reload):
+            # The renderer knows how to get to its UI thread
+            logger.debug("Reload scheduled by renderer")
+        elif self._qt_signal_helper is not None:
             # Use signal/slot for thread-safe Qt communication
             logger.debug("Emitting reload signal")
             self._qt_signal_helper.reload_signal.emit()

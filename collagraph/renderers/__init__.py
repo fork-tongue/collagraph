@@ -67,6 +67,16 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
         """Remove event listener for `event_type` to the element `el`."""
         pass
 
+    def call_soon_threadsafe(self, callback: Callable[[], Any]) -> bool:
+        """
+        Schedule `callback` to run on the thread that owns the UI elements.
+
+        Can be called from any thread (used for instance by hot reload).
+        Returns False when the renderer has no such mechanism, in which case
+        the caller falls back to other means of scheduling.
+        """
+        return False
+
     def save_element_state(self, el: Any) -> Optional[dict]:
         """
         Save renderer-specific element state for hot reload.
@@ -96,6 +106,13 @@ except ImportError:  # pragma: no cover
     pass
 else:
     from .pygfx_renderer import PygfxRenderer
+
+try:
+    import gpyui
+except ImportError:  # pragma: no cover
+    pass
+else:
+    from .gpui_renderer import GpuiRenderer
 
 try:
     import PySide6
