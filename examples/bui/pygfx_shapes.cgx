@@ -1,0 +1,62 @@
+<!--
+  Pygfx scene that is shown in the viewport of pygfx_viewer.cgx.
+  It is rendered by its own collagraph instance with the PygfxRenderer
+  (see pygfx_viewport.cgx), and gets all of its props from the viewer.
+-->
+<group>
+  <background
+    :material="background_material"
+    :material.color_top_left="background"
+    :material.color_top_right="background"
+    :material.color_bottom_left="background_bottom"
+    :material.color_bottom_right="background_bottom"
+  />
+  <ambient-light :intensity="0.3" />
+  <directional-light :local.position="(3, 5, 4)" :intensity="light" />
+  <grid-helper
+    v-if="show_grid"
+    :local.position="(0, -1.6, 0)"
+    :local.scale="(0.5, 0.5, 0.5)"
+  />
+  <mesh
+    :geometry="geometry"
+    :material="material"
+    :material.color="color"
+    :material.wireframe="wireframe"
+    :material.flat_shading="flat_shading"
+    :local.euler_y="angle"
+    :local.scale="(scale, scale, scale)"
+  />
+</group>
+
+<script>
+import pygfx as gfx
+
+import collagraph as cg
+
+GEOMETRIES = {
+    "Torus knot": gfx.torus_knot_geometry(1, 0.3, 160, 24),
+    "Cube": gfx.box_geometry(1.8, 1.8, 1.8),
+    "Sphere": gfx.sphere_geometry(1.2, 48, 32),
+    "Icosahedron": gfx.icosahedron_geometry(1.3),
+    "Cone": gfx.cone_geometry(1, 2.2, 48),
+    "Klein bottle": gfx.klein_bottle_geometry(0.9),
+}
+
+
+class Shapes(cg.Component):
+    def init(self):
+        # One material per scene: its attributes are bound in the template
+        self.material = gfx.MeshPhongMaterial()
+        self.background_material = gfx.BackgroundMaterial()
+
+    @property
+    def geometry(self):
+        return GEOMETRIES[self.props["shape"]]
+
+    @property
+    def background_bottom(self):
+        # A darker shade of the background color for a vertical gradient
+        r, g, b, *_ = self.props["background"]
+        return (r * 0.45, g * 0.45, b * 0.45, 1.0)
+</script>

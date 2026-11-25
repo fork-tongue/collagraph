@@ -8,6 +8,7 @@ Collagraph uses a pluggable renderer system. The renderer is responsible for cre
 |----------|----------|---------|
 | `PySideRenderer` | Desktop applications with Qt widgets | `collagraph[pyside]` |
 | `PygfxRenderer` | 3D graphics scenes | `collagraph[pygfx]` |
+| `BuiRenderer` | Desktop applications with [BUI](https://github.com/ppmpreetham/BUI) (Blender's UI) | `collagraph[bui]` |
 | `DictRenderer` | Testing (renders to Python dicts) | included |
 
 ## Choosing a Renderer
@@ -20,6 +21,9 @@ gui = cg.Collagraph(renderer=cg.PySideRenderer())
 
 # 3D scenes
 gui = cg.Collagraph(renderer=cg.PygfxRenderer())
+
+# Desktop apps with Blender's UI
+gui = cg.Collagraph(renderer=cg.BuiRenderer())
 
 # Testing
 gui = cg.Collagraph(renderer=cg.DictRenderer(), event_loop_type=cg.EventLoopType.SYNC)

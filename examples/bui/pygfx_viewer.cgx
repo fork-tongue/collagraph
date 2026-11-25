@@ -1,0 +1,108 @@
+<!--
+  BUI controls next to a Pygfx viewport. Run this example as follows:
+  uv run collagraph --renderer bui examples/bui/pygfx_viewer.cgx
+
+  Needs both the bui and pygfx extras: pip install collagraph[bui,pygfx]
+  Drag in the viewport to orbit the camera, and scroll to zoom.
+-->
+<window title="Pygfx Viewer" :size="(960, 600)">
+  <row :fill="True">
+    <column :weight="0.32">
+      <panel title="Object">
+        <dropdown label="Shape" :items="shapes" :value="scene['shape']" @change="set_scene('shape')" />
+        <color-swatch label="Color" :value="scene['color']" @change="set_scene('color')" />
+        <number-slider
+          label="Scale" :value="scene['scale']" :min="0.25" :max="2" @change="set_scene('scale')"
+        />
+        <checkbox :value="scene['wireframe']" @change="set_scene('wireframe')">Wireframe</checkbox>
+        <checkbox :value="scene['flat_shading']" @change="set_scene('flat_shading')">Flat shading</checkbox>
+      </panel>
+      <panel title="Animation">
+        <toggle :value="spin" @change="set_spin" icon="PLAY" icon-on="PAUSE">
+          {{ "Spinning" if spin else "Paused" }}
+        </toggle>
+        <number-slider
+          label="Speed" :value="speed" :min="-360" :max="360" :step="10"
+          suffix="°/s" @change="set_speed"
+        />
+        <number-field label="Angle" :value="degrees" suffix="°" @change="set_angle" />
+      </panel>
+      <panel title="World">
+        <number-slider
+          label="Light" :value="scene['light']" :min="0" :max="5" @change="set_scene('light')"
+        />
+        <color-swatch label="Background" :value="scene['background']" @change="set_scene('background')" />
+        <checkbox :value="scene['show_grid']" @change="set_scene('show_grid')">Grid</checkbox>
+      </panel>
+      <label :text="stats" />
+      <button icon="LOOP_BACK" @click="reset">Reset</button>
+    </column>
+    <PygfxViewport
+      :scene="Shapes"
+      v-bind="scene"
+      :animate="spin"
+      @frame="advance"
+      @rendered="show_stats"
+    />
+  </row>
+</window>
+
+<script>
+import math
+
+import collagraph as cg
+
+from examples.bui.pygfx_shapes import GEOMETRIES, Shapes
+from examples.bui.pygfx_viewport import PygfxViewport
+
+DEFAULT_SCENE = {
+    "shape": "Torus knot",
+    "color": (0.9, 0.45, 0.15, 1.0),
+    "scale": 1.0,
+    "wireframe": False,
+    "flat_shading": False,
+    "light": 2.5,
+    "background": (0.24, 0.26, 0.3, 1.0),
+    "show_grid": True,
+    "angle": 0.0,
+}
+
+
+class PygfxViewer(cg.Component):
+    def init(self):
+        self.state["shapes"] = list(GEOMETRIES)
+        self.state["scene"] = dict(DEFAULT_SCENE)
+        self.state["spin"] = True
+        self.state["speed"] = 45.0
+        self.state["stats"] = ""
+
+    @property
+    def degrees(self):
+        return round(math.degrees(self.state["scene"]["angle"]) % 360, 1)
+
+    def set_scene(self, key):
+        # Returns a change handler for a key of the scene
+        def handler(value):
+            self.state["scene"][key] = value
+
+        return handler
+
+    def set_spin(self, value):
+        self.state["spin"] = value
+
+    def set_speed(self, value):
+        self.state["speed"] = value
+
+    def set_angle(self, value):
+        self.state["scene"]["angle"] = math.radians(value)
+
+    def advance(self, dt):
+        self.state["scene"]["angle"] += math.radians(self.state["speed"]) * dt
+
+    def show_stats(self, width, height, ms):
+        self.state["stats"] = f"{width} × {height} px, rendered in {ms:.1f} ms"
+
+    def reset(self):
+        self.state["scene"].update(DEFAULT_SCENE)
+        self.state["speed"] = 45.0
+</script>

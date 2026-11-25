@@ -67,6 +67,17 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
         """Remove event listener for `event_type` to the element `el`."""
         pass
 
+    def get_threadsafe_scheduler(self) -> Optional[Callable[[Callable], None]]:
+        """
+        Return a function that schedules a callback on the renderer's event
+        loop (the main thread) and that can be called from any thread.
+
+        Called on the main thread by the hot reloader when it starts, so that
+        reloads triggered by the file watcher thread run on the main thread.
+        Return None (the default) to let the hot reloader use Qt or asyncio.
+        """
+        return None
+
     def save_element_state(self, el: Any) -> Optional[dict]:
         """
         Save renderer-specific element state for hot reload.
@@ -89,6 +100,13 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
 
 
 from .dict_renderer import DictRenderer
+
+try:
+    import blenderui
+except ImportError:  # pragma: no cover
+    pass
+else:
+    from .bui_renderer import BuiRenderer
 
 try:
     import pygfx

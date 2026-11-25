@@ -60,6 +60,10 @@ Return the preferred event loop type for this renderer, or `None` for the defaul
 
 Called when the collagraph instance sets up the asyncio event loop. Override for renderers that need custom event loop integration (e.g., Qt's asyncio policy).
 
+### `get_threadsafe_scheduler() -> Callable | None`
+
+Return a function that schedules a callback on the renderer's event loop (the main thread) and that can be called from any thread. The hot reloader calls this on the main thread when it starts, and uses the function to run reloads that the file watcher thread triggers. Return `None` (the default) to let the hot reloader use Qt signals or asyncio instead. Renderers that run their own event loop (e.g. `BuiRenderer`) implement this.
+
 ### `save_element_state(el) -> dict | None`
 
 Save renderer-specific element state for hot reload (e.g., window geometry). Return `None` if nothing to save.

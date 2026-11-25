@@ -1,0 +1,39 @@
+<!--
+  A single task in tasks.cgx. Emits `update(id, **changes)` and `remove(id)`.
+-->
+<row>
+  <checkbox
+    :value="task['done']"
+    :weight="0"
+    description="Done"
+    @change="lambda done: emit('update', task['id'], done=done)"
+  />
+  <text-field
+    :value="task['title']"
+    :enabled="not task['done']"
+    @change="lambda title: emit('update', task['id'], title=title)"
+  />
+  <toggle
+    :value="task['starred']"
+    :weight="0"
+    :emboss="False"
+    icon="SOLO_OFF"
+    icon-on="SOLO_ON"
+    description="Starred"
+    @change="lambda starred: emit('update', task['id'], starred=starred)"
+  />
+  <icon-button
+    icon="TRASH"
+    :weight="0"
+    description="Remove"
+    @click="lambda: emit('remove', task['id'])"
+  />
+</row>
+
+<script>
+import collagraph as cg
+
+
+class TaskItem(cg.Component):
+    pass
+</script>
