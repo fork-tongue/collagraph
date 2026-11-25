@@ -120,8 +120,13 @@ def test_text_elements(renderer):
     renderer.remove(first, label)
     assert label.text == ", world"
 
+    # Surrounding whitespace (e.g. from template indentation) is stripped
+    renderer.set_element_text(second, "\n  Add  \n")
+    assert label.text == "Add"
+
     # Value components use the text for their label
     checkbox = renderer.create_element("checkbox")
+    renderer.set_element_text(first, "Hello")
     renderer.insert(first, checkbox)
     assert checkbox.label == "Hello"
 
@@ -163,6 +168,24 @@ def test_value_attribute_does_not_emit(renderer):
 
     renderer.remove_attribute(slider, "value", None)
     assert slider.value == 0.0
+
+
+def test_value_before_constraints(renderer):
+    """Attribute order in templates should not matter for values."""
+    slider = renderer.create_element("slider")
+    renderer.set_attribute(slider, "value", 45)
+    renderer.set_attribute(slider, "min", -360)
+    renderer.set_attribute(slider, "max", 360)
+    assert slider.value == 45
+
+    dropdown = renderer.create_element("dropdown")
+    renderer.set_attribute(dropdown, "value", "b")
+    renderer.set_attribute(dropdown, "items", ["a", "b", "c"])
+    assert dropdown.value == "b"
+
+    # Changing the items later keeps the value when it is still an item
+    renderer.set_attribute(dropdown, "items", ["c", "b"])
+    assert dropdown.value == "b"
 
 
 def test_event_listeners(renderer):
@@ -442,3 +465,95 @@ def test_threadsafe_scheduler():
     third.open = lambda show=True: setattr(third, "host", FakeHost())
     renderer.insert(third, None)
     assert len(third.host.timers) == 1
+
+
+def find_nodes(node, typ):
+    if node.type == typ:
+        yield node
+    for child in node.children:
+        yield from find_nodes(child, typ)
+
+
+def test_tasks_example(renderer):
+    from examples.bui.tasks import Tasks
+
+    gui = cg.Collagraph(renderer=renderer)
+    gui.render(Tasks, None)
+    window = renderer.windows[0]
+    tasks = gui.fragment.component
+    ctx = window.ctx
+
+    def click(el):
+        window.render()
+        x, y, w, h = el.rect
+        ctx.press(x + w // 2, y + h // 2, 0)
+        ctx.release(x + w // 2, y + h // 2, 0)
+        window.render()
+
+    def titles():
+        scroll = next(find_nodes(window, "scroll"))
+        return [
+            next(find_nodes(row, "text")).value for row in scroll.children[0].children
+        ]
+
+    window.render()
+    assert len(titles()) == 4
+    add = next(b for b in find_nodes(window, "button") if b.text == "Add")
+    assert not add.enabled
+
+    # Type a task and add it
+    click(next(find_nodes(window, "text")))
+    for char in "New task":
+        ctx.key(char, char, 0)
+    ctx.key("", "Return", 0)
+    window.render()
+    assert add.enabled
+    click(add)
+    assert titles()[-1] == "New task"
+    assert tasks.state["draft"] == ""
+
+    # Remove it again with its trash button
+    scroll = next(find_nodes(window, "scroll"))
+    click(next(find_nodes(scroll.children[0].children[-1], "button")))
+    assert "New task" not in titles()
+    assert gui.fragment
+
+
+def test_pygfx_viewer_example(renderer):
+    pytest.importorskip("pygfx")
+    import wgpu
+
+    try:
+        wgpu.gpu.request_adapter_sync().request_device_sync(
+            required_features=["float32-filterable"]
+        )
+    except Exception:
+        pytest.skip("No wgpu device available for pygfx")
+
+    from examples.bui.pygfx_viewer import PygfxViewer
+
+    gui = cg.Collagraph(renderer=renderer)
+    gui.render(PygfxViewer, None)
+    viewer = gui.fragment.component
+    (viewport,) = find_nodes(renderer.windows[0], "image")
+    assert type(viewport).__name__ == "Viewport"
+
+    # Changes in the UI reach the pygfx scene of the viewport
+    viewer.state["scene"]["shape"] = "Cube"
+    viewer.state["scene"]["wireframe"] = True
+    (scene_viewport,) = [
+        c for c in viewer_children(gui.fragment) if type(c).__name__ == "PygfxViewport"
+    ]
+    (mesh,) = [
+        obj for obj in scene_viewport.container.iter() if type(obj).__name__ == "Mesh"
+    ]
+    assert mesh.material.wireframe
+    assert mesh.geometry is scene_viewport.gui.fragment.component.geometry
+    assert gui.fragment
+
+
+def viewer_children(fragment):
+    if getattr(fragment, "component", None) is not None:
+        yield fragment.component
+    for child in fragment.iter_all_children():
+        yield from viewer_children(child)

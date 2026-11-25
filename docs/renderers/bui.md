@@ -104,7 +104,9 @@ attribute names are converted to snake case.
 <label text="Title" bold text-align="center" />
 ```
 
-Setting `value` from a template does not emit a `change` event.
+Setting `value` from a template does not emit a `change` event. The order of
+attributes doesn't matter: when `min`, `max` or `items` change after `value`,
+the value is applied again, so it isn't clamped to the old range.
 
 ## Text Content
 
@@ -115,6 +117,9 @@ progress bars, or the `label` of value components such as checkboxes:
 <label>Count: {{ count }}</label>
 <checkbox :value="smooth">Smooth</checkbox>
 ```
+
+Surrounding whitespace is stripped, so the text can be on its own line in
+the template.
 
 ## Events
 
@@ -167,9 +172,42 @@ from the main thread. So while hot reloading, the renderer polls a queue on
 the main thread (every 100 ms) for reloads to run. When the root component
 changes, its window is replaced by a new one with the same size and position.
 
+## Embedding a Pygfx Scene
+
+`examples/bui/pygfx_viewport.cgx` is a reusable component that shows a
+[Pygfx](https://github.com/pygfx/pygfx) scene in a BUI window: Pygfx renders
+the scene offscreen, and each frame is shown in a BUI image node. The scene
+is a regular collagraph component for the `PygfxRenderer`, rendered by its
+own collagraph instance, and gets the viewport's props as its props:
+
+```html
+<PygfxViewport :scene="Shapes" v-bind="scene" :animate="spin" @frame="advance" />
+```
+
+Dragging in the viewport orbits the camera and the mouse wheel zooms. While
+`animate` is set, it emits `frame(dt)` about 60 times per second, which a
+parent can use to advance an animation through its state.
+
+All collagraph instances share observ's scheduler. The viewport creates its
+Pygfx instance with the `SYNC` event loop type and then restores the BUI
+renderer's flush handler, so that all updates stay on BUI's event loop.
+
+![The Pygfx viewer example](images/bui-pygfx-viewer.png){ width="720" }
+
 ## Examples
 
 ```sh
+# A counter, and a properties panel
 uv run collagraph --renderer bui examples/bui/counter.cgx
 uv run collagraph --renderer bui examples/bui/properties.cgx
+
+# A task list: tabs, text input, search, filters, child components
+# and a settings page that switches between Blender's themes
+uv run collagraph --renderer bui examples/bui/tasks.cgx
+
+# BUI controls next to a Pygfx viewport (needs the pygfx extra as well)
+uv run collagraph --renderer bui examples/bui/pygfx_viewer.cgx
 ```
+
+![The tasks example](images/bui-tasks-dark.png){ width="360" }
+![The settings page of the tasks example, in the light theme](images/bui-tasks-settings-light.png){ width="360" }

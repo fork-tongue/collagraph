@@ -214,6 +214,11 @@ EVENT_ALIASES = {
 # Attributes that are used by collagraph itself (e.g. for keyed v-for)
 IGNORED_ATTRIBUTES = {"key"}
 
+# Attributes that limit which values a component accepts. Setting a value
+# before these (e.g. `:value` before `:max` in a template) would clamp or
+# ignore it, so the value is applied again when one of these changes.
+VALUE_CONSTRAINTS = {"min", "max", "items", "integer", "precision"}
+
 # Default values of (Python) properties, per (type, attribute)
 DEFAULT_VALUES: dict[tuple[type, str], Any] = {}
 
@@ -244,6 +249,14 @@ def _set_value_supports_notify(typ: type) -> bool:
 def _supports_notify(el: Any) -> bool:
     """Whether the ``set_value`` method of ``el`` has a ``notify`` argument."""
     return _set_value_supports_notify(type(el))
+
+
+def _set_value(el: Any, value: Any) -> None:
+    """Set the value of a component without emitting a change event."""
+    if _supports_notify(el):
+        el.set_value(value, notify=False)
+    else:
+        el.set_value(value)
 
 
 def _zero_value(value: Any) -> Any:
@@ -447,11 +460,10 @@ class BuiRenderer(Renderer):
 
     def _sync_text(self, parent: buipy.KitNode):
         proxies = parent.__dict__.get("_cg_text_elements", [])
-        setattr(
-            parent,
-            _text_property(parent),
-            "".join(proxy.content for proxy in proxies),
-        )
+        # Widgets show a single line of text: strip the surrounding whitespace
+        # (e.g. from a button's text written on its own line in a template)
+        text = "".join(proxy.content for proxy in proxies).strip()
+        setattr(parent, _text_property(parent), text)
 
     def remove(self, el: Any, parent: Any):
         if isinstance(el, TextElement):
@@ -483,11 +495,8 @@ class BuiRenderer(Renderer):
             return
 
         if attr == "value" and hasattr(el, "set_value"):
-            # Setting the value from code should not trigger change events
-            if _supports_notify(el):
-                el.set_value(value, notify=False)
-            else:
-                el.set_value(value)
+            el.__dict__["_cg_value"] = value
+            _set_value(el, value)
             return
 
         if _property(el, attr):
@@ -495,12 +504,14 @@ class BuiRenderer(Renderer):
             if key not in DEFAULT_VALUES:
                 DEFAULT_VALUES[key] = getattr(el, attr, None)
             setattr(el, attr, value)
-            return
+        else:
+            # Not a Python property, so set it as a property of the kit node.
+            # Remember the value so that the attribute can be reset on removal.
+            el.__dict__.setdefault("_cg_kit_attrs", {})[attr] = value
+            el.set(attr, value)
 
-        # Not a Python property, so set it as a property of the kit node.
-        # Remember the value so that the attribute can be reset on removal.
-        el.__dict__.setdefault("_cg_kit_attrs", {})[attr] = value
-        el.set(attr, value)
+        if attr in VALUE_CONSTRAINTS and "_cg_value" in el.__dict__:
+            _set_value(el, el.__dict__["_cg_value"])
 
     def remove_attribute(self, el: Any, attr: str, value: Any):
         attr = _snake_case(attr)
@@ -508,6 +519,7 @@ class BuiRenderer(Renderer):
             return
 
         if attr == "value" and hasattr(el, "reset"):
+            el.__dict__.pop("_cg_value", None)
             el.reset()
             return
 

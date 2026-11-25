@@ -1,0 +1,184 @@
+<!--
+  A task list with tabs, text input, search, filters, child components and
+  a settings page. Run this example as follows:
+  uv run collagraph --renderer bui examples/bui/tasks.cgx
+ -->
+<window title="Tasks" :size="(480, 580)">
+  <tabs :items="['Tasks', 'Settings']" :fill="True">
+    <column>
+      <row>
+        <text-field
+          placeholder="What needs to be done?"
+          :value="draft"
+          :live="True"
+          @change="set_draft"
+        />
+        <button icon="ADD" :weight="0" :enabled="bool(draft.strip())" @click="add">
+          Add
+        </button>
+      </row>
+      <row>
+        <search-field :value="query" :live="True" @change="set_query" />
+        <enum-row :items="FILTERS" :value="filter" @change="set_filter" />
+      </row>
+      <separator :line="True" />
+      <scroll-view :rows="6" :fill="True">
+        <column>
+          <TaskItem
+            v-for="task in visible"
+            :key="task['id']"
+            :task="task"
+            @update="update"
+            @remove="remove"
+          />
+          <label v-if="not visible" :text="empty_text" text-align="center" />
+        </column>
+      </scroll-view>
+      <separator :line="True" />
+      <progress-bar :value="progress" :text="summary" />
+      <row>
+        <button icon="CHECKMARK" :enabled="remaining > 0" @click="complete_all">
+          Complete all
+        </button>
+        <button icon="TRASH" :enabled="completed > 0" @click="clear_completed">
+          Clear completed
+        </button>
+      </row>
+    </column>
+    <column>
+      <panel title="Appearance">
+        <enum-row label="Theme" :items="['Dark', 'Light']" :value="theme" @change="set_theme" />
+      </panel>
+      <panel title="List">
+        <dropdown label="Sort by" :items="SORTS" :value="sort" @change="set_sort" />
+        <checkbox :value="starred_first" @change="set_starred_first">Starred first</checkbox>
+      </panel>
+      <panel title="Statistics">
+        <label>Tasks: {{ len(tasks) }}</label>
+        <label>Starred: {{ starred }}</label>
+        <label>Completed: {{ completed }}</label>
+      </panel>
+    </column>
+  </tabs>
+</window>
+
+<script>
+import itertools
+
+import buipy
+
+import collagraph as cg
+
+from examples.bui.task_item import TaskItem
+
+FILTERS = ["All", "Active", "Completed"]
+SORTS = ["Created", "Title"]
+INITIAL_TASKS = [
+    ("Try the BUI renderer", True, False),
+    ("Drag a number field to scrub it", False, True),
+    ("Type 2*pi into a number field", False, False),
+    ("Switch to the light theme", False, False),
+]
+
+
+class Tasks(cg.Component):
+    def init(self):
+        self.ids = itertools.count()
+        self.state["tasks"] = [
+            {"id": next(self.ids), "title": title, "done": done, "starred": starred}
+            for title, done, starred in INITIAL_TASKS
+        ]
+        self.state["draft"] = ""
+        self.state["query"] = ""
+        self.state["filter"] = "All"
+        self.state["sort"] = "Created"
+        self.state["starred_first"] = True
+        self.state["theme"] = buipy.kit_theme_name().title()
+
+    # Computed values
+    @property
+    def visible(self):
+        query = self.state["query"].lower()
+        selected = self.state["filter"]
+        tasks = [
+            task
+            for task in self.state["tasks"]
+            if query in task["title"].lower()
+            and (selected == "All" or task["done"] == (selected == "Completed"))
+        ]
+        if self.state["sort"] == "Title":
+            tasks.sort(key=lambda task: task["title"].lower())
+        if self.state["starred_first"]:
+            tasks.sort(key=lambda task: not task["starred"])
+        return tasks
+
+    @property
+    def completed(self):
+        return sum(task["done"] for task in self.state["tasks"])
+
+    @property
+    def starred(self):
+        return sum(task["starred"] for task in self.state["tasks"])
+
+    @property
+    def remaining(self):
+        return len(self.state["tasks"]) - self.completed
+
+    @property
+    def progress(self):
+        return self.completed / len(self.state["tasks"]) if self.state["tasks"] else 0
+
+    @property
+    def summary(self):
+        return f"{self.completed} of {len(self.state['tasks'])} completed"
+
+    @property
+    def empty_text(self):
+        if self.state["tasks"]:
+            return "No matching tasks"
+        return "Nothing to do!"
+
+    # Event handlers
+    def set_draft(self, value):
+        self.state["draft"] = value
+
+    def set_query(self, value):
+        self.state["query"] = value
+
+    def set_filter(self, value):
+        self.state["filter"] = value
+
+    def set_sort(self, value):
+        self.state["sort"] = value
+
+    def set_starred_first(self, value):
+        self.state["starred_first"] = value
+
+    def add(self):
+        title = self.state["draft"].strip()
+        task = {"id": next(self.ids), "title": title, "done": False, "starred": False}
+        self.state["tasks"].append(task)
+        self.state["draft"] = ""
+
+    def find(self, id):
+        return next(task for task in self.state["tasks"] if task["id"] == id)
+
+    def update(self, id, **changes):
+        self.find(id).update(changes)
+
+    def remove(self, id):
+        self.state["tasks"].remove(self.find(id))
+
+    def complete_all(self):
+        for task in self.state["tasks"]:
+            task["done"] = True
+
+    def clear_completed(self):
+        self.state["tasks"] = [task for task in self.state["tasks"] if not task["done"]]
+
+    def set_theme(self, value):
+        self.state["theme"] = value
+        # The theme applies to all of BUI: redraw the whole window
+        buipy.kit_set_theme(value.lower())
+        self.element.invalidate()
+</script>
